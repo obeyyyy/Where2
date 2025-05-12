@@ -11,13 +11,13 @@ let tokenCache = {
 
 async function getAccessToken() {
   console.log('getAccessToken called');
-  
+
   // If token exists and is not expired, return cached token
   if (tokenCache.token && Date.now() < tokenCache.expiresAt - 60000) { // 1 minute buffer
     console.log('Using cached token, expires at:', new Date(tokenCache.expiresAt).toISOString());
     return tokenCache.token;
   }
-  
+
   console.log('Fetching new token...');
 
   try {
@@ -48,11 +48,11 @@ async function getAccessToken() {
     }
 
     const data = await tokenResponse.json();
-    
+
     if (!data.access_token) {
       throw new Error('No access token received in response');
     }
-    
+
     // Cache the token with its expiration time (default to 30 minutes if not provided)
     const expiresIn = (data.expires_in || 1800) * 1000; // Convert to milliseconds
     const newExpiresAt = Date.now() + expiresIn;
@@ -60,7 +60,7 @@ async function getAccessToken() {
       token: data.access_token,
       expiresAt: newExpiresAt
     };
-    
+
     console.log('New token obtained, expires at:', new Date(newExpiresAt).toISOString());
     console.log('Token type:', data.token_type || 'Bearer');
     return data.access_token;
@@ -70,74 +70,398 @@ async function getAccessToken() {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Helper: Format Kiwi.com flight offer to Amadeus-like structure
+  function formatKiwiFlight(kiwi: any): any {
+    // ID
+    const id = kiwi.id || kiwi.legacyId || kiwi.sector?.id || 'unknown';
+    // Price extraction
+    let total = '';
+    let currency = 'EUR';
+    if (kiwi.price && typeof kiwi.price.amount === 'string') {
+      total = kiwi.price.amount;
+      if (kiwi.price.currency) currency = kiwi.price.currency;
+    } else if (typeof kiwi.price === 'string') {
+      total = kiwi.price;
+    }
+    // Itinerary/segments extraction
+    let itineraries: any[] = [];
+    if (Array.isArray(kiwi.sectors) && kiwi.sectors.length > 0) {
+      // Multi-sector (round-trip)
+      itineraries = kiwi.sectors.map((sector: any) => {
+        const segments = (sector.sectorSegments || []).map((segWrap: any) => {
+          const seg = segWrap.segment;
+          return {
+            departure: {
+              iataCode: seg.source?.station?.code || '',
+              at: seg.source?.utcTime || '',
+              terminal: seg.source?.station?.terminal || undefined,
+            },
+            arrival: {
+              iataCode: seg.destination?.station?.code || '',
+              at: seg.destination?.utcTime || '',
+              terminal: seg.destination?.station?.terminal || undefined,
+            },
+            carrierCode: seg.carrier?.code || '',
+            number: seg.code || '',
+            aircraft: { code: '' },
+            operating: seg.operatingCarrier ? { carrierCode: seg.operatingCarrier.code } : undefined,
+          };
+        });
+        const duration = sector.duration
+          ? `PT${Math.floor(sector.duration / 3600)}H${Math.floor((sector.duration % 3600) / 60)}M`
+          : '';
+        return { duration, segments };
+      });
+    } else if (kiwi.sector?.sectorSegments?.length) {
+      // One-way
+      const segments = kiwi.sector.sectorSegments.map((segWrap: any) => {
+        const seg = segWrap.segment;
+        return {
+          departure: {
+            iataCode: seg.source?.station?.code || '',
+            at: seg.source?.utcTime || '',
+            terminal: seg.source?.station?.terminal || undefined,
+          },
+          arrival: {
+            iataCode: seg.destination?.station?.code || '',
+            at: seg.destination?.utcTime || '',
+            terminal: seg.destination?.station?.terminal || undefined,
+          },
+          carrierCode: seg.carrier?.code || '',
+          number: seg.code || '',
+          aircraft: { code: '' },
+          operating: seg.operatingCarrier ? { carrierCode: seg.operatingCarrier.code } : undefined,
+        };
+      });
+      const duration = kiwi.sector.duration
+        ? `PT${Math.floor(kiwi.sector.duration / 3600)}H${Math.floor((kiwi.sector.duration % 3600) / 60)}M`
+        : '';
+      itineraries = [{ duration, segments }];
+    }
+    return {
+      id,
+      price: { total, currency },
+      itineraries,
+      deep_link: kiwi.deep_link || '',
+    };
+  }
+
   try {
-    const token = await getAccessToken();
-    
-    // Get current date and add 30 days for departure
+    let token = await getAccessToken();
+
+    // Get current date
     const departureDate = new Date();
-    departureDate.setDate(departureDate.getDate() + 30);
-    
+    departureDate.setDate(departureDate.getDate());
+
     // Add 7 days for return
     const returnDate = new Date(departureDate);
     returnDate.setDate(returnDate.getDate() + 7);
+    console.log('Departure date:', departureDate.toISOString().split('T')[0]);
     
-    // Format dates as YYYY-MM-DD
-    const departureDateStr = departureDate.toISOString().split('T')[0];
-    const returnDateStr = returnDate.toISOString().split('T')[0];
 
-    // Make sure we have a valid token
-    if (!token) {
-      throw new Error('No access token available');
+  
+    // Helper functions for flexible date range
+    function formatDate(date: Date): string {
+      return date.toISOString().split('T')[0];
     }
-    
-    // Construct the flight offers search URL with all required parameters
-    const searchParams = new URLSearchParams({
-      originLocationCode: 'MAD',
-      destinationLocationCode: 'PAR',
-      departureDate: departureDateStr,
-      returnDate: returnDateStr,
-      adults: '1',
-      max: '5',
-      currencyCode: 'EUR',
-      nonStop: 'false'
-    });
-    
-    const url = `${BASE_URL}/shopping/flight-offers?${searchParams.toString()}`;
+    function addDays(date: Date, days: number): Date {
+      const result = new Date(date);
+      result.setDate(result.getDate() + days);
+      return result;
+    }
 
-    console.log('Making API request with token:', token ? `${token.substring(0, 10)}...` : 'No token');
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText
+    // Parse query parameters from the request
+    const urlObj = new URL(request.url);
+    const params = urlObj.searchParams;
+    const origin = params.get('origin') || 'MAD';
+    const destination = params.get('destination') || 'PAR';
+    const tripType = params.get('tripType') || 'roundtrip';
+    const nights = params.get('nights') || '7';
+    const travelers = params.get('travelers') || '1';
+    const currency = params.get('currency') || 'EUR';
+    const budget = params.get('budget') || '';
+    const useKiwi = params.get('useKiwi') === 'true';
+    const includeHotels = params.get('includeHotels') === 'true';
+
+    // Date parsing with fallback
+    const depDate = params.get('departureDate') ? new Date(params.get('departureDate')!) : addDays(new Date(), 30);
+    const retDate = params.get('returnDate') ? new Date(params.get('returnDate')!) : addDays(depDate, 7);
+
+    // Flexible window: ±1 day
+    const outboundStart = formatDate(addDays(depDate, -1)) + 'T00:00:00';
+    const outboundEnd = formatDate(addDays(depDate, 1)) + 'T23:59:59';
+    let inboundStart = '';
+    let inboundEnd = '';
+    if (tripType === 'roundtrip' && params.get('returnDate')) {
+      inboundStart = formatDate(addDays(retDate, -1)) + 'T00:00:00';
+      inboundEnd = formatDate(addDays(retDate, 1)) + 'T23:59:59';
+    }
+
+    // If useKiwi, fetch from Kiwi.com API instead
+    let tripData;
+    if (useKiwi) {
+      let kiwiUrl = '';
+      let kiwiParams: URLSearchParams;
+      let endpoint = '';
+      // Use parameter style as in RapidAPI dashboard example
+      // Helper: detect if user input is already in Country:/City:/Airport: style
+      function isStyleParam(val: string) {
+        return /^((Country|City|Airport):)/.test(val);
+      }
+      // Use Airport by default but allow override
+      const kiwiSource = isStyleParam(origin) ? origin : `Airport:${origin}`;
+      const kiwiDestination = isStyleParam(destination) ? destination : `Airport:${destination}`;
+      const commonParams = {
+        source: kiwiSource,
+        destination: kiwiDestination,
+        currency: currency.toLowerCase(),
+        locale: 'en',
+        adults: travelers,
+        children: '0',
+        infants: '0',
+        handbags: '1',
+        holdbags: '0',
+        cabinClass: 'ECONOMY',
+        sortBy: 'QUALITY',
+        applyMixedClasses: 'true',
+        allowChangeInboundDestination: 'false',
+        allowChangeInboundSource: 'false',
+        allowDifferentStationConnection: 'true',
+        enableSelfTransfer: 'false',
+        allowOvernightStopover: 'false',
+        enableTrueHiddenCity: 'false',
+        allowReturnToDifferentCity: 'false',
+        allowReturnFromDifferentCity: 'false',
+        enableThrowAwayTicketing: 'true',
+        outbound: 'SUNDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY,MONDAY,TUESDAY',
+        transportTypes: 'FLIGHT',
+        contentProviders: 'FLIXBUS_DIRECTS,FRESH,KAYAK,KIWI',
+        limit: '20',
+        outboundDepartureDateStart: outboundStart,
+        outboundDepartureDateEnd: outboundEnd,
+        ...(tripType === 'roundtrip' && inboundStart && inboundEnd ? {
+          inboundDepartureDateStart: inboundStart,
+          inboundDepartureDateEnd: inboundEnd,
+        } : {}),
+        ...(budget ? { price_to: budget } : {})
+      };
+      const kiwiParamsObj: Record<string, string> = { ...commonParams };
+      kiwiParams = new URLSearchParams(kiwiParamsObj);
+      endpoint = tripType === 'roundtrip' ? '/round-trip' : '/one-way';
+      // Log final URL for debugging
+      kiwiUrl = `https://kiwi-com-cheap-flights.p.rapidapi.com${endpoint}?${kiwiParams.toString()}`;
+      console.log('Kiwi API URL:', kiwiUrl);
+
+      const kiwiResp = await fetch(kiwiUrl, {
+        method: 'GET',
+        headers: {
+          'x-rapidapi-key': process.env.RAPIDAPI_KEY!,
+          'x-rapidapi-host': 'kiwi-com-cheap-flights.p.rapidapi.com',
+        },
       });
-      throw new Error(`API request failed: ${response.status} - ${response.statusText}`);
+      const rawText = await kiwiResp.text();
+      console.log('Kiwi API raw response:', rawText);
+      if (!kiwiResp.ok) {
+        console.error('Kiwi API Error:', rawText);
+        throw new Error(`Kiwi API error: ${kiwiResp.status}`);
+      }
+      const kiwiData = JSON.parse(rawText);
+      console.log('Kiwi API parsed response:', JSON.stringify(kiwiData, null, 2));
+      // Robust: handle top-level array, common properties, or fallback to first array found
+      let flightArr: any[] = [];
+      if (Array.isArray(kiwiData)) {
+        flightArr = kiwiData;
+      } else if (Array.isArray(kiwiData.data)) {
+        flightArr = kiwiData.data;
+      } else if (Array.isArray(kiwiData.flights)) {
+        flightArr = kiwiData.flights;
+      } else if (Array.isArray(kiwiData.results)) {
+        flightArr = kiwiData.results;
+      } else {
+        const firstArray = Object.values(kiwiData).find(v => Array.isArray(v));
+        if (firstArray) flightArr = firstArray as any[];
+      }
+      console.log('Kiwi flight array length:', Array.isArray(flightArr) ? flightArr.length : 'not an array');
+      tripData = { data: flightArr.map(formatKiwiFlight) };
+      console.log('Formatted Kiwi tripData:', JSON.stringify(tripData, null, 2));
+    } else {
+      // Construct the flight offers search URL with all required parameters
+      // Request up to 40 flight offers from Amadeus (API max)
+      const searchParams = new URLSearchParams({
+        originLocationCode: origin,
+        destinationLocationCode: destination,
+        departureDate: formatDate(depDate),
+        ...(tripType === 'roundtrip' && retDate ? { returnDate: formatDate(retDate) } : {}),
+        adults: travelers,
+        max: '40', // API max
+        currencyCode: currency,
+        nonStop: 'false',
+        ...(budget ? { maxPrice: budget } : {})
+      });
+
+      const url = `${BASE_URL}/shopping/flight-offers?${searchParams.toString()}`;
+
+      console.log('Making API request with token:', token ? `${token.substring(0, 10)}...` : 'No token');
+      let response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Amadeus API Error:', errorText);
+        console.error('API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`API request failed: ${response.status} - ${response.statusText}`);
+      }
+
+      tripData = await response.json();
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API error:', errorText);
-      throw new Error(`API request failed: ${response.status}`);
+    // --- FLIGHT FILTER & SORT LOGIC ---
+    // Helper to parse ISO 8601 durations like "PT8H30M" to minutes
+    function parseDuration(duration: string): number {
+      const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+      return (parseInt(match?.[1] || "0") * 60) + parseInt(match?.[2] || "0");
     }
+    // Get max stops for all itineraries in a flight offer
+    function maxStops(itineraries: any[]): number {
+      return Math.max(...itineraries.map(i => (i.segments?.length || 1) - 1));
+    }
+    // Get total duration (all itineraries combined)
+    function totalDuration(itineraries: any[]): number {
+      return itineraries.reduce((sum, itin) => sum + parseDuration(itin.duration), 0);
+    }
+    // Only keep flights with at most 1 stop per direction
+    let filteredFlights = (tripData.data || []).filter((flight: any) => maxStops(flight.itineraries) <= 1);
+    // Sort by shortest total journey duration
+    filteredFlights = filteredFlights.sort((a: any, b: any) => totalDuration(a.itineraries) - totalDuration(b.itineraries));
+    // Replace tripData.data with filtered and sorted flights
+    tripData.data = filteredFlights;
+    // Only fetch hotel offers for the top 5 flight options (after filtering/sorting) to avoid rate limits
+    let isFirstTrip = true;
+const tripsWithHotels = await Promise.all(
+      (tripData.data || []).slice(0, 5).map(async (trip: any, tripIdx: number) => {
+        const destinationCode = trip.itineraries?.[0]?.segments?.[0]?.arrival?.iataCode;
+        const checkInDate = formatDate(depDate);
+        const checkOutDate = formatDate(retDate);
+        let hotels: any[] = [];
+        try {
+          if (includeHotels && destinationCode && checkInDate && checkOutDate) {
+            // Step 1: Fetch hotel IDs for the city
+            const hotelsByCityUrl = `https://test.api.amadeus.com/v1/reference-data/locations/hotels/by-city?cityCode=${destinationCode}`;
+            console.log('Fetching hotel IDs for city:', hotelsByCityUrl);
+            const hotelsByCityResp = await fetch(hotelsByCityUrl, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            const hotelsByCityData = await hotelsByCityResp.json();
+            console.log('Hotels by city response:', hotelsByCityData);
+            const hotelIds = (hotelsByCityData.data || []).map((h: any) => h.hotelId).slice(0, 20); // Limit to 20 hotel IDs
+            if (hotelIds.length > 0) {
+              // Step 2: Fetch hotel offers for those IDs
+              const hotelParams = new URLSearchParams({
+                hotelIds: hotelIds.join(','),
+                checkInDate,
+                checkOutDate,
+                adults: travelers,
+                roomQuantity: '1',
+                bestRateOnly: 'true',
+                currency: currency,
+              });
+              const hotelUrl = `https://test.api.amadeus.com/v3/shopping/hotel-offers?${hotelParams.toString()}`;
+              console.log('Fetching hotel offers:', hotelUrl);
+              const hotelResp = await fetch(hotelUrl, {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+              console.log('Hotel API status:', hotelResp.status);
+              const hotelData = await hotelResp.json();
+              console.log('Hotel API response:', hotelData);
+              if (hotelResp.ok && Array.isArray(hotelData.data) && hotelData.data.length > 0) {
+                // Flatten all hotel offers
+                hotels = hotelData.data.flatMap((hotel: any) => {
+                  const rating = hotel?.hotel?.rating ? Number(hotel.hotel.rating) : undefined;
+                  const address = hotel?.hotel?.address?.lines ? hotel.hotel.address.lines.join(', ') : hotel?.hotel?.address?.cityName || undefined;
+                  const amenities = Array.isArray(hotel?.hotel?.amenities) ? hotel.hotel.amenities : [];
+                  return (hotel.offers || []).map((offer: any) => ({
+                    price: offer?.price?.total || null,
+                    currency: offer?.price?.currency || null,
+                    name: hotel?.hotel?.name || null,
+                    offerId: offer?.id || null,
+                    totalPrice: (offer?.price?.total && trip.price?.total)
+                      ? (parseFloat(trip.price.total) + parseFloat(offer.price.total)).toFixed(2)
+                      : null,
+                    rating,
+                    address,
+                    amenities,
+                  }));
+                });
+                // Sort by total price (cheapest first)
+                hotels = hotels.filter(h => h.price && h.totalPrice).sort((a, b) => parseFloat(a.totalPrice) - parseFloat(b.totalPrice));
+              }
+            } else {
+              console.log('No hotel IDs found for city', destinationCode);
+            }
+          }
+        } catch (err) {
+          console.error('Hotel fetch error:', err);
+        }
 
-    const tripData = await response.json();
-    return NextResponse.json(tripData);
+// Fetch sentiment data for only the hotels being returned
+if (hotels.length > 0) {
+  await Promise.all(hotels.map(async (hotel: any, idx: number) => {
+            if (!hotel.offerId) return;
+            try {
+              const sentimentResp = await fetch(`https://test.api.amadeus.com/v2/e-reputation/hotel-sentiments?hotelIds=${hotel.offerId}`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+              if (sentimentResp.ok) {
+                const sentimentData = await sentimentResp.json();
+                console.log('Sentiment API response for', hotel.offerId, ':', sentimentData);
+                if (sentimentData.data && Array.isArray(sentimentData.data) && sentimentData.data[0]) {
+                  hotel.sentiment = sentimentData.data[0] || null;
+                } else {
+                  hotel.sentiment = null;
+                }
+            } 
+          }
+        catch (err) {
+              hotel.sentiment = null;
+            }
+          }));
+        }
+        return {
+          ...trip,
+          hotels: hotels,
+          
+        };
+      })
+    );
+    // Return the new structure
+    return NextResponse.json({
+      ...tripData,
+      data: tripsWithHotels,
+    });
   } catch (error) {
     console.error('Error in GET route:', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined
     });
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch trip data',
         details: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString()

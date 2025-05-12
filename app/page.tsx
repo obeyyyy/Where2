@@ -15,7 +15,9 @@ type TripType = 'roundtrip' | 'oneway';
 interface SearchParams {
   budget: number;
   currency: string;
+  originType: 'Airport' | 'City' | 'Country';
   origin: string;
+  destinationType: 'Airport' | 'City' | 'Country';
   destination: string;
   departureDate: Date;
   returnDate: Date | null;
@@ -23,6 +25,7 @@ interface SearchParams {
   travelers: number;
   nights: number;
   includeHotels: boolean;
+  useKiwi: boolean; // Add Kiwi/Amadeus toggle
 }
 
 interface FlightSegment {
@@ -65,14 +68,17 @@ function HomePage() {
   const [searchParams, setSearchParams] = useState<SearchParams>({
     budget: 750,
     currency: 'USD',
+    originType: 'Airport',
     origin: 'MAD',
+    destinationType: 'Airport',
     destination: 'PAR',
     departureDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
     returnDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 2 weeks from now
     tripType: 'roundtrip',
     travelers: 1,
     nights: 7,
-    includeHotels: true
+    includeHotels: true,
+    useKiwi: true // default to Kiwi
   });
 
   const [tripData, setTripData] = useState<FlightOffer[]>([]);
@@ -105,15 +111,17 @@ function HomePage() {
 
       // Prepare query parameters
       const queryParams = new URLSearchParams({
-        origin: searchParams.origin,
-        destination: searchParams.destination,
+        origin: `${searchParams.originType}:${searchParams.origin}`,
+        destination: `${searchParams.destinationType}:${searchParams.destination}`,
         departureDate: searchParams.departureDate.toISOString().split('T')[0],
         returnDate: searchParams.returnDate ? searchParams.returnDate.toISOString().split('T')[0] : '',
-        adults: searchParams.travelers.toString(),
+        tripType: searchParams.tripType,
         nights: searchParams.nights.toString(),
-        includeHotels: searchParams.includeHotels.toString(),
+        travelers: searchParams.travelers.toString(),
         currency: searchParams.currency,
-        maxPrice: searchParams.budget.toString()
+        budget: searchParams.budget.toString(),
+        includeHotels: searchParams.includeHotels ? 'true' : 'false',
+        useKiwi: searchParams.useKiwi ? 'true' : 'false',
       });
 
       const response = await fetch(`/api/trips?${queryParams}`, {
@@ -415,7 +423,7 @@ function HomePage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Trip Type
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2grid-cols-2 gap-3">
                     <button
                       onClick={() => {handleInputChange('tripType', 'roundtrip');
                         if (!searchParams.returnDate) {
@@ -448,28 +456,32 @@ function HomePage() {
                   </div>
                 </div>
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Trip Duration
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={searchParams.nights}
-                      onChange={(e) => handleInputChange('nights', parseInt(e.target.value))}
-                      className="w-full p-3 border border-gray-300 rounded-xl appearance-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
-                    >
-                      {[...Array(30)].map((_, i) => (
-                        <option key={i + 1} value={i + 1}>
-                          {i + 1} {i === 0 ? 'night' : 'nights'}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    Trip Duration
+  </label>
+  <div className="relative">
+    <select
+      value={searchParams.nights}
+      disabled
+      className="w-full p-3 border border-gray-300 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed appearance-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
+      title="Trip duration is automatically calculated from your selected dates."
+    >
+      {[...Array(30)].map((_, i) => (
+        <option key={i + 1} value={i + 1}>
+          {i + 1} {i === 0 ? 'night' : 'nights'}
+        </option>
+      ))}
+    </select>
+    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+  </div>
+  <p className="text-xs text-gray-500 mt-1">
+    Trip duration is automatically calculated from your selected dates and cannot be changed directly.
+  </p>
+</div>
               </motion.div>
             )}
             {viewState === 'details' && (
@@ -506,25 +518,51 @@ function HomePage() {
                   </div>
                 </div>
 
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Flying from
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={searchParams.origin}
-                      onChange={(e) => handleInputChange('origin', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-xl appearance-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
-                    >
-                      <option value="MAD">Madrid (MAD)</option>
-                      <option value="BCN">Barcelona (BCN)</option>
-                      <option value="PMI">Palma de Mallorca (PMI)</option>
-                      <option value="AGP">Málaga (AGP)</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                <div className="flex gap-4 mb-6">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Origin
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={searchParams.originType}
+                        onChange={e => handleInputChange('originType', e.target.value as 'Airport' | 'City' | 'Country')}
+                        className="p-2 border border-gray-300 rounded-xl text-sm bg-white"
+                      >
+                        <option value="Airport">Airport</option>
+                        <option value="City">City</option>
+                        <option value="Country">Country</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={searchParams.origin}
+                        onChange={e => handleInputChange('origin', e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
+                        placeholder={searchParams.originType === 'Airport' ? 'e.g. MAD' : searchParams.originType === 'City' ? 'e.g. dubrovnik_hr' : 'e.g. GB'}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Destination
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={searchParams.destinationType}
+                        onChange={e => handleInputChange('destinationType', e.target.value as 'Airport' | 'City' | 'Country')}
+                        className="p-2 border border-gray-300 rounded-xl text-sm bg-white"
+                      >
+                        <option value="Airport">Airport</option>
+                        <option value="City">City</option>
+                        <option value="Country">Country</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={searchParams.destination}
+                        onChange={e => handleInputChange('destination', e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
+                        placeholder={searchParams.destinationType === 'Airport' ? 'e.g. LON' : searchParams.destinationType === 'City' ? 'e.g. dubrovnik_hr' : 'e.g. GB'}
+                      />
                     </div>
                   </div>
                 </div>
@@ -550,29 +588,43 @@ function HomePage() {
                   </div>
                 </div>
                 <div className="mb-8">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Include Hotels
-                    </label>
-                    <button
-                      onClick={() => handleInputChange('includeHotels', !searchParams.includeHotels)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                        searchParams.includeHotels ? 'bg-[#FFA500]' : 'bg-gray-200'
-                      }`}
-                    >
-                      <span
-                        className={`${
-                          searchParams.includeHotels ? 'translate-x-6' : 'translate-x-1'
-                        } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
-                      />
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {searchParams.includeHotels
-                      ? 'Hotels will be included in your search'
-                      : 'Only flights will be included in your search'}
-                  </p>
-                </div>
+  <div className="flex items-center justify-between mb-2">
+    <label className="block text-sm font-medium text-gray-700">
+      Include Hotels
+    </label>
+    <button
+      onClick={() => handleInputChange('includeHotels', !searchParams.includeHotels)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+        searchParams.includeHotels ? 'bg-[#FFA500]' : 'bg-gray-200'
+      }`}
+    >
+      <span
+        className={`${searchParams.includeHotels ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+      />
+    </button>
+  </div>
+  <p className="text-xs text-gray-500 mt-1">
+    {searchParams.includeHotels
+      ? 'Hotels will be included in your search'
+      : 'Only flights will be included in your search'}
+  </p>
+  {/* Flight Search Source Selection */}
+  <div className="flex items-center justify-between mt-4">
+    <label className="block text-sm font-medium text-gray-700">
+      Flight Search Source
+    </label>
+    <select
+      value={searchParams.useKiwi ? 'kiwi' : 'amadeus'}
+      onChange={e => handleInputChange('useKiwi', e.target.value === 'kiwi')}
+      className="w-32 p-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent text-sm bg-white"
+    >
+      <option value="kiwi">Kiwi.com</option>
+      <option value="amadeus">Amadeus</option>
+    </select>
+  </div>
+  <p className="text-xs text-gray-500 mt-1">
+    Choose which provider to use for flight search. Kiwi.com is recommended for best results.</p>
+</div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -640,7 +692,7 @@ function HomePage() {
               transition={{ duration: 0.3 }}
               className="mb-6"
             >
-              <TripCard trip={trip} />
+              <TripCard trip={trip} budget={searchParams.budget} />
             </motion.div>
           ))}
           {tripData.length === 0 && viewState === 'results' && (
