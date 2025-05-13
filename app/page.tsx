@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import TripCard from './components/TripCard';
+import { AirportAutocomplete, AirportOption } from './components/AirportAutocomplete';
 import Image from 'next/image';
+import airportsJson from 'airports-json';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiArrowRight, FiArrowLeft, FiCalendar, FiUsers, FiMapPin, FiDollarSign, FiGlobe } from 'react-icons/fi';
 
@@ -545,13 +547,21 @@ function HomePage() {
                         <option value="City">City</option>
                         <option value="Country">Country</option>
                       </select>
-                      <input
-                        type="text"
-                        value={searchParams.origin}
-                        onChange={e => handleInputChange('origin', e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
-                        placeholder={searchParams.originType === 'Airport' ? 'e.g. MAD' : searchParams.originType === 'City' ? 'e.g. dubrovnik_hr' : 'e.g. GB'}
-                      />
+                      <AirportAutocomplete
+                         label="Origin Airport"
+                         value={(function() {
+  const a = airportsJson.airports.find((ap: any) => ap.iata === searchParams.origin);
+  return a ? {
+    iata: a.iata,
+    name: a.name,
+    city: a.city,
+    country: a.country,
+    label: `${a.iata} - ${a.name}, ${a.city}, ${a.country}`
+  } : null;
+})()}
+                         onChange={val => handleInputChange('origin', val ? val.iata : '')}
+                         required
+                       />
                     </div>
                   </div>
                   <div className="flex-1">
@@ -568,13 +578,21 @@ function HomePage() {
                         <option value="City">City</option>
                         <option value="Country">Country</option>
                       </select>
-                      <input
-                        type="text"
-                        value={searchParams.destination}
-                        onChange={e => handleInputChange('destination', e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
-                        placeholder={searchParams.destinationType === 'Airport' ? 'e.g. LON' : searchParams.destinationType === 'City' ? 'e.g. dubrovnik_hr' : 'e.g. GB'}
-                      />
+                      <AirportAutocomplete
+                         label="Destination Airport"
+                         value={(function() {
+  const a = airportsJson.airports.find((ap: any) => ap.iata === searchParams.destination);
+  return a ? {
+    iata: a.iata,
+    name: a.name,
+    city: a.city,
+    country: a.country,
+    label: `${a.iata} - ${a.name}, ${a.city}, ${a.country}`
+  } : null;
+})()}
+                         onChange={val => handleInputChange('destination', val ? val.iata : '')}
+                         required
+                       />
                     </div>
                   </div>
                 </div>

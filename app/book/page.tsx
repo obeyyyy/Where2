@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { getAirlineLogoUrl } from "../components/getAirlineLogoUrl";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiArrowRight, FiArrowLeft, FiUser, FiMail, FiPhone, FiCheckCircle } from "react-icons/fi";
+import { MdFlight } from "react-icons/md";
 import BookingSummary from "../components/BookingSummary";
+const airports = require('airports-json').airports;
 
 // Booking form types
 interface PassengerInfo {
@@ -220,104 +223,92 @@ const BookingPage: React.FC = () => {
           ) : flightError ? (
             <div className="text-center text-red-500">{flightError}</div>
           ) : flight ? (
-            <div className="rounded-3xl shadow-xl border border-yellow-100 bg-white p-6 flex flex-col gap-4">
-              <div className="flex items-center gap-4">
-                {/* Airline Logo */}
-                <div className="w-16 h-16 bg-white rounded-xl shadow border flex items-center justify-center">
-                  {flight.itineraries?.[0]?.segments?.[0]?.carrierCode && (
-                    <img
-                      src={`https://content.airhex.com/content/logos/airlines_${flight.itineraries[0].segments[0].carrierCode}_100_50_r.png`}
-                      alt={flight.itineraries[0].segments[0].carrierCode}
-                      className="object-contain w-12 h-12"
-                      style={{ background: '#fff' }}
-                    />
-                  )}
+            <div>
+              <div className="rounded-3xl shadow-xl border border-yellow-100 bg-white p-6">
+                <div className="flex items-center justify-between mb-2">
+                <span className="text-lg font-semibold text-gray-700">Flight Summary</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-2xl font-extrabold text-[#FFA500] bg-yellow-100 px-2 py-1 rounded-xl shadow-sm border border-yellow-200">
+                    {flight.price?.currency} {flight.price?.total}
+                  </span>
+                  <span className="bg-yellow-200 text-yellow-800 font-bold px-3 py-1 rounded-full text-sm tracking-wide shadow">
+                    {typeof flight.itineraries[0].segments[0].carrierCode === "object" ? flight.itineraries[0].segments[0].carrierCode.code : flight.itineraries[0].segments[0].carrierCode}-{flight.itineraries[0].segments[0].number}
+                  </span>
                 </div>
-                <div>
-                  <div className="font-bold text-xl text-gray-800">
-                    {flight.itineraries?.[0]?.segments?.[0]?.departure?.iataCode} → {flight.itineraries?.[0]?.segments?.[flight.itineraries[0].segments.length - 1]?.arrival?.iataCode}
+              </div>
+                <div className="flex items-center justify-between">
+                  {/* Origin */}
+                  {(() => {
+                    const dep = flight.itineraries?.[0]?.segments?.[0]?.departure;
+                    const arr = flight.itineraries?.[0]?.segments?.[flight.itineraries[0].segments.length - 1]?.arrival;
+                    const depInfo = airports.find((a: any) => a.iata_code === dep?.iataCode);
+                    const arrInfo = airports.find((a: any) => a.iata_code === arr?.iataCode);
+                    return <>
+                      <div className="flex-1 text-left">
+                        <div className="text-3xl font-extrabold text-gray-800">{typeof dep?.iataCode === "object" ? dep?.iataCode.code : dep?.iataCode}</div>
+                        <div className="text-base font-semibold text-gray-700">{depInfo?.name || ''}</div>
+                        <div className="text-sm text-gray-600">{depInfo?.municipality || ''}</div>
+                        <div className="text-lg font-bold text-yellow-700 leading-tight">{new Date(dep.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</div>
+                        <div className="text-xs text-gray-500">{new Date(dep.at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
+                      </div>
+                      {/* Center with airplane icon and duration */}
+                      <div className="flex flex-col items-center justify-center flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="w-20 h-1 bg-yellow-400 rounded-full inline-block"></span>
+                          <span className="text-yellow-500 text-2xl flex items-center justify-center">
+                            <MdFlight style={{ display: 'inline', verticalAlign: 'middle' }} />
+                          </span>
+                          <span className="w-20 h-1 bg-yellow-400 rounded-full inline-block"></span>
+                        </div>
+                        <div className="text-gray-500 text-sm font-medium">
+                          {/* Duration + stops */}
+                          {flight.itineraries[0].duration?.replace('PT', '').toLowerCase().replace('h', 'h ').replace('m', 'm')} • {flight.itineraries[0].segments.length - 1 === 0 ? 'Direct' : `${flight.itineraries[0].segments.length - 1} Stop${flight.itineraries[0].segments.length - 1 > 1 ? 's' : ''}`}
+
+                        </div>
+                      </div>
+                      {/* Destination */}
+                      <div className="flex-1 text-right">
+                        <div className="text-3xl font-extrabold text-gray-800">{typeof arr?.iataCode === "object" ? arr?.iataCode.code : arr?.iataCode}</div>
+                        <div className="text-base font-semibold text-gray-700">{arrInfo?.name || ''}</div>
+                        <div className="text-sm text-gray-600">{arrInfo?.municipality || ''}</div>
+                        <div className="text-lg font-bold text-yellow-700 leading-tight">{new Date(arr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</div>
+                        <div className="text-xs text-gray-500">{new Date(arr.at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
+                      </div>
+                    </>;
+                  })()}
+                </div>
+                <hr className="my-4 border-t border-gray-200" />
+                <div className="flex items-center justify-between">
+                  {/* Airline & Aircraft */}
+                  <div className="flex items-center gap-3">
+                    <span className="bg-yellow-100 text-yellow-800 font-bold px-3 py-1 rounded-full text-sm shadow">{typeof flight.itineraries[0].segments[0].carrierCode === "object" ? flight.itineraries[0].segments[0].carrierCode.code : flight.itineraries[0].segments[0].carrierCode}</span>
+                    <span className="flex items-center font-semibold text-gray-700">
+                      <span className="bg-gray-100 p-1 rounded-md shadow-sm flex items-center mr-2">
+                        <img
+                          src={getAirlineLogoUrl(
+                            typeof flight.itineraries[0].segments[0].carrierCode === "object"
+                              ? flight.itineraries[0].segments[0].carrierCode.code
+                              : flight.itineraries[0].segments[0].carrierCode
+                          )}
+                          alt="Airline Logo"
+                          style={{ height: 24, width: 'auto', display: 'block' }}
+                          onError={e => (e.currentTarget.style.display = 'none')}
+                        />
+                      </span>
+                      {typeof flight.itineraries[0].segments[0].carrierName === "object"
+                        ? (flight.itineraries[0].segments[0].carrierName.name || flight.itineraries[0].segments[0].carrierName.code || JSON.stringify(flight.itineraries[0].segments[0].carrierName))
+                        : (flight.itineraries[0].segments[0].carrierName || 'Airline')}
+                    </span>
+                    <span className="text-xs text-gray-500">{typeof flight.itineraries[0].segments[0].aircraft === "object" ? (flight.itineraries[0].segments[0].aircraft.code || flight.itineraries[0].segments[0].aircraft.name || JSON.stringify(flight.itineraries[0].segments[0].aircraft)) : (flight.itineraries[0].segments[0].aircraft || '')}</span>
                   </div>
-                  <div className="text-gray-500 text-sm">
-                    {new Date(flight.itineraries[0].segments[0].departure.at).toLocaleDateString()} | {flight.itineraries[0].segments[0].departure.iataCode} to {flight.itineraries[0].segments[flight.itineraries[0].segments.length - 1].arrival.iataCode}
+                  {/* Cabin/Class & Passengers */}
+                  <div className="text-right">
+                    <div className="font-semibold text-gray-700">{flight.class || 'Economy Class'}</div>
+                    <div className="text-xs text-gray-500">{travelers} passenger{Number(travelers) > 1 ? 's' : ''}</div>
                   </div>
                 </div>
-                <div className="ml-auto text-right">
-                  <span className="text-2xl font-bold text-[#FFA500]">
-                    {flight.price.currency} {parseFloat(flight.price.total).toFixed(0)}
-                  </span>
-                  <div className="text-xs text-gray-500">Total Price</div>
-                </div>
               </div>
-              <div className="flex gap-8 items-center mt-4 justify-center">
-                {/* Departure Time & Origin */}
-                <div className="flex flex-col items-center">
-                  <span className="text-2xl font-extrabold bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-3 py-1 rounded-xl shadow">
-                    {new Date(flight.itineraries[0].segments[0].departure.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-                  </span>
-                  <span className="mt-2 inline-block bg-blue-100 text-blue-700 font-bold px-3 py-1 rounded-full text-lg tracking-wide shadow">
-  {flight.itineraries[0].segments[0].departure.iataCode}
-  {flight.itineraries[0].segments[0].departure.airportName && (
-    <span className="ml-2 text-xs font-normal text-blue-800">{flight.itineraries[0].segments[0].departure.airportName}</span>
-  )}
-</span>
-                  <span className="text-xs text-gray-500 mt-1">Depart</span>
-                </div>
-                {/* Stops/Nonstop */}
-                <div className="flex flex-col items-center">
-                  <span className={
-                    flight.itineraries[0].segments.length - 1 === 0
-                      ? "px-4 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 shadow"
-                      : "px-4 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 shadow"
-                  }>
-                    {flight.itineraries[0].segments.length - 1 === 0
-                      ? 'Nonstop'
-                      : `${flight.itineraries[0].segments.length - 1} Stop${flight.itineraries[0].segments.length - 1 > 1 ? 's' : ''}`}
-                  </span>
-                  <span className="text-xs text-gray-400 mt-2">
-                    {flight.itineraries[0].duration?.replace('PT', '').toLowerCase().replace('h', 'h ').replace('m', 'm')}
-                  </span>
-                </div>
-                {/* Arrival Time & Destination */}
-                <div className="flex flex-col items-center">
-                  <span className="text-2xl font-extrabold bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-3 py-1 rounded-xl shadow">
-                    {new Date(flight.itineraries[0].segments[flight.itineraries[0].segments.length - 1].arrival.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-                  </span>
-                  <span className="mt-2 inline-block bg-purple-100 text-purple-700 font-bold px-3 py-1 rounded-full text-lg tracking-wide shadow">
-  {flight.itineraries[0].segments[flight.itineraries[0].segments.length - 1].arrival.iataCode}
-  {flight.itineraries[0].segments[flight.itineraries[0].segments.length - 1].arrival.airportName && (
-    <span className="ml-2 text-xs font-normal text-purple-800">{flight.itineraries[0].segments[flight.itineraries[0].segments.length - 1].arrival.airportName}</span>
-  )}
-</span>
-                  <span className="text-xs text-gray-500 mt-1">Arrive</span>
-                </div>
-              </div>
-              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                <div>
-                  <span className="font-bold">From:</span> {flight.itineraries[0].segments[0].departure.iataCode}
-                  <span className="mx-2">→</span>
-                  <span className="font-bold">To:</span> {flight.itineraries[0].segments[flight.itineraries[0].segments.length - 1].arrival.iataCode}
-                </div>
-                <div>
-                  <span className="font-bold">Departure:</span> {new Date(flight.itineraries[0].segments[0].departure.at).toLocaleString()}
-                </div>
-              </div>
-              {flight.itineraries && flight.itineraries.length > 0 && (
-                <ul className="text-xs text-gray-600 mt-2">
-                  {flight.itineraries[0].segments.map((seg: any, idx: number) => (
-  <li key={idx}>
-    {seg.departure.iataCode}
-    {seg.departure.airportName && (
-      <span className="ml-1 text-gray-500">({seg.departure.airportName})</span>
-    )}
-    {" "}{new Date(seg.departure.at).toLocaleTimeString()} → {seg.arrival.iataCode}
-    {seg.arrival.airportName && (
-      <span className="ml-1 text-gray-500">({seg.arrival.airportName})</span>
-    )}
-    {" "}{new Date(seg.arrival.at).toLocaleTimeString()} | {seg.carrierCode} {seg.number}
-  </li>
-))}
-                </ul>
-              )}
+              {/* Removed the duplicated flight summary below */}
             </div>
           ) : null}
         </div>
@@ -363,54 +354,64 @@ const BookingPage: React.FC = () => {
               exit={{ opacity: 0, y: -10 }}
               className="bg-white p-6 rounded-xl shadow-md"
             >
-              <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
-                <FiCheckCircle className="text-[#FFA500]" /> Review & Confirm
+              <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2"><FiCheckCircle className="text-[#FFA500]" /> Review & Confirm
               </h2>
               {/* Booking summary could show selected flight, hotel, price, etc. */}
-              <BookingSummary offerId={offerId} passengerData={passengerData} />
+              <BookingSummary
+                offerId={offerId}
+                passengerData={passengerData}
+                originAirport={{
+                  iata: origin,
+                  name: (airports.find((a: any) => a.iata_code === origin)?.name || origin)
+                }}
+                destinationAirport={{
+                  iata: destination,
+                  name: (airports.find((a: any) => a.iata_code === destination)?.name || destination)
+                }}
+              />
               <div className="flex justify-between mt-6">
                 <button
                   type="button"
                   className="bg-gray-200 text-gray-600 px-5 py-2 rounded-xl font-medium hover:bg-gray-300"
                   onClick={() => setStep(0)}
-                  >
-                    <FiArrowLeft className="inline-block mr-2" /> Back
-                  </button>
-                  <button
-                    type="button"
-                    className="bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-8 py-2 rounded-xl font-medium shadow-md hover:shadow-lg"
-                    onClick={handleSubmit}
-                    disabled={submitting}
-                  >
-                    {submitting ? "Booking..." : "Book Now"}
-                  </button>
-                </div>
-                {error && <div className="text-red-600 mt-4">{error}</div>}
-              </motion.div>
-            )}
-            {step === 2 && confirmation && (
-              <motion.div
-                key="confirmation"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-white p-8 rounded-xl shadow-md text-center"
-              >
-                <FiCheckCircle className="text-4xl text-green-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold mb-2">Booking Confirmed!</h2>
-                <p className="text-gray-600 mb-4">{confirmation}</p>
-                <button
-                  className="bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-8 py-2 rounded-xl font-medium shadow-md hover:shadow-lg"
-                  onClick={() => window.location.href = "/"}
                 >
-                  Back to Home
+                  <FiArrowLeft className="inline-block mr-2" /> Back
                 </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                <button
+                  type="button"
+                  className="bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-8 py-2 rounded-xl font-medium shadow-md hover:shadow-lg"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                >
+                  {submitting ? "Booking..." : "Book Now"}
+                </button>
+              </div>
+              {error && <div className="text-red-600 mt-4">{error}</div>}
+            </motion.div>
+          )}
+          {step === 2 && confirmation && (
+            <motion.div
+              key="confirmation"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-white p-8 rounded-xl shadow-md text-center"
+            >
+              <FiCheckCircle className="text-4xl text-green-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold mb-2">Booking Confirmed!</h2>
+              <p className="text-gray-600 mb-4">{confirmation}</p>
+              <button
+                className="bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-8 py-2 rounded-xl font-medium shadow-md hover:shadow-lg"
+                onClick={() => window.location.href = "/"}
+              >
+                Back to Home
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    );
-  };
-  
-  export default BookingPage;
+    </div>
+  );
+};
+
+export default BookingPage;
