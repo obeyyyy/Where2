@@ -52,6 +52,20 @@ interface FlightOffer {
 interface TripCardProps {
   trip: FlightOffer;
   budget: number;
+  searchParams: {
+    origin: string;
+    destination: string;
+    departureDate: string;
+    returnDate: string;
+    tripType: string;
+    nights: number;
+    travelers: number;
+    currency: string;
+    budget: number;
+    includeHotels: boolean;
+    useKiwi: boolean;
+    useDuffel: boolean;
+  };
 }
 
 // Helper function to get airline logo URL
@@ -61,19 +75,23 @@ const getAirlineLogoUrl = (carrierCode: string) => {
 
 import HotelCard from './HotelCard';
 
-export default function TripCard({ trip, budget }: TripCardProps) {
-  if (!trip) {
-    return <div className="text-center p-4">No flight data available</div>;
-  }
-
-  const { price, itineraries, hotels = [] } = trip;
-
+export default function TripCard({ trip, budget, searchParams }: TripCardProps) {
   // Hotel pagination state
   const [hotelPage, setHotelPage] = useState(0);
   // Can be null if no hotel is selected (flight only option)
   const [selectedHotelIdx, setSelectedHotelIdx] = useState<number | null>(0);
   const HOTELS_PER_PAGE = 3; // Changed to 3 for better initial view
   const HOTELS_NEXT_COUNT = 5;
+
+  // If trip is missing, show a message (handle as a view state)
+  if (!trip) {
+    return <div className="text-center p-4">No flight data available</div>;
+  }
+
+
+
+  const { price, itineraries, hotels = [] } = trip;
+
   const pagedHotels = hotels.slice(0, HOTELS_PER_PAGE + hotelPage * HOTELS_NEXT_COUNT);
   const hasMoreHotels = pagedHotels.length < hotels.length;
 
@@ -302,7 +320,31 @@ export default function TripCard({ trip, budget }: TripCardProps) {
                 return (parseFloat(price.total) + hotelTotal).toFixed(0);
               })()}</span>
             </div>
-            <button className="w-full bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:from-[#FF8C00] hover:to-[#FFA500] transition mt-2">
+            <button
+              onClick={() => {
+                const params = new URLSearchParams({
+                  offerId: trip.id,
+                  origin: searchParams.origin,
+                  destination: searchParams.destination,
+                  departureDate: searchParams.departureDate,
+                  returnDate: searchParams.returnDate,
+                  tripType: searchParams.tripType,
+                  nights: searchParams.nights.toString(),
+                  travelers: searchParams.travelers.toString(),
+                  currency: searchParams.currency,
+                  budget: searchParams.budget.toString(),
+                  includeHotels: searchParams.includeHotels ? 'true' : 'false',
+                  useKiwi: searchParams.useKiwi ? 'true' : 'false',
+                  useDuffel: searchParams.useDuffel ? 'true' : 'false',
+                });
+                const url = `/book?${params.toString()}`;
+                console.log('Navigating to /book with offerId:', trip.id, 'URL:', url);
+                window.location.href = url;
+              }}
+              className="w-full bg-gradient-to-br from-[#FFA500] to-[#FF8C00]
+              text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:from-[#FF8C00] 
+              hover:to-[#FFA500] transition mt-2"
+            >
               Book Package
             </button>
             {trip.deep_link ? (

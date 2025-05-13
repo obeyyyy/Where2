@@ -25,7 +25,8 @@ interface SearchParams {
   travelers: number;
   nights: number;
   includeHotels: boolean;
-  useKiwi: boolean; // Add Kiwi/Amadeus toggle
+  useKiwi: boolean; // Kiwi/Amadeus toggle
+  useDuffel: boolean; // Duffel toggle
 }
 
 interface FlightSegment {
@@ -78,7 +79,8 @@ function HomePage() {
     travelers: 1,
     nights: 7,
     includeHotels: true,
-    useKiwi: true // default to Kiwi
+    useKiwi: true, // default to Kiwi
+    useDuffel: false
   });
 
   const [tripData, setTripData] = useState<FlightOffer[]>([]);
@@ -122,6 +124,7 @@ function HomePage() {
         budget: searchParams.budget.toString(),
         includeHotels: searchParams.includeHotels ? 'true' : 'false',
         useKiwi: searchParams.useKiwi ? 'true' : 'false',
+        useDuffel: searchParams.useDuffel ? 'true' : 'false',
       });
 
       const response = await fetch(`/api/trips?${queryParams}`, {
@@ -151,6 +154,15 @@ function HomePage() {
       // Set the trip data and switch to results view
       setTripData(data.data);
       setViewState('results');
+
+      // CACHE the flight offers in localStorage
+      const cacheKey = `flight_search_${searchParams.origin}_${searchParams.destination}_${searchParams.departureDate instanceof Date ? searchParams.departureDate.toISOString().split('T')[0] : searchParams.departureDate}_${searchParams.returnDate instanceof Date && searchParams.returnDate ? searchParams.returnDate.toISOString().split('T')[0] : ''}_${searchParams.tripType}_${searchParams.nights}_${searchParams.travelers}_${searchParams.currency}_${searchParams.budget}_${searchParams.includeHotels}_${searchParams.useKiwi}_${searchParams.useDuffel}`;
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(data.data));
+        console.log('Cached offers under key:', cacheKey, data.data);
+      } catch (e) {
+        // Ignore quota errors
+      }
     } catch (err) {
       console.error('Search error:', err);
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -614,12 +626,24 @@ function HomePage() {
       Flight Search Source
     </label>
     <select
-      value={searchParams.useKiwi ? 'kiwi' : 'amadeus'}
-      onChange={e => handleInputChange('useKiwi', e.target.value === 'kiwi')}
+      value={searchParams.useDuffel ? 'duffel' : searchParams.useKiwi ? 'kiwi' : 'amadeus'}
+      onChange={e => {
+        if (e.target.value === 'duffel') {
+          handleInputChange('useDuffel', true);
+          handleInputChange('useKiwi', false);
+        } else if (e.target.value === 'kiwi') {
+          handleInputChange('useDuffel', false);
+          handleInputChange('useKiwi', true);
+        } else {
+          handleInputChange('useDuffel', false);
+          handleInputChange('useKiwi', false);
+        }
+      }}
       className="w-32 p-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent text-sm bg-white"
     >
       <option value="kiwi">Kiwi.com</option>
       <option value="amadeus">Amadeus</option>
+      <option value="duffel">Duffel</option>
     </select>
   </div>
   <p className="text-xs text-gray-500 mt-1">
@@ -683,7 +707,7 @@ function HomePage() {
       </header>
       <div className="container mx-auto px-4 mt-8">
         <AnimatePresence>
-          {tripData.map((trip) => (
+          {tripData.slice(0, 20).map((trip) => (
             <motion.div
               key={trip.id}
               initial={{ opacity: 0, y: 20 }}
@@ -692,7 +716,24 @@ function HomePage() {
               transition={{ duration: 0.3 }}
               className="mb-6"
             >
-              <TripCard trip={trip} budget={searchParams.budget} />
+              <TripCard
+                trip={trip}
+                budget={searchParams.budget}
+                searchParams={{
+                  origin: searchParams.origin,
+                  destination: searchParams.destination,
+                  departureDate: searchParams.departureDate instanceof Date ? searchParams.departureDate.toISOString().split('T')[0] : searchParams.departureDate,
+                  returnDate: searchParams.returnDate instanceof Date && searchParams.returnDate ? searchParams.returnDate.toISOString().split('T')[0] : '',
+                  tripType: searchParams.tripType,
+                  nights: searchParams.nights,
+                  travelers: searchParams.travelers,
+                  currency: searchParams.currency,
+                  budget: searchParams.budget,
+                  includeHotels: searchParams.includeHotels,
+                  useKiwi: searchParams.useKiwi,
+                  useDuffel: searchParams.useDuffel
+                }}
+              />
             </motion.div>
           ))}
           {tripData.length === 0 && viewState === 'results' && (

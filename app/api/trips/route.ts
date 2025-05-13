@@ -182,6 +182,7 @@ export async function GET(request: Request) {
     const currency = params.get('currency') || 'EUR';
     const budget = params.get('budget') || '';
     const useKiwi = params.get('useKiwi') === 'true';
+    const useDuffel = params.get('useDuffel') === 'true';
     const includeHotels = params.get('includeHotels') === 'true';
 
     // Date parsing with fallback
@@ -198,9 +199,100 @@ export async function GET(request: Request) {
       inboundEnd = formatDate(addDays(retDate, 1)) + 'T23:59:59';
     }
 
-    // If useKiwi, fetch from Kiwi.com API instead
+    // Duffel Flights API integration
     let tripData;
-    if (useKiwi) {
+    if (useDuffel) {
+      // Duffel expects IATA codes for origin/destination, and ISO date
+      const duffelToken = process.env.DUFFEL_API;
+      if (!duffelToken) throw new Error('Duffel API key not set');
+      const duffelBody = {
+        data: {
+          cabin_class: 'economy',
+          slices: [
+            {
+              origin: origin.replace(/^(Airport:|City:|Country:)/, ''),
+              destination: destination.replace(/^(Airport:|City:|Country:)/, ''),
+              departure_date: formatDate(depDate),
+            }
+          ],
+          passengers: Array(Number(travelers)).fill({ type: 'adult' }),
+        }
+      };
+      // Step 1: Create offer request
+      const duffelResp = await fetch('https://api.duffel.com/air/offer_requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'gzip',
+          'Duffel-Version': 'v2',
+          'Authorization': `Bearer ${duffelToken}`,
+        },
+        body: JSON.stringify(duffelBody),
+      });
+      if (!duffelResp.ok) {
+        const err = await duffelResp.text();
+        console.error('Duffel API error:', err);
+        throw new Error('Duffel API error: ' + duffelResp.status);
+      }
+      const duffelData = await duffelResp.json();
+      console.log('Duffel API raw response:', JSON.stringify(duffelData, null, 2));
+      if (!duffelData.data || !duffelData.data.id) {
+        console.error('Duffel API returned unexpected data structure:', duffelData);
+        throw new Error('Duffel API returned unexpected data structure');
+      }
+      const offerRequestId = duffelData.data.id;
+
+      // Step 2: Fetch up to 20 offers for this request
+      const offersResp = await fetch(`https://api.duffel.com/air/offers?offer_request_id=${offerRequestId}&limit=20`, {
+        method: 'GET',
+        headers: {
+          'Accept-Encoding': 'gzip',
+          'Duffel-Version': 'v2',
+          'Authorization': `Bearer ${duffelToken}`,
+        },
+      });
+      if (!offersResp.ok) {
+        const err = await offersResp.text();
+        console.error('Duffel Offers API error:', err);
+        throw new Error('Duffel Offers API error: ' + offersResp.status);
+      }
+      const offersData = await offersResp.json();
+      if (!offersData.data || !Array.isArray(offersData.data)) {
+        console.error('Duffel Offers API returned unexpected data structure:', offersData);
+        throw new Error('Duffel Offers API returned unexpected data structure');
+      }
+      // Map to a compatible structure for the frontend
+      tripData = {
+        data: offersData.data.map((offer: any) => ({
+          id: offer.id,
+          price: {
+            total: offer.total_amount,
+            currency: offer.total_currency,
+          },
+          itineraries: offer.slices.map((slice: any) => ({
+            duration: slice.duration,
+            segments: slice.segments.map((seg: any) => ({
+              departure: {
+                iataCode: seg.departing_at ? seg.origin.iata_code : '',
+                at: seg.departing_at || '',
+                terminal: seg.origin.terminal || undefined,
+              },
+              arrival: {
+                iataCode: seg.arriving_at ? seg.destination.iata_code : '',
+                at: seg.arriving_at || '',
+                terminal: seg.destination.terminal || undefined,
+              },
+              carrierCode: seg.marketing_carrier ? seg.marketing_carrier.iata_code : '',
+              number: seg.marketing_carrier_flight_number || '',
+              aircraft: { code: seg.aircraft ? seg.aircraft.iata_code : '' },
+              operating: seg.operating_carrier ? { carrierCode: seg.operating_carrier.iata_code } : undefined,
+            }))
+          })),
+          deep_link: offer.conditions && offer.conditions.payment && offer.conditions.payment.redirect_url ? offer.conditions.payment.redirect_url : '',
+        }))
+      };
+
+    } else if (useKiwi) {
       let kiwiUrl = '';
       let kiwiParams: URLSearchParams;
       let endpoint = '';
