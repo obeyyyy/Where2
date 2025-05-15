@@ -1,6 +1,8 @@
 // app/components/TripCard.tsx
+"use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useTripCart } from './TripCartContext';
 
 interface FlightSegment {
   departure: {
@@ -76,6 +78,7 @@ const getAirlineLogoUrl = (carrierCode: string) => {
 import HotelCard from './HotelCard';
 
 export default function TripCard({ trip, budget, searchParams }: TripCardProps) {
+  // Removed setTrip effect to avoid infinite update loop in summary view
   // Hotel pagination state
   const [hotelPage, setHotelPage] = useState(0);
   // Can be null if no hotel is selected (flight only option)
@@ -204,7 +207,7 @@ export default function TripCard({ trip, budget, searchParams }: TripCardProps) 
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="text-lg font-bold text-gray-800 mb-1">Accommodation</h4>
-              <p className="text-xs text-gray-500">Choose your stay</p>
+              <p className="text-xs text-gray-500">Your stay</p>
             </div>
             {nights && (
               <span className="text-xs font-medium text-gray-600 bg-yellow-50 px-3 py-1 rounded-lg border border-yellow-100">
@@ -212,84 +215,43 @@ export default function TripCard({ trip, budget, searchParams }: TripCardProps) 
               </span>
             )}
           </div>
-          {pagedHotels && pagedHotels.length > 0 ? (
-            <div className="relative">
-              <div className="flex gap-4 overflow-x-auto p-2" id={`hotels-carousel-${trip.id}`}>
-                {/* No Hotel Option */}
-                <div
-                  className={`min-w-[220px] max-w-[220px] p-4 rounded-xl border flex-shrink-0 transition-all duration-300 cursor-pointer ${
-                    selectedHotelIdx === null
-                      ? 'bg-white shadow-md border-[#FFA500] scale-[1.03] z-10'
-                      : 'bg-white/70 hover:bg-white hover:shadow-sm border-transparent hover:border-yellow-200'
-                  }`}
-                  role="option"
-                  aria-selected={selectedHotelIdx === null}
-                  tabIndex={0}
-                  onClick={() => setSelectedHotelIdx(null)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-base text-gray-800">Flight Only</h4>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[10px] font-medium text-blue-600 bg-blue-50 rounded-full px-2 py-0.5 border border-blue-200">No Hotel</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-xs text-gray-600">
-                      Book flight without accommodation
-                    </div>
-                  </div>
-                </div>
-                {pagedHotels.map((hotel, idx) => (
-                  <HotelCard
-                    key={hotel.offerId || idx}
-                    hotel={hotel}
-                    idx={idx}
-                    selected={idx === selectedHotelIdx}
-                    nights={nights}
-                    onSelect={() => { setSelectedHotelIdx(idx); }}
-                    sentiment={hotel.sentiment}
-                  />
-                ))}
-              </div>
-              {pagedHotels.length > 3 && (
-                <>
-                  <button
-                    className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/70 hover:bg-[#FFA500] hover:text-white text-[#FFA500] rounded-full shadow p-2 transition disabled:opacity-30"
-                    onClick={e => {
-                      e.preventDefault();
-                      const container = document.getElementById(`hotels-carousel-${trip.id}`);
-                      if (container) container.scrollBy({ left: -260, behavior: 'smooth' });
-                    }}
-                    aria-label="View previous hotels"
-                    type="button"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  <button
-                    className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-[#FFA500] hover:text-white text-[#FFA500] rounded-xl shadow-lg p-3 transition-all duration-200 transform hover:scale-110 backdrop-blur-sm"
-                    onClick={e => {
-                      e.preventDefault();
-                      const container = document.getElementById(`hotels-carousel-${trip.id}`);
-                      if (container) container.scrollBy({ left: 290, behavior: 'smooth' });
-                    }}
-                    aria-label="View more hotels"
-                    type="button"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="mb-4 text-gray-400 text-sm">No hotel info available</div>
-          )}
+          {trip.hotels && trip.hotels.length > 0 ? (
+  <div className="relative">
+    {/* Display the chosen hotel info (first in array) */}
+    <HotelCard
+      key={trip.hotels[0].offerId || 0}
+      hotel={trip.hotels[0]}
+      idx={0}
+      selected={true}
+      nights={nights}
+      onSelect={() => {}}
+      sentiment={trip.hotels[0].sentiment}
+    />
+  </div>
+) : (
+  <button
+    className="w-full bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:from-[#FF8C00] hover:to-[#FFA500] transition mt-2"
+    onClick={() => {
+      const params = new URLSearchParams({
+        tripId: trip.id,
+        origin: searchParams.origin,
+        destination: searchParams.destination,
+        departureDate: searchParams.departureDate,
+        returnDate: searchParams.returnDate,
+        tripType: searchParams.tripType,
+        nights: searchParams?.nights?.toString() || "0",
+        travelers: searchParams?.travelers?.toString() || "1",
+        currency: searchParams?.currency || "USD",
+        budget: searchParams?.budget?.toString() || "0",
+      });
+      window.location.href = `/choose-hotel?${params.toString()}`;
+    }}
+  >
+    Search a hotel
+  </button>
+)}
           <div className="my-6 h-px bg-gradient-to-r from-transparent via-yellow-200 to-transparent opacity-50" />
+
 
           {/* Book Button, Total Price, and (optionally) under budget */}
           <div className="flex flex-col gap-2 mt-4">
@@ -322,24 +284,13 @@ export default function TripCard({ trip, budget, searchParams }: TripCardProps) 
             </div>
             <button
               onClick={() => {
-                const params = new URLSearchParams({
-                  offerId: trip.id,
-                  origin: searchParams.origin,
-                  destination: searchParams.destination,
-                  departureDate: searchParams.departureDate,
-                  returnDate: searchParams.returnDate,
-                  tripType: searchParams.tripType,
-                  nights: searchParams.nights.toString(),
-                  travelers: searchParams.travelers.toString(),
-                  currency: searchParams.currency,
-                  budget: searchParams.budget.toString(),
-                  includeHotels: searchParams.includeHotels ? 'true' : 'false',
-                  useKiwi: searchParams.useKiwi ? 'true' : 'false',
-                  useDuffel: searchParams.useDuffel ? 'true' : 'false',
-                });
-                const url = `/book?${params.toString()}`;
-                console.log('Navigating to /book with offerId:', trip.id, 'URL:', url);
-                window.location.href = url;
+                // Save the full trip object (including searchParams) for booking
+                localStorage.setItem('current_booking_offer', JSON.stringify({
+                  trip,
+                  searchParams,
+                  budget
+                }));
+                window.location.href = '/book';
               }}
               className="w-full bg-gradient-to-br from-[#FFA500] to-[#FF8C00]
               text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:from-[#FF8C00] 

@@ -46,24 +46,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-sm border-b border-gray-100 h-30 md:h-38">
-        <div className="container mx-auto px-6 flex items-center h-full">
-          <Link href="/" className="flex items-center flex-none h-full">
-            <motion.div
-              className="h-full flex items-center justify-center flex-none"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              whileHover={{ scale: 1.05, rotate: 2 }}
-              whileTap={{ scale: 0.97 }}
-            >
-              <img src="/Logo.svg" alt="Where2 Logo" className="h-full w-auto object-contain" />
-            </motion.div>
-          </Link>
-        </div>
-      </header>
-
       {/* Hero Section */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 w-full">
         <motion.div

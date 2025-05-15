@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { TripCartProvider } from "./components/TripCartContext";
+import Navbar from "./components/Navbar";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -14,7 +16,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-[#FFFDF6] font-sans text-[#1A1A1A] px-4">
-        {children}
+        {/* TripCartProvider gives cart context to the whole app */}
+        <TripCartProvider>
+          <Navbar />
+          {children}
+        </TripCartProvider>
       </body>
     </html>
   );
