@@ -201,20 +201,30 @@ export async function GET(request: Request) {
 
     // Duffel Flights API integration
     let tripData;
+    
     if (useDuffel) {
       // Duffel expects IATA codes for origin/destination, and ISO date
       const duffelToken = process.env.DUFFEL_API;
       if (!duffelToken) throw new Error('Duffel API key not set');
+      // Dynamically build slices for one-way or roundtrip
+      const slices = [
+        {
+          origin: origin.replace(/^(Airport:|City:|Country:)/, ''),
+          destination: destination.replace(/^(Airport:|City:|Country:)/, ''),
+          departure_date: formatDate(depDate),
+        }
+      ];
+      if (tripType === 'roundtrip' && returnDate) {
+        slices.push({
+          origin: destination.replace(/^(Airport:|City:|Country:)/, ''),
+          destination: origin.replace(/^(Airport:|City:|Country:)/, ''),
+          departure_date: formatDate(returnDate),
+        });
+      }
       const duffelBody = {
         data: {
           cabin_class: 'economy',
-          slices: [
-            {
-              origin: origin.replace(/^(Airport:|City:|Country:)/, ''),
-              destination: destination.replace(/^(Airport:|City:|Country:)/, ''),
-              departure_date: formatDate(depDate),
-            }
-          ],
+          slices,
           passengers: Array(Number(travelers)).fill({ type: 'adult' }),
         }
       };

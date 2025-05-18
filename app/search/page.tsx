@@ -8,6 +8,7 @@ import Image from 'next/image';
 import airportsJson from 'airports-json';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiArrowRight, FiArrowLeft, FiCalendar, FiUsers, FiMapPin, FiDollarSign, FiGlobe } from 'react-icons/fi';
+import { useTripCart } from '../components/TripCartContext';
 
 const Loading = dynamic(() => import('../components/loading'), { ssr: false });
 
@@ -21,8 +22,8 @@ interface SearchParams {
   origin: string;
   destinationType: 'Airport' | 'City' | 'Country';
   destination: string;
-  departureDate: Date;
-  returnDate: Date | null;
+  departureDate: string;
+  returnDate: string;
   tripType: TripType;
   travelers: number;
   nights: number;
@@ -66,6 +67,9 @@ interface FlightOffer {
 }
 
 function HomePage() {
+  // Get the trip cart context at component level
+  const { setTrip: setTripInCart } = useTripCart();
+  
   const [viewState, setViewState] = useState<ViewState>('initial');
   const [isLoading, setIsLoading] = useState(true);
   const [searchParams, setSearchParams] = useState<SearchParams>({
@@ -75,8 +79,8 @@ function HomePage() {
     origin: 'MAD',
     destinationType: 'Airport',
     destination: 'PAR',
-    departureDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
-    returnDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 2 weeks from now
+    departureDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 week from now
+    returnDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 weeks from now
     tripType: 'roundtrip',
     travelers: 1,
     nights: 7,
@@ -84,7 +88,8 @@ function HomePage() {
     useKiwi: true, // default to Kiwi
     useDuffel: false
   });
-
+  const [selectedOutbound, setSelectedOutbound] = useState<FlightOffer | null>(null);
+  const [selectedReturn, setSelectedReturn] = useState<FlightOffer | null>(null);
   const [tripData, setTripData] = useState<FlightOffer[]>([]);
   const [error, setError] = useState<string | null>(null);
   const quickSelect = [250, 500, 750, 1000, 1500];
@@ -117,8 +122,8 @@ function HomePage() {
       const queryParams = new URLSearchParams({
         origin: `${searchParams.originType}:${searchParams.origin}`,
         destination: `${searchParams.destinationType}:${searchParams.destination}`,
-        departureDate: searchParams.departureDate.toISOString().split('T')[0],
-        returnDate: searchParams.returnDate ? searchParams.returnDate.toISOString().split('T')[0] : '',
+        departureDate: searchParams.departureDate,
+        returnDate: searchParams.returnDate || '',
         tripType: searchParams.tripType,
         nights: searchParams.nights.toString(),
         travelers: searchParams.travelers.toString(),
@@ -158,7 +163,7 @@ function HomePage() {
       setViewState('results');
 
       // CACHE the flight offers in localStorage
-      const cacheKey = `flight_search_${searchParams.origin}_${searchParams.destination}_${searchParams.departureDate instanceof Date ? searchParams.departureDate.toISOString().split('T')[0] : searchParams.departureDate}_${searchParams.returnDate instanceof Date && searchParams.returnDate ? searchParams.returnDate.toISOString().split('T')[0] : ''}_${searchParams.tripType}_${searchParams.nights}_${searchParams.travelers}_${searchParams.currency}_${searchParams.budget}_${searchParams.includeHotels}_${searchParams.useKiwi}_${searchParams.useDuffel}`;
+      const cacheKey = `flight_search_${searchParams.origin}_${searchParams.destination}_${searchParams.departureDate}_${searchParams.returnDate || ''}_${searchParams.tripType}_${searchParams.nights}_${searchParams.travelers}_${searchParams.currency}_${searchParams.budget}_${searchParams.includeHotels}_${searchParams.useKiwi}_${searchParams.useDuffel}`;
       try {
         localStorage.setItem(cacheKey, JSON.stringify(data.data));
         console.log('Cached offers under key:', cacheKey, data.data);
@@ -295,26 +300,6 @@ function HomePage() {
   const renderSearchForm = () => {
     return (
       <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 pb-24">
-        <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-sm border-b border-gray-100">
-          <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-            <motion.h1
-              className="text-3xl font-bold bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              Where2
-            </motion.h1>
-            <motion.div
-              className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFA500] to-[#FF8C00] flex items-center justify-center text-white font-semibold text-sm shadow-md shadow-orange-100"
-              whileHover={{ scale: 1.05, rotate: 5 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <FiMapPin className="w-5 h-5" />
-            </motion.div>
-          </div>
-        </header>
-
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -405,9 +390,9 @@ function HomePage() {
                     </label>
                     <input
                       type="date"
-                      value={searchParams.departureDate.toISOString().split('T')[0]}
+                      value={searchParams.departureDate}
                       min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => handleInputChange('departureDate', new Date(e.target.value))}
+                      onChange={(e) => handleInputChange('departureDate', e.target.value)}
                       className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
                     />
                   </div>
@@ -418,9 +403,9 @@ function HomePage() {
                     {searchParams.tripType === 'roundtrip' ? (
                       <input
                         type="date"
-                        value={searchParams.returnDate ? searchParams.returnDate.toISOString().split('T')[0] : ''}
-                        min={searchParams.departureDate.toISOString().split('T')[0]}
-                        onChange={(e) => handleInputChange('returnDate', new Date(e.target.value))}
+                        value={searchParams.returnDate || ''}
+                        min={searchParams.departureDate}
+                        onChange={(e) => handleInputChange('returnDate', e.target.value)}
                         className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
                       />
                     ) : (
@@ -713,12 +698,36 @@ function HomePage() {
     );
   };
 
+
+  // Helper: Split outbound/return flights
+  const outboundFlights = tripData.map(trip => ({
+    ...trip,
+    itineraries: [trip.itineraries[0]] // Only show outbound leg initially
+  }));
+
+  // Handle outbound flight selection
+  const handleSelectOutbound = (trip: FlightOffer) => {
+    setSelectedOutbound(trip);
+  };
+
+  // Handle return flight selection (if applicable)
+  const handleSelectReturn = (trip: FlightOffer) => {
+    setSelectedReturn(trip);
+  };
+
+  const handleReset = () => {
+    setSelectedOutbound(null);
+    setSelectedReturn(null);
+    handleBackToSearch();
+  };
+
+  // Only keep renderSearchResults as a render function
   const renderSearchResults = () => (
     <div className="min-h-screen bg-gray-50 py-12">
       <header className="bg-white shadow-md py-4">
         <div className="container mx-auto px-4 flex justify-between items-center">
           <motion.button
-            onClick={handleBackToSearch}
+            onClick={handleReset}
             className="text-gray-600 hover:text-[#FFA500] focus:outline-none"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -726,50 +735,283 @@ function HomePage() {
             <FiArrowLeft className="inline-block mr-2" /> New Search
           </motion.button>
           <h1 className="text-xl font-semibold text-gray-800">Search Results</h1>
-          <div></div> {/* Empty div for spacing */}
+          <div></div>
         </div>
       </header>
       <div className="container mx-auto px-4 mt-8">
         <AnimatePresence>
-          {tripData.slice(0, 20).map((trip) => (
-            <motion.div
-              key={trip.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="mb-6"
-            >
-              <TripCard
-                trip={trip}
-                budget={searchParams.budget}
-                searchParams={{
-                  origin: searchParams.origin,
-                  destination: searchParams.destination,
-                  departureDate: searchParams.departureDate instanceof Date ? searchParams.departureDate.toISOString().split('T')[0] : searchParams.departureDate,
-                  returnDate: searchParams.returnDate instanceof Date && searchParams.returnDate ? searchParams.returnDate.toISOString().split('T')[0] : '',
-                  tripType: searchParams.tripType,
-                  nights: searchParams.nights,
-                  travelers: searchParams.travelers,
-                  currency: searchParams.currency,
-                  budget: searchParams.budget,
-                  includeHotels: searchParams.includeHotels,
-                  useKiwi: searchParams.useKiwi,
-                  useDuffel: searchParams.useDuffel
-                }}
-              />
-            </motion.div>
-          ))}
-          {tripData.length === 0 && viewState === 'results' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="text-center py-8"
-            >
-              <p className="text-gray-500">No trips found for your criteria.</p>
-            </motion.div>
+          {/* Flight Selection */}
+          {!selectedOutbound ? (
+            <div>
+              <h2 className="text-2xl font-bold mb-6 text-gray-800">Select your outbound flight</h2>
+              {outboundFlights.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-gray-500 text-lg">No outbound flights found.</p>
+                  <button 
+                    onClick={handleBackToSearch}
+                    className="mt-4 text-blue-600 hover:underline"
+                  >
+                    ← Back to search
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {outboundFlights.map((trip) => (
+                    <motion.div
+                      key={trip.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <TripCard
+                        trip={trip}
+                        budget={searchParams.budget}
+                        searchParams={{
+                          ...searchParams,
+                          departureDate: searchParams.departureDate,
+                          returnDate: searchParams.returnDate || ''
+                        }}
+                        flightType="outbound"
+                        onSelect={() => handleSelectOutbound(trip)}
+                        selected={false}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : searchParams.tripType === 'roundtrip' ? (
+            <div>
+              <h2 className="text-xl font-bold mb-4">Review your trip</h2>
+              <div className="space-y-8">
+                {/* Outbound Flight */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold">Outbound Flight</h3>
+                    <button 
+                      onClick={() => setSelectedOutbound(null)}
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      Change flight
+                    </button>
+                  </div>
+                  <TripCard
+                    trip={{
+                      ...selectedOutbound,
+                      itineraries: [selectedOutbound.itineraries[0]] // Only show outbound leg
+                    }}
+                    budget={searchParams.budget}
+                    searchParams={{
+                      ...searchParams,
+                      departureDate: selectedOutbound.itineraries[0]?.segments[0]?.departure?.at
+                        ? new Date(selectedOutbound.itineraries[0].segments[0].departure.at).toISOString().split('T')[0]
+                        : searchParams.departureDate,
+                      returnDate: searchParams.returnDate || ''
+                    }}
+                    selected={true}
+                  />
+                </div>
+
+                {/* Return Flight */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Return Flight</h3>
+                  {selectedReturn ? (
+                    <TripCard
+                      trip={selectedReturn}
+                      budget={searchParams.budget}
+                      searchParams={{
+                        ...searchParams,
+                        departureDate: selectedReturn.itineraries[0]?.segments[0]?.departure?.at
+                          ? new Date(selectedReturn.itineraries[0].segments[0].departure.at).toISOString().split('T')[0]
+                          : searchParams.returnDate || '',
+                        returnDate: ''
+                      }}
+                      flightType="return"
+                      selected={true}
+                    />
+                  ) : (
+                    <div>
+                      <p className="text-sm text-yellow-700 mb-2">Please select a return flight:</p>
+                      <div className="space-y-4">
+                        {/* Show all available return flight options */}
+                        {(() => {
+                          if (!selectedOutbound) return null;
+                          // Extract all return legs from trips with same outbound
+                          const returnFlightOptions = tripData
+                            .filter(trip =>
+                              JSON.stringify(trip.itineraries[0].segments) === JSON.stringify(selectedOutbound.itineraries[0].segments)
+                            )
+                            // Create a new trip object with just the return itinerary
+                            .map(trip => {
+                              // Get the return itinerary
+                              const returnItinerary = trip.itineraries[1];
+                              
+                              // Create a new trip object with the return itinerary as the first one
+                              return {
+                                ...trip,
+                                // This is the key change - we're creating a completely new trip object
+                                // with the return itinerary as the first (and only) one
+                                itineraries: [returnItinerary]
+                              };
+                            })
+                            .filter(trip => trip.itineraries[0] && trip.itineraries[0].segments.length > 0);
+                          if (returnFlightOptions.length === 0) {
+                            return (
+                              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                                <div className="flex">
+                                  <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                  <div className="ml-3">
+                                    <p className="text-sm text-yellow-700">
+                                      No return flight options available for this selection.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return returnFlightOptions.map((trip, idx) => (
+                            <TripCard
+                              key={trip.id + '-return-' + idx}
+                              trip={trip}
+                              budget={searchParams.budget}
+                              searchParams={searchParams}
+                              flightType="return"
+                              onSelect={() => setSelectedReturn(trip)}
+                              selected={false}
+                            />
+                          ));
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="mt-8 flex items-center gap-4">
+                <button 
+                  className="flex-1 bg-gradient-to-br from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:shadow-xl transition-shadow duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={searchParams.tripType === 'roundtrip' && !selectedReturn}
+                  onClick={() => {
+                    // Create a combined trip with both outbound and return flights
+                    // Make sure we preserve all the original data for both flights
+                    const combinedTrip = {
+                      ...selectedOutbound,
+                      // Preserve the original itineraries structure with proper dates
+                      itineraries: [
+                        // Keep the outbound itinerary as is
+                        selectedOutbound.itineraries[0],
+                        // Add the return itinerary if selected
+                        ...(selectedReturn ? [selectedReturn.itineraries[0]] : [])
+                      ]
+                    };
+                    
+                    // Create a modified searchParams object with the correct dates
+                    const updatedSearchParams = {
+                      ...searchParams,
+                      // Make sure the return date is correctly set from the return flight
+                      returnDate: selectedReturn?.itineraries[0]?.segments?.[0]?.departure?.at
+                        ? new Date(selectedReturn.itineraries[0].segments[0].departure.at).toISOString().split('T')[0]
+                        : searchParams.returnDate
+                    };
+                    
+                    // Save to TripCartContext for Trip Summary with updated search params
+                    setTripInCart({
+                      id: combinedTrip.id,
+                      searchParams: updatedSearchParams,
+                      trip: combinedTrip
+                    });
+                    
+                    // Navigate to trip summary
+                    window.location.href = '/trip-summary';
+                  }}
+                >
+                  {searchParams.tripType === 'roundtrip' && !selectedReturn 
+                    ? 'Select Return Flight to Continue' 
+                    : 'View Summary'}
+                </button>
+                
+                <button 
+                  className="flex-1 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:shadow-xl transition-shadow duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={searchParams.tripType === 'roundtrip' && !selectedReturn}
+                  onClick={() => {
+                    // Create a combined trip with both outbound and return flights
+                    const combinedTrip = {
+                      ...selectedOutbound,
+                      itineraries: [
+                        selectedOutbound.itineraries[0],
+                        ...(selectedReturn ? [selectedReturn.itineraries[0]] : [])
+                      ]
+                    };
+                    
+                    // Save the full trip object (including searchParams) for booking
+                    localStorage.setItem('current_booking_offer', JSON.stringify({
+                      trip: combinedTrip,
+                      searchParams,
+                      budget: searchParams.budget
+                    }));
+                    
+                    // Navigate to booking page
+                    window.location.href = '/book';
+                  }}
+                >
+                  {searchParams.tripType === 'roundtrip' && !selectedReturn 
+                    ? 'Select Return Flight to Continue' 
+                    : 'Book Package'}
+                </button>
+                
+                <button
+                  className="text-gray-600 hover:text-gray-800 underline transition-colors duration-200"
+                  onClick={handleReset}
+                >
+                  Start Over
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h2 className="text-2xl font-bold mb-6 text-gray-800">Select your return flight</h2>
+              {outboundFlights.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-gray-500 text-lg">No return flights found.</p>
+                  <button 
+                    onClick={handleBackToSearch}
+                    className="mt-4 text-blue-600 hover:underline"
+                  >
+                    ← Back to search
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {outboundFlights.map((trip) => (
+                    <motion.div
+                      key={trip.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <TripCard
+                        trip={trip}
+                        budget={searchParams.budget}
+                        searchParams={{
+                          ...searchParams,
+                          departureDate: searchParams.departureDate,
+                          returnDate: searchParams.returnDate || ''
+                        }}
+                        flightType="return"
+                        onSelect={() => handleSelectReturn(trip)}
+                        selected={false}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </AnimatePresence>
       </div>

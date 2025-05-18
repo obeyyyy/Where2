@@ -5,6 +5,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 export interface TripCartItem {
   id: string;
   trip: any; // You can use your FlightOffer type here
+  searchParams?: any; // Search parameters including dates
 }
 
 interface TripCartContextType {

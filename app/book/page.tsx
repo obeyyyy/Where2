@@ -181,74 +181,160 @@ return (
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  {/* Origin */}
-                  {(() => {
-                    const dep = trip.itineraries?.[0]?.segments?.[0]?.departure;
-                    const arr = trip.itineraries?.[0]?.segments?.[trip.itineraries[0].segments.length - 1]?.arrival;
-                    const depInfo = airports.find((a: any) => a.iata_code === dep?.iataCode);
-                    const arrInfo = airports.find((a: any) => a.iata_code === arr?.iataCode);
-                    return <>
-                      <div className="flex-1 text-left">
-                        <div className="text-3xl font-extrabold text-gray-800">{typeof dep?.iataCode === "object" ? dep?.iataCode.code : dep?.iataCode}</div>
-                        <div className="text-base font-semibold text-gray-700">{depInfo?.name || ''}</div>
-                        <div className="text-sm text-gray-600">{depInfo?.municipality || ''}</div>
-                        <div className="text-lg font-bold text-yellow-700 leading-tight">{dep?.at ? new Date(dep.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</div>
-                        <div className="text-xs text-gray-500">{dep?.at ? new Date(dep.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : ''}</div>
+                {/* Flight Legs - Outbound and Return */}
+                <div className="space-y-6">
+                  {/* Outbound Flight */}
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-gray-700">Outbound Flight • {searchParams?.departureDate}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      {(() => {
+                        const outboundItinerary = trip.itineraries?.[0];
+                        const dep = outboundItinerary?.segments?.[0]?.departure;
+                        const arr = outboundItinerary?.segments?.[outboundItinerary.segments.length - 1]?.arrival;
+                        const depInfo = airports.find((a: any) => a.iata_code === dep?.iataCode);
+                        const arrInfo = airports.find((a: any) => a.iata_code === arr?.iataCode);
+                        
+                        return (
+                          <>
+                            <div className="flex-1 text-left">
+                              <div className="text-2xl font-extrabold text-gray-800">{dep?.iataCode}</div>
+                              <div className="text-sm text-gray-600">{dep?.at ? new Date(dep.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</div>
+                            </div>
+                            <div className="flex flex-col items-center justify-center flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="w-16 h-1 bg-gray-300 rounded-full"></span>
+                                <MdFlight className="text-gray-400 text-xl" />
+                                <span className="w-16 h-1 bg-gray-300 rounded-full"></span>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {outboundItinerary?.duration?.replace('PT', '').toLowerCase().replace('h', 'h ').replace('m', 'm')} • 
+                                {outboundItinerary?.segments?.length - 1 === 0 ? 'Direct' : 
+                                 `${outboundItinerary.segments.length - 1} Stop${outboundItinerary.segments.length - 1 > 1 ? 's' : ''}`}
+                              </div>
+                            </div>
+                            <div className="flex-1 text-right">
+                              <div className="text-2xl font-extrabold text-gray-800">{arr?.iataCode}</div>
+                              <div className="text-sm text-gray-600">{arr?.at ? new Date(arr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</div>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Return Flight - Only show if it exists */}
+                  {trip.itineraries?.[1] && searchParams?.tripType === 'round-trip' && (
+                    <div className="bg-gray-50 p-4 rounded-xl border-l-4 border-orange-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                        <span className="text-sm font-medium text-gray-700">Return Flight • {searchParams?.returnDate}</span>
                       </div>
-                      {/* Center with airplane icon and duration */}
-                      <div className="flex flex-col items-center justify-center flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="w-20 h-1 bg-yellow-400 rounded-full inline-block"></span>
-                          <span className="text-yellow-500 text-2xl flex items-center justify-center">
-                            <MdFlight style={{ display: 'inline', verticalAlign: 'middle' }} />
-                          </span>
-                          <span className="w-20 h-1 bg-yellow-400 rounded-full inline-block"></span>
-                        </div>
-                        <div className="text-gray-500 text-sm font-medium">
-                          {/* Duration + stops */}
-                          {trip.itineraries?.[0]?.duration?.replace('PT', '').toLowerCase().replace('h', 'h ').replace('m', 'm')} • {trip.itineraries?.[0]?.segments?.length - 1 === 0 ? 'Direct' : `${trip.itineraries[0].segments.length - 1} Stop${trip.itineraries[0].segments.length - 1 > 1 ? 's' : ''}`}
-                        </div>
+                      <div className="flex items-center justify-between">
+                        {(() => {
+                          const returnItinerary = trip.itineraries?.[1];
+                          const dep = returnItinerary?.segments?.[0]?.departure;
+                          const arr = returnItinerary?.segments?.[returnItinerary.segments.length - 1]?.arrival;
+                          const depInfo = airports.find((a: any) => a.iata_code === dep?.iataCode);
+                          const arrInfo = airports.find((a: any) => a.iata_code === arr?.iataCode);
+                          
+                          return (
+                            <>
+                              <div className="flex-1 text-left">
+                                <div className="text-2xl font-extrabold text-gray-800">{dep?.iataCode}</div>
+                                <div className="text-sm text-gray-600">{dep?.at ? new Date(dep.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</div>
+                              </div>
+                              <div className="flex flex-col items-center justify-center flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="w-16 h-1 bg-gray-300 rounded-full"></span>
+                                  <MdFlight className="text-orange-400 text-xl" />
+                                  <span className="w-16 h-1 bg-gray-300 rounded-full"></span>
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {returnItinerary?.duration?.replace('PT', '').toLowerCase().replace('h', 'h ').replace('m', 'm')} • 
+                                  {returnItinerary?.segments?.length - 1 === 0 ? 'Direct' : 
+                                   `${returnItinerary.segments.length - 1} Stop${returnItinerary.segments.length - 1 > 1 ? 's' : ''}`}
+                                </div>
+                              </div>
+                              <div className="flex-1 text-right">
+                                <div className="text-2xl font-extrabold text-gray-800">{arr?.iataCode}</div>
+                                <div className="text-sm text-gray-600">{arr?.at ? new Date(arr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</div>
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
-                      {/* Destination */}
-                      <div className="flex-1 text-right">
-                        <div className="text-3xl font-extrabold text-gray-800">{typeof arr?.iataCode === "object" ? arr?.iataCode.code : arr?.iataCode}</div>
-                        <div className="text-base font-semibold text-gray-700">{arrInfo?.name || ''}</div>
-                        <div className="text-sm text-gray-600">{arrInfo?.municipality || ''}</div>
-                        <div className="text-lg font-bold text-yellow-700 leading-tight">{arr?.at ? new Date(arr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</div>
-                        <div className="text-xs text-gray-500">{arr?.at ? new Date(arr.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) : ''}</div>
-                      </div>
-                    </>;
-                  })()}
+                    </div>
+                  )}
                 </div>
                 <hr className="my-4 border-t border-gray-200" />
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row justify-between gap-4">
                   {/* Airline & Aircraft */}
-                  <div className="flex items-center gap-3">
-                    <span className="bg-yellow-100 text-yellow-800 font-bold px-3 py-1 rounded-full text-sm shadow">{typeof trip.itineraries?.[0]?.segments?.[0]?.carrierCode === "object" ? trip.itineraries[0].segments[0].carrierCode.code : trip.itineraries?.[0]?.segments?.[0]?.carrierCode}</span>
-                    <span className="flex items-center font-semibold text-gray-700">
-                      <span className="bg-gray-100 p-1 rounded-md shadow-sm flex items-center mr-2">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full shadow">
+                        {trip.itineraries?.[0]?.segments?.[0]?.carrierCode || '--'}
+                      </span>
+                      <div className="flex items-center">
                         <img
-                          src={getAirlineLogoUrl(
-                            typeof trip.itineraries?.[0]?.segments?.[0]?.carrierCode === "object"
-                              ? trip.itineraries[0].segments[0].carrierCode.code
-                              : trip.itineraries?.[0]?.segments?.[0]?.carrierCode
-                          )}
+                          src={getAirlineLogoUrl(trip.itineraries?.[0]?.segments?.[0]?.carrierCode || '')}
                           alt="Airline Logo"
-                          style={{ height: 24, width: 'auto', display: 'block' }}
+                          className="h-5 w-auto mr-2"
                           onError={e => (e.currentTarget.style.display = 'none')}
                         />
+                        <span className="text-sm font-medium text-gray-700">
+                          {trip.itineraries?.[0]?.segments?.[0]?.carrierName || 'Airline'}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {trip.itineraries?.[0]?.segments?.[0]?.aircraft?.code || ''}
                       </span>
-                      {typeof trip.itineraries?.[0]?.segments?.[0]?.carrierName === "object"
-                        ? (trip.itineraries[0].segments[0].carrierName.name || trip.itineraries[0].segments[0].carrierName.code || JSON.stringify(trip.itineraries[0].segments[0].carrierName))
-                        : (trip.itineraries[0].segments[0].carrierName || 'Airline')}
-                    </span>
-                    <span className="text-xs text-gray-500">{typeof trip.itineraries?.[0]?.segments?.[0]?.aircraft === "object" ? (trip.itineraries[0].segments[0].aircraft.code || trip.itineraries[0].segments[0].aircraft.name || JSON.stringify(trip.itineraries[0].segments[0].aircraft)) : (trip.itineraries[0].segments[0].aircraft || '')}</span>
+                    </div>
+                    
+                    {/* Show return flight info if exists */}
+                    {trip.itineraries?.[1] && searchParams?.tripType === 'round-trip' && (
+                      <div className="flex items-center gap-3 ml-8">
+                        <span className="bg-orange-100 text-orange-800 text-xs font-bold px-3 py-1 rounded-full shadow">
+                          {trip.itineraries?.[1]?.segments?.[0]?.carrierCode || '--'}
+                        </span>
+                        <div className="flex items-center">
+                          <img
+                            src={getAirlineLogoUrl(trip.itineraries?.[1]?.segments?.[0]?.carrierCode || '')}
+                            alt="Airline Logo"
+                            className="h-5 w-auto mr-2"
+                            onError={e => (e.currentTarget.style.display = 'none')}
+                          />
+                          <span className="text-sm font-medium text-gray-700">
+                            {trip.itineraries?.[1]?.segments?.[0]?.carrierName || 'Airline'}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {trip.itineraries?.[1]?.segments?.[0]?.aircraft?.code || ''}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  {/* Cabin/Class & Passengers */}
+                  
+                  {/* Price and Passengers */}
                   <div className="text-right">
-                    <div className="font-semibold text-gray-700">{trip.class || 'Economy Class'}</div>
-                    <div className="text-xs text-gray-500">{travelers} passenger{Number(travelers) > 1 ? 's' : ''}</div>
+                    <div className="space-y-1">
+                      <div className="text-2xl font-bold text-[#FFA500]">
+                        {trip.price?.currency} {trip.price?.total}
+                        <span className="text-sm font-normal text-gray-500 ml-1">
+                          {searchParams?.tripType === 'round-trip' ? 'round-trip' : 'one-way'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {travelers} passenger{Number(travelers) !== 1 ? 's' : ''} • {trip.class || 'Economy'}
+                      </div>
+                      {searchParams?.tripType === 'round-trip' && (
+                        <div className="text-xs text-green-600 font-medium">
+                          Includes return flight
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

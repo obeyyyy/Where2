@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-[#FFFDF6] font-sans text-[#1A1A1A] px-4">
+      <body className="min-h-screen bg-[#FFFDF6] font-sans text-[#1A1A1A] px-4 w-full">
         {/* TripCartProvider gives cart context to the whole app */}
         <TripCartProvider>
           <Navbar />
