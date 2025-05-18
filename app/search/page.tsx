@@ -652,7 +652,7 @@ function HomePage() {
     >
       <option value="kiwi">Kiwi.com not working</option>
       <option value="amadeus">Amadeus not working</option>
-      <option value="duffel">Duffel beta</option>
+      <option value="duffel">Duffel</option>
     </select>
   </div>
   <p className="text-xs text-gray-500 mt-1">
