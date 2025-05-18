@@ -650,9 +650,9 @@ function HomePage() {
       }}
       className="w-32 p-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent text-sm bg-white"
     >
-      <option value="kiwi">Kiwi.com</option>
-      <option value="amadeus">Amadeus</option>
-      <option value="duffel">Duffel</option>
+      <option value="kiwi">Kiwi.com not working</option>
+      <option value="amadeus">Amadeus not working</option>
+      <option value="duffel">Duffel beta</option>
     </select>
   </div>
   <p className="text-xs text-gray-500 mt-1">

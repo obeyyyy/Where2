@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 
 const BASE_URL = 'https://test.api.amadeus.com/v2';
 const AUTH_URL = 'https://test.api.amadeus.com/v1/security/oauth2/token';
@@ -8,6 +9,10 @@ let tokenCache = {
   token: '',
   expiresAt: 0
 };
+
+// Ensure this route is dynamic
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Disable revalidation
 
 async function getAccessToken() {
   console.log('getAccessToken called');

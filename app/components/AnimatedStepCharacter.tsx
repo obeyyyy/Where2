@@ -1,10 +1,16 @@
+"use client";
+
 import React from "react";
-import { Player } from "@lottiefiles/react-lottie-player";
+import dynamic from "next/dynamic";
 
 interface AnimatedStepCharacterProps {
   lottieUrl: string;
   alt: string;
 }
+
+const Player = dynamic(() => import("@lottiefiles/react-lottie-player").then(mod => mod.Player), {
+  ssr: false
+});
 
 const AnimatedStepCharacter: React.FC<AnimatedStepCharacterProps> = ({ lottieUrl, alt }) => {
   return (

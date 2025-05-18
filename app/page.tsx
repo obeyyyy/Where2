@@ -43,6 +43,8 @@ function AnimatedWord({ words, colors, interval = 2000 }: { words: string[]; col
 }
 
 export default function LandingPage() {
+  // ...PASTE THE FULL CONTENT OF YOUR LandingPageClient HERE...
+
   // Testimonials data
   const testimonials = [
     {
