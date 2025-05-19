@@ -99,7 +99,7 @@ export default function LandingPage() {
                 Your Next
                 <span className="relative h-16 md:h-20 inline-block ml-2 align-middle">
                   {/* Animated word will be rendered here */}
-                  <AnimatedWord words={["Adventure", "Getaway", "Escape", "Journey"]} colors={["#FF8C00", "#FFA500", "#FF6B35", "#FF8C00"]} interval={2000} />
+                  <AnimatedWord words={["Trip", "Getaway", "Escape", "Journey"]} colors={["#FF8C00", "#FFA500", "#FF6B35", "#FF8C00"]} interval={2000} />
                 </span>
                 <br className="md:hidden" /> Awaits
               </h1>
