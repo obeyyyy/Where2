@@ -308,7 +308,7 @@ function HomePage() {
           {renderStepIndicator()}
         </motion.div>
 
-        <div className="px-4 max-w-md mx-auto">
+        <div className="px-4 sm:px-6 md:px-8 max-w-md mx-auto">
           <AnimatePresence mode="wait">
             {viewState === 'initial' && (
               <motion.div
@@ -383,38 +383,56 @@ function HomePage() {
                 exit="exit"
               >
                 <h2 className="text-3xl font-bold mb-6 text-center">When do you want to go?</h2>
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Departure
                     </label>
-                    <input
-                      type="date"
-                      value={searchParams.departureDate}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => handleInputChange('departureDate', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
-                    />
+                    <div className="relative">
+                      <input
+                        type="date"
+                        value={searchParams.departureDate}
+                        min={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => handleInputChange('departureDate', e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
+                        style={{ paddingRight: '3rem' }}
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {searchParams.tripType === 'roundtrip' ? 'Return' : 'One Way'}
                     </label>
                     {searchParams.tripType === 'roundtrip' ? (
-                      <input
-                        type="date"
-                        value={searchParams.returnDate || ''}
-                        min={searchParams.departureDate}
-                        onChange={(e) => handleInputChange('returnDate', e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
-                      />
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={searchParams.returnDate || ''}
+                          min={searchParams.departureDate}
+                          onChange={(e) => handleInputChange('returnDate', e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
+                          style={{ paddingRight: '3rem' }}
+                        />
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      </div>
                     ) : (
-                      <input
-                        type="text"
-                        value="One Way"
-                        disabled
-                        className="w-full p-3 bg-gray-100 border border-gray-300 rounded-xl text-gray-500"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value="One Way"
+                          disabled
+                          className="w-full p-3 bg-gray-100 border border-gray-300 rounded-xl text-gray-500"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -422,7 +440,7 @@ function HomePage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Trip Type
                   </label>
-                  <div className="grid grid-cols-2grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => {handleInputChange('tripType', 'roundtrip');
                         if (!searchParams.returnDate) {
@@ -455,32 +473,32 @@ function HomePage() {
                   </div>
                 </div>
                 <div className="mb-6">
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    Trip Duration
-  </label>
-  <div className="relative">
-    <select
-      value={searchParams.nights}
-      disabled
-      className="w-full p-3 border border-gray-300 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed appearance-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
-      title="Trip duration is automatically calculated from your selected dates."
-    >
-      {[...Array(30)].map((_, i) => (
-        <option key={i + 1} value={i + 1}>
-          {i + 1} {i === 0 ? 'night' : 'nights'}
-        </option>
-      ))}
-    </select>
-    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    </div>
-  </div>
-  <p className="text-xs text-gray-500 mt-1">
-    Trip duration is automatically calculated from your selected dates and cannot be changed directly.
-  </p>
-</div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Trip Duration
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={searchParams.nights}
+                      disabled
+                      className="w-full p-3 border border-gray-300 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed appearance-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
+                      title="Trip duration is automatically calculated from your selected dates."
+                    >
+                      {[...Array(30)].map((_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {i + 1} {i === 0 ? 'night' : 'nights'}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Trip duration is automatically calculated from your selected dates and cannot be changed directly.
+                  </p>
+                </div>
               </motion.div>
             )}
             {viewState === 'details' && (
@@ -517,23 +535,22 @@ function HomePage() {
                   </div>
                 </div>
 
-                <div className="flex gap-4 mb-6 ">
-                  <div className="flex-1">
+                <div className="space-y-4 mb-6">
+                  <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Origin
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <select
                         value={searchParams.originType}
                         onChange={e => handleInputChange('originType', e.target.value as 'Airport' | 'City' | 'Country')}
-                        className="p-2 border border-gray-300 rounded-xl text-sm bg-white min-w-[120px] max-w-[150px]"
-                        style={{ flexGrow: 0 }}
+                        className="p-2 border border-gray-300 rounded-xl text-sm bg-white"
                       >
                         <option value="Airport">Airport</option>
                         <option value="City">City</option>
                         <option value="Country">Country</option>
                       </select>
-                      <div className="min-w-[260px] flex-1">
+                      <div className="flex-1">
                         <AirportAutocomplete
                           label="Origin Airport"
                           value={(function() {
@@ -549,24 +566,24 @@ function HomePage() {
                           onChange={val => handleInputChange('origin', val ? val.iata : '')}
                           required
                         />
+                      </div>
                     </div>
                   </div>
-                  <div className="flex-1">
+                  <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Destination
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <select
                         value={searchParams.destinationType}
                         onChange={e => handleInputChange('destinationType', e.target.value as 'Airport' | 'City' | 'Country')}
-                        className="p-2 border border-gray-300 rounded-xl text-sm bg-white min-w-[120px] max-w-[150px]"
-                        style={{ flexGrow: 0 }}
+                        className="p-2 border border-gray-300 rounded-xl text-sm bg-white"
                       >
                         <option value="Airport">Airport</option>
                         <option value="City">City</option>
                         <option value="Country">Country</option>
                       </select>
-                      <div className="min-w-[260px] flex-1">
+                      <div className="flex-1">
                         <AirportAutocomplete
                          label="Destination Airport"
                          value={(function() {
@@ -585,8 +602,7 @@ function HomePage() {
                        </div>
                     </div>
                   </div>
-                  </div>                
-                </div>
+                </div>                
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Popular Destinations
