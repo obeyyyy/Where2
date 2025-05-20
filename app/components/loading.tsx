@@ -9,7 +9,7 @@ export default function Loading() {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div className="flex flex-col items-center space-y-8">
+    <div className="flex flex-col items-center space-y-8 pb-20">
       {/* Spinner */}
       <motion.div 
         className="w-24 h-24 border-4 border-gray-500 rounded-full border-r-[#FFB800]"

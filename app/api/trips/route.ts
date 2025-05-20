@@ -155,14 +155,50 @@ export async function GET(request: Request) {
   try {
     let token = await getAccessToken();
 
-    // Get current date
-    const departureDate = new Date();
-    departureDate.setDate(departureDate.getDate());
-
-    // Add 7 days for return
-    const returnDate = new Date(departureDate);
-    returnDate.setDate(returnDate.getDate() + 7);
-    console.log('Departure date:', departureDate.toISOString().split('T')[0]);
+    // Parse query parameters from the request first
+    const urlObj = new URL(request.url);
+    const params = urlObj.searchParams;
+    
+    // Log incoming request parameters
+    console.log('Incoming request parameters:', Object.fromEntries(params.entries()));
+    
+    // Parse and validate dates from params
+    const depDateStr = params.get('departureDate');
+    const retDateStr = params.get('returnDate');
+    
+    if (!depDateStr) {
+      throw new Error('Departure date is required');
+    }
+    
+    const depDate = new Date(depDateStr);
+    if (isNaN(depDate.getTime())) {
+      throw new Error('Invalid departure date format');
+    }
+    
+    // For round trips, validate return date
+    let retDate: Date | null = null;
+    const isRoundTrip = params.get('tripType') === 'roundtrip';
+    
+    if (isRoundTrip) {
+      if (!retDateStr) {
+        throw new Error('Return date is required for roundtrip flights');
+      }
+      
+      retDate = new Date(retDateStr);
+      if (isNaN(retDate.getTime())) {
+        throw new Error('Invalid return date format');
+      }
+      
+      if (retDate <= depDate) {
+        throw new Error('Return date must be after departure date');
+      }
+    }
+    
+    console.log('Validated search dates:', {
+      departureDate: depDate.toISOString(),
+      returnDate: retDate?.toISOString() || 'One way',
+      tripType: params.get('tripType')
+    });
     
 
   
@@ -176,9 +212,7 @@ export async function GET(request: Request) {
       return result;
     }
 
-    // Parse query parameters from the request
-    const urlObj = new URL(request.url);
-    const params = urlObj.searchParams;
+    // Get other query parameters
     const origin = params.get('origin') || 'MAD';
     const destination = params.get('destination') || 'PAR';
     const tripType = params.get('tripType') || 'roundtrip';
@@ -190,18 +224,17 @@ export async function GET(request: Request) {
     const useDuffel = params.get('useDuffel') === 'true';
     const includeHotels = params.get('includeHotels') === 'true';
 
-    // Date parsing with fallback
-    const depDate = params.get('departureDate') ? new Date(params.get('departureDate')!) : addDays(new Date(), 30);
-    const retDate = params.get('returnDate') ? new Date(params.get('returnDate')!) : addDays(depDate, 7);
-
     // Flexible window: ±1 day
-    const outboundStart = formatDate(addDays(depDate, -1)) + 'T00:00:00';
-    const outboundEnd = formatDate(addDays(depDate, 1)) + 'T23:59:59';
+    const outboundStart = formatDate(new Date(depDate.getTime() - 24 * 60 * 60 * 1000)) + 'T00:00:00';
+    const outboundEnd = formatDate(new Date(depDate.getTime() + 24 * 60 * 60 * 1000)) + 'T23:59:59';
+    
     let inboundStart = '';
     let inboundEnd = '';
-    if (tripType === 'roundtrip' && params.get('returnDate')) {
-      inboundStart = formatDate(addDays(retDate, -1)) + 'T00:00:00';
-      inboundEnd = formatDate(addDays(retDate, 1)) + 'T23:59:59';
+    if (isRoundTrip && retDate) {
+      // We've already validated retDate is not null in the isRoundTrip check
+      const returnDate = retDate as Date;
+      inboundStart = formatDate(new Date(returnDate.getTime() - 24 * 60 * 60 * 1000)) + 'T00:00:00';
+      inboundEnd = formatDate(new Date(returnDate.getTime() + 24 * 60 * 60 * 1000)) + 'T23:59:59';
     }
 
     // Duffel Flights API integration
@@ -211,19 +244,35 @@ export async function GET(request: Request) {
       // Duffel expects IATA codes for origin/destination, and ISO date
       const duffelToken = process.env.DUFFEL_API;
       if (!duffelToken) throw new Error('Duffel API key not set');
+      
+      // Clean origin/destination codes
+      const cleanCode = (code: string) => code.replace(/^(Airport:|City:|Country:)/, '');
+      const originCode = cleanCode(origin);
+      const destCode = cleanCode(destination);
+      
+      // Log cleaned codes
+      console.log('Cleaned flight codes:', { originCode, destCode });
+      
       // Dynamically build slices for one-way or roundtrip
       const slices = [
         {
-          origin: origin.replace(/^(Airport:|City:|Country:)/, ''),
-          destination: destination.replace(/^(Airport:|City:|Country:)/, ''),
+          origin: originCode,
+          destination: destCode,
           departure_date: formatDate(depDate),
         }
       ];
-      if (tripType === 'roundtrip' && returnDate) {
+      
+      if (tripType === 'roundtrip' && retDate) {
+        console.log('Adding return flight slice:', {
+          date: formatDate(retDate),
+          origin: destCode,
+          destination: originCode
+        });
+        
         slices.push({
-          origin: destination.replace(/^(Airport:|City:|Country:)/, ''),
-          destination: origin.replace(/^(Airport:|City:|Country:)/, ''),
-          departure_date: formatDate(returnDate),
+          origin: destCode,
+          destination: originCode,
+          departure_date: formatDate(retDate)
         });
       }
       const duffelBody = {
@@ -452,14 +501,18 @@ export async function GET(request: Request) {
     tripData.data = filteredFlights;
     // Only fetch hotel offers for the top 5 flight options (after filtering/sorting) to avoid rate limits
     let isFirstTrip = true;
-const tripsWithHotels = await Promise.all(
+    const tripsWithHotels = await Promise.all(
       (tripData.data || []).slice(0, 5).map(async (trip: any, tripIdx: number) => {
         const destinationCode = trip.itineraries?.[0]?.segments?.[0]?.arrival?.iataCode;
         const checkInDate = formatDate(depDate);
-        const checkOutDate = formatDate(retDate);
+        // Only include checkOutDate for round trips
+        const checkOutDate = isRoundTrip && retDate ? formatDate(retDate) : '';
         let hotels: any[] = [];
         try {
-          if (includeHotels && destinationCode && checkInDate && checkOutDate) {
+          if (includeHotels && destinationCode && checkInDate) {
+            // For one-way trips, use a default 1-night stay
+            const effectiveCheckOutDate = checkOutDate || formatDate(new Date(depDate.getTime() + 24 * 60 * 60 * 1000));
+            
             // Step 1: Fetch hotel IDs for the city
             const hotelsByCityUrl = `https://test.api.amadeus.com/v1/reference-data/locations/hotels/by-city?cityCode=${destinationCode}`;
             console.log('Fetching hotel IDs for city:', hotelsByCityUrl);
@@ -477,11 +530,11 @@ const tripsWithHotels = await Promise.all(
               const hotelParams = new URLSearchParams({
                 hotelIds: hotelIds.join(','),
                 checkInDate,
-                checkOutDate,
-                adults: travelers,
+                checkOutDate: effectiveCheckOutDate,
                 roomQuantity: '1',
+                adults: '1',
                 bestRateOnly: 'true',
-                currency: currency,
+                currency,
               });
               const hotelUrl = `https://test.api.amadeus.com/v3/shopping/hotel-offers?${hotelParams.toString()}`;
               console.log('Fetching hotel offers:', hotelUrl);

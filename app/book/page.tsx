@@ -52,6 +52,23 @@ const BookingPage: React.FC = () => {
   const budget = bookingData?.budget || "";
   const travelers = searchParams?.travelers || "1";
 
+  // Debug log to check the data
+  useEffect(() => {
+    console.log('=== DEBUGGING FLIGHT DATA ===');
+    console.log('Booking data:', bookingData);
+    console.log('Trip data:', trip);
+    console.log('Itineraries count:', trip?.itineraries?.length || 0);
+    console.log('Itineraries data:', trip?.itineraries);
+    console.log('Search params:', searchParams);
+    
+    // Check if we have a return flight
+    if (trip?.itineraries?.[1]) {
+      console.log('Return flight found:', trip.itineraries[1]);
+    } else {
+      console.log('No return flight found in itineraries');
+    }
+  }, [bookingData, trip, searchParams]);
+
   const [step, setStep] = useState<number>(0);
   const [passengerData, setPassengerData] = useState<PassengerInfo[]>(
     Array(Number(travelers)).fill({ ...initialPassenger })
@@ -60,6 +77,17 @@ const BookingPage: React.FC = () => {
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Check if we have the required flight data (note: tripType is 'roundtrip' not 'round-trip')
+  const hasReturnFlight = searchParams?.tripType === 'roundtrip' && trip?.itineraries?.[1];
+  
+  // Log flight data for debugging
+  console.log('Flight data:', {
+    hasReturnFlight,
+    outboundItinerary: trip?.itineraries?.[0],
+    returnItinerary: trip?.itineraries?.[1],
+    searchParams
+  });
+  
   // All old flight/cached offer logic removed. Use only bookingData/trip.
 
   // Handle input change for a passenger
@@ -181,13 +209,32 @@ return (
                     </span>
                   </div>
                 </div>
+                {/* Flight Summary Header */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Your Flight Itinerary</h3>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>{searchParams.origin} → {searchParams.destination}</span>
+                    {searchParams.tripType === 'round-trip' && <span>↔</span>}
+                    {searchParams.tripType === 'round-trip' && <span>{searchParams.destination} → {searchParams.origin}</span>}
+                    <span>•</span>
+                    <span>{searchParams.tripType === 'round-trip' ? 'Round Trip' : 'One Way'}</span>
+                  </div>
+                </div>
+
                 {/* Flight Legs - Outbound and Return */}
-                <div className="space-y-6">
+                 <div className="space-y-6">
                   {/* Outbound Flight */}
-                  <div className="bg-gray-50 p-4 rounded-xl">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm font-medium text-gray-700">Outbound Flight • {searchParams?.departureDate}</span>
+                  <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="font-medium text-gray-800">Outbound Flight</span>
+                        <span className="text-sm text-gray-500">• {searchParams?.departureDate}</span>
+                      </div>
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                        {trip.itineraries?.[0]?.segments?.length - 1 === 0 ? 'Direct' : 
+                         `${trip.itineraries?.[0]?.segments?.length - 1} Stop${trip.itineraries?.[0]?.segments?.length - 1 > 1 ? 's' : ''}`}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       {(() => {
@@ -196,42 +243,71 @@ return (
                         const arr = outboundItinerary?.segments?.[outboundItinerary.segments.length - 1]?.arrival;
                         const depInfo = airports.find((a: any) => a.iata_code === dep?.iataCode);
                         const arrInfo = airports.find((a: any) => a.iata_code === arr?.iataCode);
-                        
                         return (
                           <>
-                            <div className="flex-1 text-left">
+                            <div className="flex-1">
                               <div className="text-2xl font-extrabold text-gray-800">{dep?.iataCode}</div>
-                              <div className="text-sm text-gray-600">{dep?.at ? new Date(dep.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</div>
-                            </div>
-                            <div className="flex flex-col items-center justify-center flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="w-16 h-1 bg-gray-300 rounded-full"></span>
-                                <MdFlight className="text-gray-400 text-xl" />
-                                <span className="w-16 h-1 bg-gray-300 rounded-full"></span>
+                              <div className="text-sm text-gray-600">
+                                {dep?.at ? new Date(dep.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}
                               </div>
-                              <div className="text-xs text-gray-500">
-                                {outboundItinerary?.duration?.replace('PT', '').toLowerCase().replace('h', 'h ').replace('m', 'm')} • 
-                                {outboundItinerary?.segments?.length - 1 === 0 ? 'Direct' : 
-                                 `${outboundItinerary.segments.length - 1} Stop${outboundItinerary.segments.length - 1 > 1 ? 's' : ''}`}
-                              </div>
+                              <div className="text-xs text-gray-500 mt-1">{depInfo?.city || dep?.iataCode}</div>
                             </div>
+                            
+                            <div className="flex flex-col items-center justify-center flex-1 px-4">
+                              <div className="w-full flex items-center mb-1">
+                                <div className="flex-1 h-px bg-gray-300"></div>
+                                <MdFlight className="mx-2 text-gray-400 text-xl transform rotate-90" />
+                                <div className="flex-1 h-px bg-gray-300"></div>
+                              </div>
+                              <div className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
+                                {outboundItinerary?.duration?.replace('PT', '').toLowerCase().replace('h', 'h ').replace('m', 'm')}
+                              </div>
+                            </div>  
                             <div className="flex-1 text-right">
                               <div className="text-2xl font-extrabold text-gray-800">{arr?.iataCode}</div>
-                              <div className="text-sm text-gray-600">{arr?.at ? new Date(arr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</div>
+                              <div className="text-sm text-gray-600">
+                                {arr?.at ? new Date(arr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">{arrInfo?.city || arr?.iataCode}</div>
                             </div>
                           </>
                         );
                       })()}
                     </div>
+                    
+                    {/* Flight details */}
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <img
+                          src={getAirlineLogoUrl(trip.itineraries?.[0]?.segments?.[0]?.carrierCode || '')}
+                          alt="Airline"
+                          className="h-5 w-auto"
+                          onError={e => (e.currentTarget.style.display = 'none')}
+                        />
+                        <span>{trip.itineraries?.[0]?.segments?.[0]?.carrierName || 'Flight'}</span>
+                        <span>•</span>
+                        <span>Flight {trip.itineraries?.[0]?.segments?.[0]?.number || '--'}</span>
+                        <span>•</span>
+                        <span>{trip.itineraries?.[0]?.segments?.[0]?.aircraft?.code || '--'}</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Return Flight - Only show if it exists */}
-                  {trip.itineraries?.[1] && searchParams?.tripType === 'round-trip' && (
-                    <div className="bg-gray-50 p-4 rounded-xl border-l-4 border-orange-200">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                        <span className="text-sm font-medium text-gray-700">Return Flight • {searchParams?.returnDate}</span>
+                  {hasReturnFlight && (
+                    <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                          <span className="font-medium text-gray-800">Return Flight</span>
+                          <span className="text-sm text-gray-500">• {searchParams?.returnDate}</span>
+                        </div>
+                        <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                          {trip.itineraries?.[1]?.segments?.length - 1 === 0 ? 'Direct' : 
+                           `${trip.itineraries?.[1]?.segments?.length - 1} Stop${trip.itineraries?.[1]?.segments?.length - 1 > 1 ? 's' : ''}`}
+                        </span>
                       </div>
+                      
                       <div className="flex items-center justify-between">
                         {(() => {
                           const returnItinerary = trip.itineraries?.[1];
@@ -242,29 +318,52 @@ return (
                           
                           return (
                             <>
-                              <div className="flex-1 text-left">
+                              <div className="flex-1">
                                 <div className="text-2xl font-extrabold text-gray-800">{dep?.iataCode}</div>
-                                <div className="text-sm text-gray-600">{dep?.at ? new Date(dep.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</div>
-                              </div>
-                              <div className="flex flex-col items-center justify-center flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="w-16 h-1 bg-gray-300 rounded-full"></span>
-                                  <MdFlight className="text-orange-400 text-xl" />
-                                  <span className="w-16 h-1 bg-gray-300 rounded-full"></span>
+                                <div className="text-sm text-gray-600">
+                                  {dep?.at ? new Date(dep.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                  {returnItinerary?.duration?.replace('PT', '').toLowerCase().replace('h', 'h ').replace('m', 'm')} • 
-                                  {returnItinerary?.segments?.length - 1 === 0 ? 'Direct' : 
-                                   `${returnItinerary.segments.length - 1} Stop${returnItinerary.segments.length - 1 > 1 ? 's' : ''}`}
+                                <div className="text-xs text-gray-500 mt-1">{depInfo?.city || dep?.iataCode}</div>
+                              </div>
+                              
+                              <div className="flex flex-col items-center justify-center flex-1 px-4">
+                                <div className="w-full flex items-center mb-1">
+                                  <div className="flex-1 h-px bg-gray-300"></div>
+                                  <MdFlight className="mx-2 text-orange-400 text-xl transform rotate-90" />
+                                  <div className="flex-1 h-px bg-gray-300"></div>
+                                </div>
+                                <div className="text-xs text-gray-500 bg-orange-50 px-2 py-1 rounded-full">
+                                  {returnItinerary?.duration?.replace('PT', '').toLowerCase().replace('h', 'h ').replace('m', 'm')}
                                 </div>
                               </div>
+                              
                               <div className="flex-1 text-right">
                                 <div className="text-2xl font-extrabold text-gray-800">{arr?.iataCode}</div>
-                                <div className="text-sm text-gray-600">{arr?.at ? new Date(arr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</div>
+                                <div className="text-sm text-gray-600">
+                                  {arr?.at ? new Date(arr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '--:--'}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">{arrInfo?.city || arr?.iataCode}</div>
                               </div>
                             </>
                           );
                         })()}
+                      </div>
+                      
+                      {/* Flight details */}
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <img
+                            src={getAirlineLogoUrl(trip.itineraries?.[1]?.segments?.[0]?.carrierCode || '')}
+                            alt="Airline"
+                            className="h-5 w-auto"
+                            onError={e => (e.currentTarget.style.display = 'none')}
+                          />
+                          <span>{trip.itineraries?.[1]?.segments?.[0]?.carrierName || 'Flight'}</span>
+                          <span>•</span>
+                          <span>Flight {trip.itineraries?.[1]?.segments?.[0]?.number || '--'}</span>
+                          <span>•</span>
+                          <span>{trip.itineraries?.[1]?.segments?.[0]?.aircraft?.code || '--'}</span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -273,25 +372,7 @@ return (
                 <div className="flex flex-col md:flex-row justify-between gap-4">
                   {/* Airline & Aircraft */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <span className="bg-yellow-100 text-yellow-800 text-xs font-bold px-3 py-1 rounded-full shadow">
-                        {trip.itineraries?.[0]?.segments?.[0]?.carrierCode || '--'}
-                      </span>
-                      <div className="flex items-center">
-                        <img
-                          src={getAirlineLogoUrl(trip.itineraries?.[0]?.segments?.[0]?.carrierCode || '')}
-                          alt="Airline Logo"
-                          className="h-5 w-auto mr-2"
-                          onError={e => (e.currentTarget.style.display = 'none')}
-                        />
-                        <span className="text-sm font-medium text-gray-700">
-                          {trip.itineraries?.[0]?.segments?.[0]?.carrierName || 'Airline'}
-                        </span>
-                      </div>
-                      <span className="text-xs text-gray-500">
-                        {trip.itineraries?.[0]?.segments?.[0]?.aircraft?.code || ''}
-                      </span>
-                    </div>
+                    
                     
                     {/* Show return flight info if exists */}
                     {trip.itineraries?.[1] && searchParams?.tripType === 'round-trip' && (

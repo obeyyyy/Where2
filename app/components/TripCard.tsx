@@ -43,6 +43,10 @@ interface FlightOffer {
   price: {
     total: string;
     currency: string;
+    breakdown?: {
+      outbound?: string;
+      return?: string;
+    };
   };
   itineraries: Array<{
     duration: string;
@@ -100,26 +104,98 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
 
 
 
-  const { price, itineraries, hotels = [] } = trip;
+  // Destructure trip data first
+  const { price: tripPrice, itineraries = [], hotels = [] } = trip;
+  
+  // Get the appropriate price based on flight type and breakdown
+  const getFlightPrice = () => {
+    if (!tripPrice) return { total: '0', currency: 'USD' };
+    
+    // Log the incoming price data for debugging
+    console.log(`[${flightType}] Price data:`, {
+      tripPrice,
+      hasBreakdown: !!tripPrice.breakdown,
+      breakdown: tripPrice.breakdown
+    });
+    
+    // If we have a breakdown, use the appropriate price
+    if (tripPrice.breakdown) {
+      if (flightType === 'return' && tripPrice.breakdown.return !== undefined) {
+        return {
+          total: tripPrice.breakdown.return,
+          currency: tripPrice.currency || 'USD',
+          isBreakdown: true
+        };
+      } else if (flightType === 'outbound' && tripPrice.breakdown.outbound !== undefined) {
+        return {
+          total: tripPrice.breakdown.outbound,
+          currency: tripPrice.currency || 'USD',
+          isBreakdown: true
+        };
+      }
+    }
+    
+    // Default to the full price if no breakdown or if flight type doesn't match
+    return {
+      total: tripPrice.total || '0',
+      currency: tripPrice.currency || 'USD',
+      isBreakdown: false
+    };
+  };
+  
+  const price = getFlightPrice();
+  
+  // Format price for display
+  const formatPrice = (amount: string | number) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return num.toFixed(0);
+  };
+  
+  // Get the display price with currency
+  const displayPrice = `${price.currency} ${formatPrice(price.total)}`;
 
   const pagedHotels = hotels.slice(0, HOTELS_PER_PAGE + hotelPage * HOTELS_NEXT_COUNT);
   const hasMoreHotels = pagedHotels.length < hotels.length;
 
-  
-
-  const outbound = itineraries?.[0]?.segments?.[0];
-  const returnSegments = itineraries?.[1]?.segments || [];
-  const returnSegment = returnSegments[0];
-  console.log("outbound", outbound);
-  console.log("itineraries", itineraries);
-  
-  
-  // Get logo URL and airline name for display
-  const carrierCode = outbound?.operating?.carrierCode || outbound?.carrierCode || '';
+  const outbound = flightType === 'return' ? itineraries?.[0]?.segments?.[0] : itineraries?.[0]?.segments?.[0];
+  const returnSegments = flightType === 'return' ? itineraries?.[0]?.segments || [] : itineraries?.[1]?.segments || []; // For return flights, use the first itinerary's segments
+  const returnSegment = flightType === 'return' ? returnSegments[0] : itineraries?.[1]?.segments?.[0];
+  const carrierCode = flightType === 'return' ? returnSegment?.operating?.carrierCode || returnSegment?.carrierCode : outbound?.operating?.carrierCode || outbound?.carrierCode || '';
   const logoUrl = carrierCode ? getAirlineLogoUrl(carrierCode) : '';
   const airlineName = carrierCode || 'Unknown Airline';
-  
-  // Format date and time for display
+
+  // For the main flight segment, use the first segment of the first itinerary
+  const flightSegment = outbound;
+  // For flight segments, use all segments of the first itinerary for outbound, or all return segments for return
+  const flightSegments = flightType === 'return' ? returnSegments : (itineraries?.[0]?.segments || []);
+
+  // Debug logging
+  console.log('TripCard Debug:', {
+    flightType,
+    flightSegment: flightSegment,
+    returnSegment: returnSegment,
+    outbound: outbound,
+    price: price,
+    displayPrice: displayPrice,
+    departureDate: flightSegment?.departure?.at,
+    arrivalDate: flightSegment?.arrival?.at
+  });
+
+  // For return flights, use the full journey from the return segments
+  const origin = flightType === 'return' 
+    ? returnSegments[0]?.departure?.iataCode || 'N/A' 
+    : outbound?.departure?.iataCode || 'N/A';
+  const destination = flightType === 'return'
+    ? returnSegments[returnSegments.length - 1]?.arrival?.iataCode || 'N/A'
+    : outbound?.arrival?.iataCode || 'N/A';
+
+  // Robust ISO8601 parsing and fallback for invalid dates
+  const parseDate = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -137,48 +213,107 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
     });
   };
 
-  // For UI: destination, dates, nights
-  // Robust fallback for Kiwi and Amadeus
-  const destination = outbound?.arrival?.iataCode || 'N/A';
-  const origin = outbound?.departure?.iataCode || 'N/A';
-  
-  // Robust ISO8601 parsing and fallback for invalid dates
-  const parseDate = (dateStr?: string) => {
+  // Get and validate dates from the flight data
+  const getValidDate = (dateStr: string | undefined) => {
     if (!dateStr) return null;
-    const d = new Date(dateStr);
-    return isNaN(d.getTime()) ? null : d;
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? null : date;
+  };
+
+  const departureDate = getValidDate(
+    flightType === 'return' 
+      ? returnSegments[0]?.departure?.at 
+      : outbound?.departure?.at
+  );
+  
+  const arrivalDate = getValidDate(
+    flightType === 'return'
+      ? returnSegments[returnSegments.length - 1]?.arrival?.at
+      : outbound?.arrival?.at
+  );
+
+  // Log detailed flight information for debugging
+  console.log(`Flight Card [${flightType}]:`, {
+    origin,
+    destination,
+    departure: departureDate?.toISOString(),
+    arrival: arrivalDate?.toISOString(),
+    price: trip.price,
+    segments: flightType === 'return' ? returnSegments : [outbound],
+    searchParams: searchParams
+  });
+
+  // Format date for display
+  const formatDisplayDate = (date: Date | null) => {
+    if (!date) return 'N/A';
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Format time for display
+  const formatDisplayTime = (date: Date | null) => {
+    if (!date) return 'N/A';
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  };
+    
+  // Calculate total duration for multi-segment flights
+  const calculateTotalDuration = (segments: any[]) => {
+    if (!segments || segments.length === 0) return 'PT0H0M';
+    const firstDeparture = new Date(segments[0]?.departure?.at);
+    const lastArrival = new Date(segments[segments.length - 1]?.arrival?.at);
+    const totalMinutes = Math.round((lastArrival.getTime() - firstDeparture.getTime()) / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `PT${hours}H${minutes}M`;
   };
   
-  // Handle dates differently based on flight type
-  let departureDate, arrivalDate, returnDate;
-  
-  if (flightType === 'return' && returnSegment) {
-    // For return flights, use the return segment dates
-    departureDate = parseDate(returnSegment.departure?.at);
-    arrivalDate = parseDate(returnSegment.arrival?.at);
-    returnDate = null; // No need for returnDate in this case
-  } else {
-    // For outbound flights, use the outbound segment dates
-    departureDate = parseDate(outbound?.departure?.at);
-    arrivalDate = parseDate(outbound?.arrival?.at);
-    returnDate = returnSegment?.arrival?.at ? new Date(returnSegment.arrival.at) : null;
-  }
-  const nights = departureDate && returnDate ? Math.max(1, Math.round((+returnDate - +departureDate) / (1000 * 60 * 60 * 24))) : null;
+  const totalDuration = flightType === 'return' 
+    ? calculateTotalDuration(returnSegments)
+    : itineraries?.[0]?.duration || 'PT0H0M';
 
+  // Calculate stops information
+  const stops = flightType === 'return' 
+    ? Math.max(0, returnSegments.length - 1) 
+    : Math.max(0, (itineraries?.[0]?.segments?.length || 1) - 1);
+  const stopsLabel = stops === 0 ? 'Nonstop' : `${stops} Stop${stops > 1 ? 's' : ''}`;
+  const stopsColor = stops === 0 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
+
+  // Format duration
   const formatDuration = (duration: string) => {
-    // Format duration from PT2H30M to 2h 30m
     const match = duration.match(/PT(\d+H)?(\d+M)?/);
     if (!match) return duration;
     const hours = (match[1] ? match[1].replace('H', 'h ') : '');
     const minutes = (match[2] ? match[2].replace('M', 'm') : '');
     return `${hours}${minutes}`.trim();
   };
-  
-  // Calculate stops information
-  const segments = itineraries?.[0]?.segments || [];
-  const stops = segments.length - 1;
-  const stopsLabel = stops === 0 ? 'Nonstop' : `${stops} Stop${stops > 1 ? 's' : ''}`;
-  const stopsColor = stops === 0 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
+
+  // Calculate nights (only for outbound flights)
+  const nights = flightType === 'outbound' && departureDate && arrivalDate ? 
+    Math.max(1, Math.round((+arrivalDate - +departureDate) / (1000 * 60 * 60 * 24))) : null;
+
+  // Debug logging for price and flight data
+  if (flightType === 'return' || flightType === 'outbound') {
+    console.log(`[${flightType}] Trip data:`, {
+      price: price,
+      tripPrice: trip.price,
+      segments: flightType === 'return' ? returnSegments : itineraries?.[0]?.segments,
+      origin,
+      destination,
+      departureDate: flightType === 'return' 
+        ? returnSegments[0]?.departure?.at 
+        : outbound?.departure?.at,
+      arrivalDate: flightType === 'return'
+        ? returnSegments[returnSegments.length - 1]?.arrival?.at
+        : outbound?.arrival?.at
+    });
+  }
 
   // Card for selecting a single flight (outbound or return)
   if (onSelect && !selected) {
@@ -190,19 +325,44 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
               {logoUrl && <Image src={logoUrl} alt={`${airlineName} logo`} fill className="object-contain p-1" unoptimized={true} />}
             </div>
             <div>
-              <h3 className="font-bold text-gray-800">{origin} → {destination}</h3>
-              <p className="text-sm text-gray-500">
-                {departureDate ? formatDate(outbound?.departure?.at || '') : ''}
-                {returnDate ? ` - ${formatDate(returnSegment?.arrival?.at || '')}` : ''}
-              </p>
+              <div className="flex items-center gap-2">
+                <div className="font-bold text-gray-800">
+                  {origin} → {destination}
+                </div>
+                {flightType === 'return' && (
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                    Return
+                  </span>
+                )}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">
+                {departureDate && arrivalDate ? (
+                  <>
+                    <span className="font-medium">{formatDisplayDate(departureDate)}</span>
+                    {flightType === 'return' && (
+                      <span className="mx-2">→</span>
+                    )}
+                    {flightType === 'return' && (
+                      <span className="font-medium">{formatDisplayDate(arrivalDate)}</span>
+                    )}
+                  </>
+                ) : (
+                  <span>No date information available</span>
+                )}
+              </div>
             </div>
           </div>
-          
-          
           <div className="flex items-center gap-6 text-sm text-gray-600">
-            <span>{formatTime(outbound?.departure?.at ?? '')} - {formatTime(outbound?.arrival?.at ?? '')}</span>
+            <span>{formatTime(flightType === 'return' ? returnSegment?.departure?.at : outbound?.departure?.at ?? '')} - {formatTime(flightType === 'return' ? returnSegment?.arrival?.at : outbound?.arrival?.at ?? '')}</span>
             <span className={`px-2 py-0.5 rounded-full text-xs ${stopsColor}`}>{stopsLabel}</span>
-            <span className="font-medium text-[#FF8C00]">{price.currency} {parseFloat(price.total).toFixed(0)}</span>
+            <span className="font-medium text-[#FF8C00]">
+              {displayPrice}
+              {price.isBreakdown && (
+                <span className="text-xs text-gray-500 ml-1">
+                  ({flightType === 'outbound' ? 'outbound' : 'return'})
+                </span>
+              )}
+            </span>
           </div>
         </div>
         <button
@@ -236,34 +396,39 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
           </div>
           <div>
             <div className="font-bold text-xl text-gray-800">{origin} → {destination}</div>
-            <div className="text-gray-500 text-sm">{departureDate ? formatDate(outbound?.departure?.at || '') : ''} {returnDate ? `- ${formatDate(returnSegment?.arrival?.at || '')}` : ''}</div>
+            <div className="text-gray-500 text-sm">{departureDate ? formatDate(flightSegment?.departure?.at || '') : ''}</div>
           </div>
         </div>
         <div className="flex items-center justify-between gap-6 mb-6 w-full">
           <div className="text-center">
-            <div className="font-bold text-2xl text-[#FFA500]">{formatTime(outbound?.departure?.at ?? '')}</div>
+            <div className="font-bold text-2xl text-[#FFA500]">{formatTime(flightType === 'return' ? returnSegment?.departure?.at : outbound?.departure?.at ?? '')}</div>
             <div className="text-xs text-gray-500">{origin}</div>
           </div>
           <div className="flex-1 flex flex-col items-center">
             <div className="flex items-center gap-2">
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${stopsColor} shadow-sm`}>{stopsLabel}</span>
-              <span className="text-xs text-gray-400">{outbound && itineraries[0]?.duration ? formatDuration(itineraries[0].duration) : ''}</span>
+              <span className="text-xs text-gray-400">{itineraries?.[0]?.duration ? formatDuration(itineraries?.[0]?.duration) : ''}</span>
             </div>
             <div className="w-full h-0.5 bg-gradient-to-r from-[#FFA500] via-yellow-200 to-[#FFA500] my-2 rounded-full" />
           </div>
           <div className="text-center">
-            <div className="font-bold text-2xl text-[#FFA500]">{formatTime(outbound?.arrival?.at ?? '')}</div>
+            <div className="font-bold text-2xl text-[#FFA500]">{formatTime(flightType === 'return' ? returnSegment?.arrival?.at : outbound?.arrival?.at ?? '')}</div>
             <div className="text-xs text-gray-500">{destination}</div>
           </div>
         </div>
         <div className="flex justify-between mb-4 w-full">
-          <div className="text-sm text-gray-600">{airlineName} {outbound?.number || ''}</div>
-          <div className="text-sm text-gray-600">{segments.length} segment{segments.length > 1 ? 's' : ''}</div>
+          <div className="text-sm text-gray-600">{airlineName} {flightSegment?.number || ''}</div>
+          <div className="text-sm text-gray-600">{flightSegments.length} segment{flightSegments.length > 1 ? 's' : ''}</div>
         </div>
         <div className="mt-6 w-full flex flex-row items-center justify-between">
           <div className="bg-[#FFF8E1] px-4 py-2 rounded-md inline-block">
             <span className="text-xl font-bold text-[#FF8C00]">
-              {price.currency} {parseFloat(price.total).toFixed(0)}
+              {displayPrice}
+              {price.isBreakdown && (
+                <span className="text-xs text-gray-500 ml-1">
+                  ({flightType === 'outbound' ? 'outbound' : 'return'})
+                </span>
+              )}
             </span>
           </div>
           {onSelect && !selected && (
@@ -294,29 +459,46 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
             </div>
             <div>
               <div className="font-bold text-xl text-gray-800">{origin} → {destination}</div>
-              <div className="text-gray-500 text-sm">{departureDate ? formatDate(outbound?.departure?.at || '') : ''} {returnDate ? `- ${formatDate(returnSegment?.arrival?.at || '')}` : ''}</div>
+              <div className="text-gray-500 text-sm">{departureDate ? formatDate(flightSegment?.departure?.at || '') : ''}</div>
             </div>
           </div>
           <div className="flex items-center justify-between gap-6 mb-6">
             <div className="text-center">
-              <div className="font-bold text-2xl text-[#FFA500]">{formatTime(outbound?.departure?.at ?? '')}</div>
+              <div className="font-bold text-2xl text-[#FFA500]">
+                {formatTime(flightType === 'return' 
+                  ? returnSegments[0]?.departure?.at 
+                  : outbound?.departure?.at ?? '')}
+              </div>
               <div className="text-xs text-gray-500">{origin}</div>
             </div>
             <div className="flex-1 flex flex-col items-center">
               <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${stopsColor} shadow-sm`}>{stopsLabel}</span>
-                <span className="text-xs text-gray-400">{outbound && itineraries[0]?.duration ? formatDuration(itineraries[0].duration) : ''}</span>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${stopsColor} shadow-sm`}>
+                  {stopsLabel}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {flightType === 'return' ? formatDuration(totalDuration) : (itineraries?.[0]?.duration ? formatDuration(itineraries[0].duration) : '')}
+                </span>
               </div>
               <div className="w-full h-0.5 bg-gradient-to-r from-[#FFA500] via-yellow-200 to-[#FFA500] my-2 rounded-full" />
+              {flightType === 'return' && returnSegments.length > 1 && (
+                <div className="text-xs text-gray-500 mt-1">
+                  Via {returnSegments.length - 1} connection{returnSegments.length > 2 ? 's' : ''}
+                </div>
+              )}
             </div>
             <div className="text-center">
-              <div className="font-bold text-2xl text-[#FFA500]">{formatTime(outbound?.arrival?.at ?? '')}</div>
+              <div className="font-bold text-2xl text-[#FFA500]">
+                {formatTime(flightType === 'return'
+                  ? returnSegments[returnSegments.length - 1]?.arrival?.at
+                  : outbound?.arrival?.at ?? '')}
+              </div>
               <div className="text-xs text-gray-500">{destination}</div>
             </div>
           </div>
           <div className="flex justify-between mb-4">
-            <div className="text-sm text-gray-600">{airlineName} {outbound?.number || ''}</div>
-            <div className="text-sm text-gray-600">{segments.length} segment{segments.length > 1 ? 's' : ''}</div>
+            <div className="text-sm text-gray-600">{airlineName} {flightSegment?.number || ''}</div>
+            <div className="text-sm text-gray-600">{flightSegments.length} segment{flightSegments.length > 1 ? 's' : ''}</div>
           </div>
         </div>
         {/* Flight Price: bottom left */}
@@ -343,13 +525,16 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
     <div className="space-y-3">
       {returnSegments.map((seg, idx) => (
         <div key={idx} className="bg-white rounded-xl p-4 border border-yellow-100 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-lg font-semibold">
-              {formatTime(seg.departure?.at ?? '')} - {formatTime(seg.arrival?.at ?? '')}
+          <div className="flex items-center gap-6 text-sm text-gray-600">
+            <div className="text-sm">
+              <div className="text-gray-600 font-medium">
+                {formatDisplayTime(getValidDate(seg.departure?.at))} - {formatDisplayTime(getValidDate(seg.arrival?.at))}
+              </div>
+              <div className="text-gray-500 text-xs mt-0.5">
+                {calculateTotalDuration([seg])}
+                {returnSegments.length > 1 && ` • ${returnSegments.length - 1} ${returnSegments.length === 2 ? 'stop' : 'stops'}`}
+              </div>
             </div>
-            <span className="text-sm text-gray-500">
-              {formatDate(seg.departure?.at ?? '')}
-            </span>
           </div>
           <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
             <span>{seg.departure?.iataCode} → {seg.arrival?.iataCode}</span>
@@ -476,15 +661,30 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
               // Save to TripCartContext for Trip Summary
               setTripInCart({
                 id: trip.id,
-                trip: trip
+                trip: {
+                  ...trip,
+                  // Ensure we have all itineraries
+                  itineraries: [
+                    ...(trip.itineraries || [])
+                  ]
+                }
               });
               
               // Also save to localStorage for booking
-              localStorage.setItem('current_booking_offer', JSON.stringify({
-                trip,
+              const bookingData = {
+                trip: {
+                  ...trip,
+                  // Ensure we have all itineraries
+                  itineraries: [
+                    ...(trip.itineraries || [])
+                  ]
+                },
                 searchParams,
                 budget
-              }));
+              };
+              
+              console.log('Saving booking data:', bookingData);
+              localStorage.setItem('current_booking_offer', JSON.stringify(bookingData));
               
               // Navigate to trip summary
               router.push('/trip-summary');
@@ -497,11 +697,20 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
           <button
             onClick={() => {
               // Save the full trip object (including searchParams) for booking
-              localStorage.setItem('current_booking_offer', JSON.stringify({
-                trip,
+              const bookingData = {
+                trip: {
+                  ...trip,
+                  // Ensure we have all itineraries
+                  itineraries: [
+                    ...(trip.itineraries || [])
+                  ]
+                },
                 searchParams,
                 budget
-              }));
+              };
+              
+              console.log('Saving booking data:', bookingData);
+              localStorage.setItem('current_booking_offer', JSON.stringify(bookingData));
               
               // Use router instead of window.location for better navigation
               router.push('/book');

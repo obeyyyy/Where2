@@ -412,7 +412,7 @@ function HomePage() {
                       <div className="relative">
                         <input
                           type="date"
-                          value={searchParams.returnDate || ''}
+                          value={searchParams.returnDate}
                           min={searchParams.departureDate}
                           onChange={(e) => handleInputChange('returnDate', e.target.value)}
                           className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
@@ -442,11 +442,15 @@ function HomePage() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() => {handleInputChange('tripType', 'roundtrip');
+                      onClick={() => {
+                        handleInputChange('tripType', 'roundtrip');
                         if (!searchParams.returnDate) {
                           const returnDate = new Date(searchParams.departureDate);
                           returnDate.setDate(returnDate.getDate() + 7);
-                          handleInputChange('returnDate', returnDate);
+                          const returnDateString = returnDate.toISOString().split('T')[0];
+                          handleInputChange('returnDate', returnDateString);
+                          console.log('Return Date:', returnDateString);
+                          console.log('Departure Date:', searchParams.departureDate);
                         }
                       }}
                       className={`py-3 rounded-xl font-medium ${
@@ -460,7 +464,7 @@ function HomePage() {
                     <button
                       onClick={() => {
                         handleInputChange('tripType', 'oneway');
-                        handleInputChange('returnDate', null);
+                        handleInputChange('returnDate', '');
                       }}
                       className={`py-3 rounded-xl font-medium ${
                         searchParams.tripType === 'oneway'
@@ -834,13 +838,20 @@ function HomePage() {
                   <h3 className="text-lg font-semibold mb-2">Return Flight</h3>
                   {selectedReturn ? (
                     <TripCard
-                      trip={selectedReturn}
+                      trip={{
+                        ...selectedReturn,
+                        // Ensure we're using the correct date from the return segments
+                        itineraries: selectedReturn.itineraries.map((itinerary: any, idx: number) => ({
+                          ...itinerary,
+                          // Use the first segment's departure date for the return flight
+                          departureDate: itinerary.segments?.[0]?.departure?.at || ''
+                        }))
+                      }}
                       budget={searchParams.budget}
                       searchParams={{
                         ...searchParams,
-                        departureDate: selectedReturn.itineraries[0]?.segments[0]?.departure?.at
-                          ? new Date(selectedReturn.itineraries[0].segments[0].departure.at).toISOString().split('T')[0]
-                          : searchParams.returnDate || '',
+                        // Use the return date from the search params for display
+                        departureDate: searchParams.returnDate || '',
                         returnDate: ''
                       }}
                       flightType="return"
@@ -853,25 +864,36 @@ function HomePage() {
                         {/* Show all available return flight options */}
                         {(() => {
                           if (!selectedOutbound) return null;
-                          // Extract all return legs from trips with same outbound
+                          
+                          // Find all trips that have the same outbound segment as the selected outbound
                           const returnFlightOptions = tripData
-                            .filter(trip =>
-                              JSON.stringify(trip.itineraries[0].segments) === JSON.stringify(selectedOutbound.itineraries[0].segments)
-                            )
-                            // Create a new trip object with just the return itinerary
+                            .filter(trip => {
+                              // Skip trips that don't have exactly 2 itineraries (outbound + return)
+                              if (!trip.itineraries || trip.itineraries.length !== 2) return false;
+                              
+                              // Check if the outbound segments match the selected outbound
+                              const outboundSegments = trip.itineraries[0].segments;
+                              const selectedSegments = selectedOutbound.itineraries[0].segments;
+                              
+                              return JSON.stringify(outboundSegments) === JSON.stringify(selectedSegments);
+                            })
+                            // Map to a new trip object with just the return itinerary
                             .map(trip => {
-                              // Get the return itinerary
+                              // Get the return itinerary (second one in the array)
                               const returnItinerary = trip.itineraries[1];
                               
-                              // Create a new trip object with the return itinerary as the first one
+                              // Create a new trip object with just the return itinerary
                               return {
                                 ...trip,
-                                // This is the key change - we're creating a completely new trip object
-                                // with the return itinerary as the first (and only) one
-                                itineraries: [returnItinerary]
+                                itineraries: [returnItinerary],
+                                price: {
+                                  ...trip.price,
+                                  // Adjust the price to show only the return portion (half of total)
+                                  total: (parseFloat(trip.price.total) / 2).toFixed(2)
+                                }
                               };
                             })
-                            .filter(trip => trip.itineraries[0] && trip.itineraries[0].segments.length > 0);
+                            .filter(trip => trip.itineraries[0]?.segments?.length > 0);
                           if (returnFlightOptions.length === 0) {
                             return (
                               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
@@ -895,7 +917,11 @@ function HomePage() {
                               key={trip.id + '-return-' + idx}
                               trip={trip}
                               budget={searchParams.budget}
-                              searchParams={searchParams}
+                              searchParams={{
+                                ...searchParams,
+                                departureDate: searchParams.returnDate || '',
+                                returnDate: ''
+                              }}
                               flightType="return"
                               onSelect={() => setSelectedReturn(trip)}
                               selected={false}
@@ -914,7 +940,6 @@ function HomePage() {
                   disabled={searchParams.tripType === 'roundtrip' && !selectedReturn}
                   onClick={() => {
                     // Create a combined trip with both outbound and return flights
-                    // Make sure we preserve all the original data for both flights
                     const combinedTrip = {
                       ...selectedOutbound,
                       // Preserve the original itineraries structure with proper dates
@@ -923,8 +948,23 @@ function HomePage() {
                         selectedOutbound.itineraries[0],
                         // Add the return itinerary if selected
                         ...(selectedReturn ? [selectedReturn.itineraries[0]] : [])
-                      ]
+                      ],
+                      // Combine prices for round trip
+                      price: {
+                        ...selectedOutbound.price,
+                        // If we have a return flight, add the prices together
+                        ...(selectedReturn && {
+                          total: (parseFloat(selectedOutbound.price.total) + parseFloat(selectedReturn.price.total)).toFixed(2),
+                          breakdown: {
+                            outbound: selectedOutbound.price.total,
+                            return: selectedReturn.price.total
+                          }
+                        })
+                      }
                     };
+                    
+                    // If we have a return flight, we'll handle the combined price in the TripSummary component
+                    // by looking at the itineraries array length
                     
                     // Create a modified searchParams object with the correct dates
                     const updatedSearchParams = {
