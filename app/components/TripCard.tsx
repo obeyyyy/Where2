@@ -73,7 +73,7 @@ interface TripCardProps {
     useKiwi: boolean;
     useDuffel: boolean;
   };
-  flightType?: 'outbound' | 'return';
+  flightType?: 'outbound' | 'return' | 'oneway';
   onSelect?: () => void;
   selected?: boolean;
 }
@@ -656,57 +656,66 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
           })()}</span>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => {
-              // Save to TripCartContext for Trip Summary
-              setTripInCart({
-                id: trip.id,
-                trip: {
-                  ...trip,
-                  // Ensure we have all itineraries
-                  itineraries: [
-                    ...(trip.itineraries || [])
-                  ]
-                }
-              });
-              
-              // Also save to localStorage for booking
-              const bookingData = {
-                trip: {
-                  ...trip,
-                  // Ensure we have all itineraries
-                  itineraries: [
-                    ...(trip.itineraries || [])
-                  ]
-                },
-                searchParams,
-                budget
-              };
-              
-              console.log('Saving booking data:', bookingData);
-              localStorage.setItem('current_booking_offer', JSON.stringify(bookingData));
-              
-              // Navigate to trip summary
-              router.push('/trip-summary');
-            }}
-            className="flex-1 bg-gradient-to-br from-blue-500 to-blue-600 text-white px-4 py-3 rounded-lg font-bold shadow-lg hover:from-blue-600 hover:to-blue-500 transition mt-2"
-          >
-            View Summary
-          </button>
+          {searchParams.tripType === 'roundtrip' && (
+            <button
+              onClick={() => {
+                // Save to TripCartContext for Trip Summary
+                setTripInCart({
+                  id: trip.id,
+                  trip: {
+                    ...trip,
+                    itineraries: [
+                      ...(trip.itineraries || [])
+                    ]
+                  },
+                  searchParams: {
+                    ...searchParams,
+                    tripType: 'roundtrip' as const
+                  }
+                });
+                
+                // Navigate to trip summary
+                router.push('/trip-summary');
+              }}
+              className="flex-1 bg-gradient-to-br from-blue-500 to-blue-600 text-white px-4 py-3 rounded-lg font-bold shadow-lg hover:from-blue-600 hover:to-blue-500 transition mt-2"
+            >
+              View Summary
+            </button>
+          )}
           
           <button
             onClick={() => {
+              const isOneWay = searchParams.tripType === 'oneway';
+              
+              // For one-way trips, ensure we only have one itinerary
+              const tripToBook = isOneWay 
+                ? {
+                    ...trip,
+                    itineraries: [trip.itineraries[0]]
+                  }
+                : trip;
+                
+              // Save to TripCartContext for booking
+              setTripInCart({
+                id: trip.id,
+                trip: tripToBook,
+                searchParams: {
+                  ...searchParams,
+                  tripType: isOneWay ? 'oneway' as const : 'roundtrip' as const,
+                  returnDate: isOneWay ? '' : searchParams.returnDate
+                }
+              });
+              
               // Save the full trip object (including searchParams) for booking
               const bookingData = {
-                trip: {
-                  ...trip,
-                  // Ensure we have all itineraries
-                  itineraries: [
-                    ...(trip.itineraries || [])
-                  ]
+                trip: tripToBook,
+                searchParams: {
+                  ...searchParams,
+                  // Make sure the return date is cleared for one-way trips
+                  returnDate: isOneWay ? '' : searchParams.returnDate,
+                  tripType: isOneWay ? 'oneway' as const : 'roundtrip' as const
                 },
-                searchParams,
-                budget
+                budget: searchParams.budget
               };
               
               console.log('Saving booking data:', bookingData);
