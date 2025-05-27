@@ -695,34 +695,36 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
                   }
                 : trip;
                 
-              // Save to TripCartContext for booking
-              setTripInCart({
-                id: trip.id,
-                trip: tripToBook,
-                searchParams: {
-                  ...searchParams,
-                  tripType: isOneWay ? 'oneway' as const : 'roundtrip' as const,
-                  returnDate: isOneWay ? '' : searchParams.returnDate
-                }
-              });
-              
-              // Save the full trip object (including searchParams) for booking
+              // Prepare the trip data in the format expected by the booking page
               const bookingData = {
-                trip: tripToBook,
+                id: trip.id,
+                trip: {
+                  ...tripToBook,
+                  price: {
+                    ...tripToBook.price,
+                    breakdown: {
+                      outbound: tripToBook.price.total,
+                      return: isOneWay ? '0' : (tripToBook.price.breakdown?.return || '0')
+                    }
+                  }
+                },
                 searchParams: {
                   ...searchParams,
                   // Make sure the return date is cleared for one-way trips
                   returnDate: isOneWay ? '' : searchParams.returnDate,
                   tripType: isOneWay ? 'oneway' as const : 'roundtrip' as const
                 },
-                budget: searchParams.budget
+                totalPrice: tripToBook.price.total
               };
+
+              // Save to TripCartContext for booking
+              setTripInCart(bookingData);
               
               console.log('Saving booking data:', bookingData);
               localStorage.setItem('current_booking_offer', JSON.stringify(bookingData));
               
               // Use router instead of window.location for better navigation
-              router.push('/book');
+              router.push('/trip-summary');
             }}
             className="flex-1 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-4 py-3 rounded-lg font-bold shadow-lg hover:from-[#FF8C00] hover:to-[#FFA500] transition mt-2"
           >

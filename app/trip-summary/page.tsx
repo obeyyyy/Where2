@@ -1,10 +1,30 @@
 "use client";
 import React from "react";
 import { useTripCart } from "../components/TripCartContext";
-import TripCard from "../components/TripCard";
 import { FiArrowLeft, FiCalendar, FiMapPin, FiDollarSign, FiUsers } from "react-icons/fi";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FlightItineraryCard } from "../components/FlightItineraryCard";
+import airportsJson from 'airports-json';
+
+// Interface for airport info
+interface AirportInfo {
+  iata_code: string;
+  name?: string;
+  city?: string;
+  country?: string;
+}
+
+// Helper function to get airport info
+const getAirportInfo = (iataCode: string): AirportInfo => {
+  const airport = airportsJson.airports.find((a: any) => a.iata === iataCode);
+  return airport ? {
+    iata_code: airport.iata,
+    name: airport.name,
+    city: airport.city,
+    country: airport.country
+  } : { iata_code: iataCode };
+};
 
 export default function TripSummaryPage() {
   const { trip } = useTripCart();
@@ -38,11 +58,18 @@ export default function TripSummaryPage() {
   const lastSegment = itineraries?.[0]?.segments?.[itineraries?.[0]?.segments?.length - 1] || {};
   const returnSegment = itineraries?.[1]?.segments?.[0] || {};
   
+  // Format times for display
+  const formatTime = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+  
   // Format dates from the actual flight data
   const formatDisplayDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   };
   
   // Calculate prices based on the trip data
@@ -179,153 +206,106 @@ export default function TripSummaryPage() {
   
   return (
     <div className="max-w-4xl mx-auto py-12 px-4">
-      {/* Header */}
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Trip Summary</h1>
-          <div className="flex items-center text-gray-600 text-sm gap-4">
-            <div className="flex items-center">
-              <FiMapPin className="mr-1" />
-              <span>
-                {firstSegment?.departure?.iataCode || 'N/A'}
-                {' → '}
-                {lastSegment?.arrival?.iataCode || 'N/A'}
-                {returnSegment && ` → ${firstSegment?.departure?.iataCode || 'N/A'}`}
-              </span>
-            </div>
-            <div className="flex items-center">
-              <FiCalendar className="mr-1" />
-              <span>
-                {firstSegment?.departure?.at ? formatDisplayDate(firstSegment.departure.at) : 'N/A'}
-                {returnSegment?.departure?.at && ` - ${formatDisplayDate(returnSegment.departure.at)}`}
-              </span>
-            </div>
-            <div className="flex items-center">
-              <FiUsers className="mr-1" />
-              <span>{searchParams?.travelers || 1} Traveler{(searchParams?.travelers || 1) > 1 ? 's' : ''}</span>
-            </div>
-          </div>
-        </div>
-        <Link href="/search" className="text-blue-600 hover:underline flex items-center">
-          <FiArrowLeft className="mr-1" /> Back to Search
-        </Link>
-      </div>
-      
-      {/* Flight Cards */}
-      <div className="space-y-8 mb-10">
-        {/* Outbound Flight */}
-        <div>
-          <h2 className="text-xl font-bold mb-4 flex items-center">
-            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-1 rounded-full mr-2">Outbound</span>
-            Flight Details
-          </h2>
-          <TripCard 
-            trip={{
-              ...trip.trip,
-              // Only include the outbound itinerary
-              itineraries: [itineraries[0]],
-              // Use the actual price from the itinerary if available
-              price: {
-                ...price,
-                total: itineraries[0]?.price?.total || 
-                     (price?.breakdown?.outbound || 
-                      (price?.total ? (parseFloat(price.total) * 0.75).toFixed(2) : '0'))
-              }
-            }}
-            budget={searchParams?.budget || 9999}
-            searchParams={{
-              ...searchParams,
-              // Use actual flight dates
-              departureDate: firstSegment?.departure?.at,
-              returnDate: returnSegment?.departure?.at
-            }}
-            flightType="outbound"
-          />
-        </div>
-        
-        {/* Return Flight */}
-        {itineraries[1] && (
+      <div>
+        {/* Header */}
+        <div className="mb-8 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold mb-4 flex items-center">
-              <span className="bg-green-100 text-green-800 text-xs font-bold px-2.5 py-1 rounded-full mr-2">Return</span>
-              Flight Details
-            </h2>
-            <TripCard 
-              trip={{
-                ...trip.trip,
-                // Only include the return itinerary
-                itineraries: [itineraries[1]],
-                // Use the actual price from the itinerary if available
-                price: {
-                  ...price,
-                  total: itineraries[1]?.price?.total || 
-                       (price?.breakdown?.return || 
-                        (price?.total ? (parseFloat(price.total) * 0.25).toFixed(2) : '0'))
-                }
-              }}
-              budget={searchParams?.budget || 9999}
-              searchParams={{
-                ...searchParams,
-                // Swap origin and destination for return
-                origin: lastSegment?.arrival?.iataCode,
-                destination: firstSegment?.departure?.iataCode,
-                // Use actual flight dates
-                departureDate: returnSegment?.departure?.at,
-                returnDate: '' // No return date for the return flight
-              }}
-              flightType="return"
-            />
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Trip Summary</h1>
+            <div className="flex items-center text-gray-600 text-sm gap-4">
+              <div className="flex items-center">
+                <FiMapPin className="mr-1" />
+                <span>
+                  {firstSegment?.departure?.iataCode || 'N/A'}
+                  {' → '}
+                  {lastSegment?.arrival?.iataCode || 'N/A'}
+                  {returnSegment && ` → ${firstSegment?.departure?.iataCode || 'N/A'}`}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <FiCalendar className="mr-1" />
+                <span>
+                  {firstSegment?.departure?.at ? formatDisplayDate(firstSegment.departure.at) : 'N/A'}
+                  {returnSegment?.departure?.at && ` - ${formatDisplayDate(returnSegment.departure.at)}`}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <FiUsers className="mr-1" />
+                <span>{searchParams?.travelers || 1} Traveler{(searchParams?.travelers || 1) > 1 ? 's' : ''}</span>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+          <Link href="/search" className="text-blue-600 hover:underline flex items-center">
+            <FiArrowLeft className="mr-1" /> Back to Search
+          </Link>
+        </div>
       
-      {/* Price Summary */}
-      <div className="bg-gray-50 rounded-xl p-6 mb-8">
-        <h2 className="text-xl font-bold mb-4">Price Summary</h2>
-        <div className="space-y-3">
+        {/* Flight Details */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">Flight Details</h2>
+          
           {/* Outbound Flight */}
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Outbound Flight</span>
-            <span className="font-medium">{prices.outbound}</span>
-          </div>
+          {itineraries?.[0] && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-700">Outbound Flight</h3>
+                <span className="text-sm text-gray-500">
+                  {itineraries[0].segments?.[0]?.departure?.at ? 
+                    formatDisplayDate(itineraries[0].segments[0].departure.at) : 'N/A'}
+                </span>
+              </div>
+              
+              <FlightItineraryCard
+                itinerary={itineraries[0]}
+                type="outbound"
+                date={itineraries[0].segments?.[0]?.departure?.at || ''}
+                price={{
+                  currency: price?.currency || 'USD',
+                  total: prices.outboundRaw.toString(),
+                  breakdown: {
+                    outbound: prices.outboundRaw.toString()
+                  }
+                }}
+                airports={[
+                  getAirportInfo(itineraries[0].segments?.[0]?.departure?.iataCode || ''),
+                  getAirportInfo(itineraries[0].segments?.[itineraries[0].segments.length - 1]?.arrival?.iataCode || '')
+                ]}
+                className="mb-6"
+              />
+            </div>
+          )}
           
           {/* Return Flight */}
-          {itineraries[1] && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Return Flight</span>
-              <span className="font-medium">{prices.return}</span>
-            </div>
-          )}
-          
-          {/* Hotel */}
-          {trip.trip.hotels?.length > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">
-                {trip.trip.hotels[0]?.name || 'Hotel'}
-                {trip.trip.hotels[0]?.checkInDate && (
-                  <span className="block text-xs text-gray-500">
-                    {formatDisplayDate(trip.trip.hotels[0].checkInDate)}
-                    {trip.trip.hotels[0]?.checkOutDate && ` - ${formatDisplayDate(trip.trip.hotels[0].checkOutDate)}`}
-                  </span>
-                )}
-              </span>
-              <span className="font-medium">{prices.hotel}</span>
-            </div>
-          )}
-          
-          {/* Total */}
-          <div className="border-t border-gray-200 pt-3 mt-3">
-            <div className="flex justify-between font-bold">
-              <span>Total</span>
-              <span className="text-[#FF8C00]">{prices.total}</span>
-            </div>
-            {prices.currency !== 'USD' && (
-              <div className="text-xs text-gray-500 text-right mt-1">
-                Prices shown in {prices.currency}
+          {searchParams.tripType === 'roundtrip' && itineraries?.[1] && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-700">Return Flight</h3>
+                <span className="text-sm text-gray-500">
+                  {itineraries[1].segments?.[0]?.departure?.at ? 
+                    formatDisplayDate(itineraries[1].segments[0].departure.at) : 'N/A'}
+                </span>
               </div>
-            )}
-          </div>
+              
+              <FlightItineraryCard
+                itinerary={itineraries[1]}
+                type="return"
+                date={itineraries[1].segments?.[0]?.departure?.at || ''}
+                price={{
+                  currency: price?.currency || 'USD',
+                  total: prices.returnRaw.toString(),
+                  breakdown: {
+                    return: prices.returnRaw.toString()
+                  }
+                }}
+                airports={[
+                  getAirportInfo(itineraries[1].segments?.[0]?.departure?.iataCode || ''),
+                  getAirportInfo(itineraries[1].segments?.[itineraries[1].segments.length - 1]?.arrival?.iataCode || '')
+                ]}
+              />
+            </div>
+          )}
         </div>
+        
+        {/* Book Button */}
         <button
           onClick={handleBooking}
           className="w-full bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-6 py-4 rounded-lg font-bold shadow-lg hover:shadow-xl transition-shadow"

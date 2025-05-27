@@ -59,6 +59,10 @@ interface FlightOffer {
   price: {
     total: string;
     currency: string;
+    breakdown?: {
+      outbound?: string;
+      return?: string;
+    };
   };
   itineraries: Array<{
     duration: string;
@@ -83,7 +87,7 @@ function HomePage() {
     destination: 'PAR',
     departureDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 week from now
     returnDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 weeks from now
-    tripType: 'roundtrip',
+    tripType: 'roundtrip' as const,
     travelers: 1,
     nights: 7,
     includeHotels: true,
@@ -93,6 +97,15 @@ function HomePage() {
   const [selectedOutbound, setSelectedOutbound] = useState<FlightOffer | null>(null);
   const [selectedReturn, setSelectedReturn] = useState<FlightOffer | null>(null);
   const [tripData, setTripData] = useState<FlightOffer[]>([]);
+  const [showReturnFlights, setShowReturnFlights] = useState(false);
+  // Memoized function to get outbound flights (first segment of each trip)
+  const memoizedOutboundFlights = React.useMemo(() => 
+    tripData.map(trip => ({
+      ...trip,
+      itineraries: [trip.itineraries[0]] // Only show outbound leg initially
+    })),
+    [tripData]
+  );
   const [error, setError] = useState<string | null>(null);
   const quickSelect = [250, 500, 750, 1000, 1500];
   const popularDestinations = [
@@ -111,10 +124,18 @@ function HomePage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleSearch = async () => {
-    setViewState('searching');
+  // Handler functions are defined later in the file
+
+  // Handle search form submission
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
     setError(null);
     setTripData([]);
+    // Reset all selections when performing a new search
+    setSelectedOutbound(null);
+    setSelectedReturn(null);
+    setViewState('searching');
 
     try {
       // Simulate API call delay
@@ -176,6 +197,9 @@ function HomePage() {
       console.error('Search error:', err);
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
       setViewState('error');
+    } finally {
+      // Always set loading to false when the operation completes or fails
+      setIsLoading(false);
     }
   };
 
@@ -183,7 +207,10 @@ function HomePage() {
     setViewState('initial');
   };
 
-  if (isLoading) return <Loading />;
+  if (isLoading) return( <div className="flex justify-center items-center h-screen">
+    <Loading lottieUrl="https://lottie.host/7c52d644-a961-4de0-9957-d4cfb75f1241/1b5IX1mZ0f.json" alt="Loading" />
+  </div>
+  );
 
   const handleInputChange = (field: keyof SearchParams, value: unknown) => {
     setSearchParams(prev => ({
@@ -721,19 +748,27 @@ function HomePage() {
   };
 
 
-  // Helper: Split outbound/return flights
-  const outboundFlights = tripData.map(trip => ({
-    ...trip,
-    itineraries: [trip.itineraries[0]] // Only show outbound leg initially
-  }));
+  // Helper: Get outbound flights (first segment of each trip)
+  const getOutboundFlights = () => {
+    return tripData.map(trip => ({
+      ...trip,
+      itineraries: [trip.itineraries[0]] // Only show outbound leg initially
+    }));
+  };
+  
+  const outboundFlights = getOutboundFlights();
 
-  // Handle outbound flight selection
-  const handleSelectOutbound = (trip: FlightOffer) => {
+  // Handle flight selection
+  const handleSelectOutbound = async (trip: FlightOffer) => {
+    // Always reset return selection when selecting a new outbound flight
+    setSelectedReturn(null);
+    
+    // Set the new outbound flight
     setSelectedOutbound(trip);
     
-    // For one-way trips, proceed directly to booking
     if (searchParams.tripType === 'oneway') {
-      setTripInCart({
+      // For one-way trips, go directly to booking
+      const tripToBook = {
         id: trip.id || `trip-${Date.now()}`,
         trip: {
           ...trip,
@@ -745,8 +780,16 @@ function HomePage() {
           tripType: 'oneway' as const,
           returnDate: '' // Ensure return date is cleared for one-way trips
         }
-      });
-      router.push('/book');
+      };
+      
+      // First update the cart state
+      setTripInCart(tripToBook);
+      
+      // Then navigate to the booking page
+      router.push('/trip-summary');
+    } else {
+      // For roundtrip, show return flight selection
+      setViewState('results');
     }
   };
 
@@ -762,55 +805,115 @@ function HomePage() {
   };
 
   // Handle continue to booking
-  const handleContinueToBooking = () => {
+  const handleContinueToBooking = async () => {
     if (!selectedOutbound) return;
     
-    if (searchParams.tripType === 'oneway') {
-      // For one-way trips, just use the selected outbound flight
-      setTripInCart({
+    try {
+      // Create a clean trip object with proper price breakdown
+      const tripToBook = {
         id: selectedOutbound.id || `trip-${Date.now()}`,
         trip: {
           ...selectedOutbound,
-          price: selectedOutbound.price,
+          price: {
+            ...selectedOutbound.price,
+            breakdown: {
+              outbound: selectedOutbound.price.total,
+              return: searchParams.tripType === 'roundtrip' ? (selectedReturn?.price?.total || '0') : '0'
+            }
+          },
           itineraries: [...selectedOutbound.itineraries]
         },
         searchParams: {
           ...searchParams,
-          tripType: 'oneway' as const
-        }
-      });
-      router.push('/book');
-    } else if (searchParams.tripType === 'roundtrip') {
-      if (selectedReturn) {
-        // For roundtrip with return selected, combine both flights
-        setTripInCart({
-          id: selectedOutbound.id || `trip-${Date.now()}`,
-          trip: {
-            ...selectedOutbound,
-            itineraries: [
-              ...selectedOutbound.itineraries,
-              ...(selectedReturn?.itineraries || [])
-            ],
-            price: {
-              ...selectedOutbound.price,
-              total: (parseFloat(selectedOutbound.price.total) + parseFloat(selectedReturn?.price?.total || '0')).toString()
-            }
-          },
-          searchParams: {
-            ...searchParams,
-            tripType: 'roundtrip' as const
+          // Ensure we use the current trip type and clear return date for one-way
+          tripType: searchParams.tripType as 'oneway' | 'roundtrip',
+          ...(searchParams.tripType === 'oneway' && { returnDate: '' })
+        },
+        totalPrice: selectedOutbound.price.total
+      };
+      
+      // If it's a roundtrip and we have a return flight, combine the trips
+      if (searchParams.tripType === 'roundtrip' && selectedReturn) {
+        // Combine outbound and return itineraries
+        tripToBook.trip.itineraries = [
+          ...selectedOutbound.itineraries,
+          ...(selectedReturn.itineraries || [])
+        ];
+        
+        // Calculate total price
+        const totalPrice = (parseFloat(selectedOutbound.price.total) + 
+                          parseFloat(selectedReturn.price?.total || '0')).toString();
+        
+        // Update the price with proper breakdown
+        tripToBook.trip.price = {
+          total: totalPrice,
+          currency: selectedOutbound.price.currency,
+          breakdown: {
+            outbound: selectedOutbound.price.total,
+            return: selectedReturn.price?.total || '0'
           }
-        });
-        router.push('/book');
-      } else {
-        // Show return flight selection
-        setViewState('results');
+        };
+        
+        // Update total price
+        tripToBook.totalPrice = totalPrice;
+      } else if (searchParams.tripType === 'oneway') {
+        // For one-way trips, ensure we have the correct price breakdown
+        tripToBook.trip.price = {
+          ...selectedOutbound.price,
+          breakdown: {
+            outbound: selectedOutbound.price.total,
+            return: '0'
+          }
+        };
+        tripToBook.totalPrice = selectedOutbound.price.total;
       }
+      
+      // Save to localStorage for booking
+      localStorage.setItem('current_booking_offer', JSON.stringify(tripToBook));
+      
+      // Update the cart state
+      await setTripInCart(tripToBook);
+      
+      // Navigate to booking page
+      router.push('/book');
+      
+      // Clear selections after navigation
+      setSelectedOutbound(null);
+      setSelectedReturn(null);
+      
+      // Reset the view state
+      setViewState('results');
+    } catch (error) {
+      console.error('Error saving trip to cart:', error);
+      // Handle error (e.g., show error message to user)
     }
   };
 
-  // Only keep renderSearchResults as a render function
-  const renderSearchResults = () => (
+  
+
+
+
+  // Error component
+  function renderError() {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-md text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
+          <p className="text-gray-700 mb-6">An error occurred while processing your request. Please try again.</p>
+          <button
+            onClick={() => setViewState('initial')}
+            className="px-6 py-2 bg-[#FFA500] text-white rounded-lg hover:bg-orange-600 transition-colors"
+          >
+            Back to Search
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Search results component
+  function renderSearchResults() {
+    return (
     <div className="min-h-screen bg-gray-50 py-12">
       <header className="bg-white shadow-md py-4">
         <div className="container mx-auto px-4 flex justify-between items-center">
@@ -832,7 +935,7 @@ function HomePage() {
           {!selectedOutbound ? (
             <div>
               <h2 className="text-2xl font-bold mb-6 text-gray-800">Select your {searchParams.tripType === 'oneway' ? 'flight' : 'outbound flight'}</h2>
-              {outboundFlights.length === 0 ? (
+              {memoizedOutboundFlights.length === 0 ? (
                 <div className="text-center py-10">
                   <p className="text-gray-500 text-lg">No flights found.</p>
                   <button 
@@ -1004,7 +1107,7 @@ function HomePage() {
               
               <div className="mt-8 flex items-center gap-4">
                 {searchParams.tripType === 'roundtrip' && (
-                  <button 
+                  <button
                     className="flex-1 bg-gradient-to-br from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:shadow-xl transition-shadow duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={!selectedReturn}
                     onClick={() => {
@@ -1029,7 +1132,7 @@ function HomePage() {
                               return: selectedReturn.price.total
                             }
                           })
-                        }
+                        } as const // Use const assertion to ensure type safety
                       };
                       
                       // Create a modified searchParams object with the correct dates
@@ -1041,66 +1144,74 @@ function HomePage() {
                           : searchParams.returnDate
                       };
                       
-                      // Save to TripCartContext for Trip Summary with updated search params
-                      setTripInCart({
-                        id: combinedTrip.id,
-                        searchParams: updatedSearchParams,
-                        trip: combinedTrip
-                      });
+                      // Format the trip data to match what the booking page expects
+                      const formattedTrip = {
+                        ...combinedTrip,
+                        // Ensure we have the correct price structure
+                        price: (() => {
+                          const basePrice = {
+                            total: combinedTrip.price?.total || '0',
+                            currency: combinedTrip.price?.currency || 'USD'
+                          };
+                          
+                          const isRoundTrip = (searchParams.tripType as string) === 'roundtrip';
+                          if (isRoundTrip && selectedReturn) {
+                            return {
+                              ...basePrice,
+                              breakdown: {
+                                outbound: selectedOutbound.price?.total || '0',
+                                return: selectedReturn?.price?.total || '0'
+                              }
+                            };
+                          }
+                          return basePrice;
+                        })(),
+                        // Ensure we have the correct itineraries structure
+                        itineraries: (combinedTrip.itineraries || []).map((itinerary: any) => ({
+                          ...itinerary,
+                          // Ensure segments have the expected structure
+                          segments: (itinerary.segments || []).map((segment: any) => ({
+                            ...segment,
+                            departure: {
+                              ...segment.departure,
+                              at: segment.departure?.at || segment.departure?.dateTime || ''
+                            },
+                            arrival: {
+                              ...segment.arrival,
+                              at: segment.arrival?.at || segment.arrival?.dateTime || ''
+                            }
+                          }))
+                        }))
+                      };
+
+                      // Save to localStorage for booking
+                      localStorage.setItem('current_booking_offer', JSON.stringify({
+                        trip: formattedTrip,
+                        searchParams: {
+                          ...searchParams,
+                          // Ensure we have the required fields for the booking page
+                          from: searchParams.origin,
+                          to: searchParams.destination,
+                          travelers: searchParams.travelers || 1,
+                          tripType: searchParams.tripType,
+                          // Make sure the return date is cleared for one-way trips
+                          returnDate: (searchParams.tripType as string) === 'oneway' ? '' : updatedSearchParams.returnDate,
+                          departureDate: searchParams.departureDate
+                        },
+                        budget: searchParams.budget
+                      }));
                       
-                      // Navigate to trip summary
-                      window.location.href = '/trip-summary';
+                      // Navigate to booking page
+                      window.location.href = '/book';
                     }}
                   >
-                    {!selectedReturn ? 'Select Return Flight to Continue' : 'View Summary'}
+                    {(searchParams.tripType as string) === 'oneway' 
+                      ? 'Continue to Booking' 
+                      : !selectedReturn 
+                        ? 'Select Return Flight to Continue' 
+                        : 'Book Package'}
                   </button>
                 )}
-                
-                <button 
-                  className="flex-1 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:shadow-xl transition-shadow duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={searchParams.tripType === 'roundtrip' && !selectedReturn}
-                  onClick={() => {
-                    // For one-way trips, just use the selected outbound flight
-                    // For roundtrip, combine both outbound and return flights
-                    const tripToBook = searchParams.tripType === 'oneway'
-                      ? {
-                          ...selectedOutbound,
-                          itineraries: [selectedOutbound.itineraries[0]]
-                        }
-                      : {
-                          ...selectedOutbound,
-                          itineraries: [
-                            selectedOutbound.itineraries[0],
-                            ...(selectedReturn ? [selectedReturn.itineraries[0]] : [])
-                          ]
-                        };
-                    
-                    // Save the full trip object (including searchParams) for booking
-                    localStorage.setItem('current_booking_offer', JSON.stringify({
-                      trip: tripToBook,
-                      searchParams: {
-                        ...searchParams,
-                        // Make sure the return date is cleared for one-way trips
-                        returnDate: searchParams.tripType === 'oneway' ? '' : searchParams.returnDate
-                      },
-                      budget: searchParams.budget
-                    }));
-                    
-                    // Navigate to booking page
-                    window.location.href = '/book';
-                  }}
-                >
-                  {searchParams.tripType === 'roundtrip' && !selectedReturn 
-                    ? 'Select Return Flight to Continue' 
-                    : 'Book Package'}
-                </button>
-                
-                <button
-                  className="text-gray-600 hover:text-gray-800 underline transition-colors duration-200"
-                  onClick={handleReset}
-                >
-                  Start Over
-                </button>
               </div>
             </div>
           ) : (
@@ -1174,6 +1285,162 @@ function HomePage() {
 
   if (viewState === 'searching') {
     return renderSearching();
+  }
+
+  const renderSearchResults = () => (
+    <div className="min-h-screen bg-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <AnimatePresence mode="wait">
+          {!showReturnFlights ? (
+            <div>
+              <h2 className="text-2xl font-bold mb-6 text-gray-800">Select your outbound flight</h2>
+              {outboundFlights.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-gray-500 text-lg">No flights found. Please try different search criteria.</p>
+                  <button 
+                    onClick={handleBackToSearch}
+                    className="mt-4 text-blue-600 hover:underline"
+                  >
+                    ← Back to search
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {outboundFlights.map((trip) => (
+                    <motion.div
+                      key={trip.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <TripCard
+                        trip={trip}
+                        budget={searchParams.budget}
+                        searchParams={{
+                          ...searchParams,
+                          departureDate: searchParams.departureDate,
+                          returnDate: searchParams.returnDate || ''
+                        }}
+                        flightType="outbound"
+                        onSelect={() => handleSelectOutbound(trip)}
+                        selected={selectedOutbound?.id === trip.id}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="mt-8 flex justify-between items-center">
+                <button
+                  className="text-gray-600 hover:text-gray-800 underline transition-colors duration-200"
+                  onClick={handleBackToSearch}
+                >
+                  ← Back to search
+                </button>
+                
+                <button
+                  className="bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-6 py-3 rounded-xl font-medium shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!selectedOutbound}
+                  onClick={() => {
+                    if (!selectedOutbound) return;
+                    
+                    if (searchParams.tripType === 'oneway') {
+                      // For one-way trips, proceed directly to booking
+                      const tripToBook = {
+                        ...selectedOutbound,
+                        price: {
+                          ...selectedOutbound.price,
+                          breakdown: {
+                            outbound: selectedOutbound.price.total,
+                            return: '0'
+                          }
+                        }
+                      };
+
+                      // Save the full trip object (including searchParams) for booking
+                      localStorage.setItem('current_booking_offer', JSON.stringify({
+                        trip: tripToBook,
+                        searchParams: {
+                          ...searchParams,
+                          from: searchParams.origin,
+                          to: searchParams.destination,
+                          travelers: searchParams.travelers || 1,
+                          tripType: searchParams.tripType,
+                          returnDate: '', // Clear return date for one-way trips
+                          departureDate: searchParams.departureDate
+                        },
+                        budget: searchParams.budget
+                      }));
+                      
+                      // Navigate to booking page
+                      window.location.href = '/book';
+                    } else {
+                      // For round-trip, show return flights
+                      setShowReturnFlights(true);
+                    }
+                  }}
+                >
+                  {(searchParams.tripType as string) === 'oneway' 
+                    ? 'Continue to Booking' 
+                    : !selectedReturn 
+                      ? 'Select Return Flight to Continue' 
+                      : 'Book Package'}
+                </button>
+                
+                <button
+                  className="text-gray-600 hover:text-gray-800 underline transition-colors duration-200"
+                  onClick={handleReset}
+                >
+                  Start Over
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h2 className="text-2xl font-bold mb-6 text-gray-800">Select your return flight</h2>
+              {outboundFlights.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-gray-500 text-lg">No return flights found.</p>
+                  <button 
+                    onClick={handleBackToSearch}
+                    className="mt-4 text-blue-600 hover:underline"
+                  >
+                    ← Back to search
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {outboundFlights.map((trip) => (
+                    <motion.div
+                      key={trip.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <TripCard
+                        trip={trip}
+                        budget={searchParams.budget}
+                        searchParams={{
+                          ...searchParams,
+                          departureDate: searchParams.departureDate,
+                          returnDate: searchParams.returnDate || ''
+                        }}
+                        flightType="return"
+                        onSelect={() => handleSelectReturn(trip)}
+                        selected={false}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
   }
 
   if (viewState === 'results') {

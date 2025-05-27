@@ -4,59 +4,25 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FiArrowLeft, FiCheckCircle } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import PassengerForm from '@/app/components/PassengerForm';
+import { FlightItineraryCard } from "@/app/components/FlightItineraryCard";
+
 // Import the airports data
 const airports = require('airports-json').airports;
 
-// Import components
-import { FlightItineraryCard } from "@/app/components/FlightItineraryCard";
-import PassengerForm, { PassengerInfo } from "@/app/components/PassengerForm";
-
-// Extend the PassengerInfo interface with additional properties
-interface BookingPassengerInfo extends PassengerInfo {
-  // Personal Information
-  type: 'adult' | 'child' | 'infant_without_seat' | 'infant_with_seat';
+interface PassengerInfo {
   title: string;
   firstName: string;
   lastName: string;
   dateOfBirth: string;
-  gender: 'm' | 'f' | 'x' | '';
+  gender: '' | 'male' | 'female' | 'other';
   email: string;
   phone: string;
-  
-  // Identity Document
-  documentType: 'passport' | 'passport_card' | 'national_identity_card' | 'driving_licence' | 'other';
-  documentNumber: string;
-  documentIssuingCountryCode: string;
-  documentExpiryDate: string;
-  documentNationality: string;
-  
-  // Contact Information
-  address: {
-    addressLine1: string;
-    addressLine2?: string;
-    city: string;
-    countryCode: string;
-    postalCode: string;
-    region?: string;
-  };
-  
-  // Loyalty Program
-  frequentFlyerNumber?: string;
-  frequentFlyerProgram?: string;
-  
-  // Special Requirements
-  specialAssistance?: boolean;
-  mealPreferences?: string[];
-  
-  // Additional Information
-  middleName?: string;
-  titleAfterName?: string;
-  titleBeforeName?: string;
-  infantPassportNumber?: string;
-  // Add any additional properties needed for booking
-  passportNumber?: string; // For backward compatibility
-  nationality?: string;    // For backward compatibility
-  passportExpiry?: string; // For backward compatibility
+  passportNumber: string;
+  nationality: string;
+  passportExpiry: string;
+  frequentFlyerNumber: string;
+  specialAssistance: boolean;
 }
 
 interface BookingData {
@@ -78,7 +44,7 @@ const BookingPage: React.FC = () => {
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
   const [flightLoading, setFlightLoading] = useState<boolean>(true);
   const [flightError, setFlightError] = useState<string | null>(null);
-  const [passengerData, setPassengerData] = useState<BookingPassengerInfo[]>([]);
+  const [passengerData, setPassengerData] = useState<PassengerInfo[]>([]);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -88,78 +54,39 @@ const BookingPage: React.FC = () => {
     try {
       const stored = localStorage.getItem('current_booking_offer');
       if (stored) {
-        const data = JSON.parse(stored);
+        const data = JSON.parse(stored) as BookingData;
         setBookingData(data);
         
         // Initialize passenger data based on number of travelers
         const travelers = data?.searchParams?.travelers || 1;
-        const initialPassengers: BookingPassengerInfo[] = Array(Number(travelers)).fill({}).map((_, index) => ({
-          type: 'adult' as const, // First passenger is always adult
+        setPassengerData(Array(travelers).fill(0).map(() => ({
           title: 'mr',
           firstName: "",
           lastName: "",
           dateOfBirth: "",
-          gender: '' as const,
+          gender: '',
           email: "",
           phone: "",
-          documentType: 'passport' as const,
-          documentNumber: "",
-          documentIssuingCountryCode: "",
-          documentExpiryDate: "",
-          documentNationality: "",
-          address: {
-            addressLine1: "",
-            city: "",
-            countryCode: "",
-            postalCode: ""
-          },
+          passportNumber: "",
+          nationality: "",
+          passportExpiry: "",
+          frequentFlyerNumber: "",
           specialAssistance: false,
-          mealPreferences: []
-        }));
-        
-        setPassengerData(initialPassengers);
-      } else {
-        setFlightError('No booking data found. Please restart your booking.');
+        })));
       }
-    } catch (error) {
-      console.error('Error initializing booking data:', error);
-      setFlightError('Failed to load booking data. Please try again.');
+    } catch (e) {
+      setFlightError('Failed to load booking data.');
     } finally {
       setFlightLoading(false);
     }
   }, []);
 
   // Handle passenger info changes
-  const handlePassengerChange = (index: number, field: keyof BookingPassengerInfo, value: any) => {
-    setPassengerData(prevPassengers => {
-      const updatedPassengers = [...prevPassengers];
-      
-      // Handle nested address updates
-      if (field === 'address' && typeof value === 'object') {
-        updatedPassengers[index] = {
-          ...updatedPassengers[index],
-          address: {
-            ...(updatedPassengers[index].address || {}),
-            ...value
-          }
-        };
-      } else {
-        // For backward compatibility, map old field names to new ones
-        const fieldMap: Record<string, keyof BookingPassengerInfo> = {
-          passportNumber: 'documentNumber',
-          nationality: 'documentNationality',
-          passportExpiry: 'documentExpiryDate'
-        };
-        
-        const mappedField = fieldMap[field as string] || field;
-        
-        updatedPassengers[index] = {
-          ...updatedPassengers[index],
-          [mappedField]: value
-        };
-      }
-      
-      return updatedPassengers;
+  const handlePassengerChange = (index: number, field: keyof PassengerInfo, value: string | boolean) => {
+    setPassengerData(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
     });
   };
 
@@ -172,7 +99,7 @@ const BookingPage: React.FC = () => {
       // Validate all required fields
       const requiredFields: (keyof PassengerInfo)[] = [
         'title', 'firstName', 'lastName', 'dateOfBirth', 'gender',
-        'email', 'phone', 'documentNumber', 'documentIssuingCountryCode', 'documentExpiryDate', 'documentNationality'
+        'email', 'phone', 'passportNumber', 'nationality', 'passportExpiry'
       ];
 
       for (let i = 0; i < passengerData.length; i++) {
@@ -300,7 +227,7 @@ const BookingPage: React.FC = () => {
                   <FlightItineraryCard 
                     itinerary={trip.itineraries[1]} 
                     type="return"
-                    date={searchParams.returnDate || ''}
+                    date={searchParams.returnDate}
                     price={trip.price}
                     airports={airports}
                   />
@@ -314,21 +241,12 @@ const BookingPage: React.FC = () => {
               
               {passengerData.map((passenger, index) => (
                 <div key={index} className="mb-8 last:mb-0 border-b border-gray-100 pb-6 last:border-0">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">
-                      {index === 0 ? 'Main Passenger' : `Passenger ${index + 1}`}
-                    </h3>
-                    <span className="text-sm text-gray-500">
-                      {passenger.type === 'adult' ? 'Adult' : 
-                       passenger.type === 'child' ? 'Child' : 'Infant'}
-                    </span>
-                  </div>
+                  <h3 className="text-lg font-medium text-gray-800 mb-4">
+                    Passenger {index + 1} {index === 0 ? '(Main Passenger)' : ''}
+                  </h3>
                   <PassengerForm
-                    key={index}
-                    index={index}
                     passenger={passenger}
-                    onChange={handlePassengerChange}
-                    countries={airports}
+                    onPassengerChange={(field, value) => handlePassengerChange(index, field, value)}
                   />
                 </div>
               ))}
@@ -349,7 +267,7 @@ const BookingPage: React.FC = () => {
                 {trip?.price?.total && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Price per passenger:</span>
-                    <span className="font-medium">${trip.price.total}</span>
+                    <span className="font-medium">${trip.price.total.toFixed(2)}</span>
                   </div>
                 )}
 
@@ -358,7 +276,7 @@ const BookingPage: React.FC = () => {
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total:</span>
                       <span className="text-orange-500">
-                        ${(trip.price.total * passengerData.length)}
+                        ${(trip.price.total * passengerData.length).toFixed(2)}
                       </span>
                     </div>
                   </div>
