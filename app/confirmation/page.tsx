@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTripCart } from '@/app/components/TripCartContext';
 import Link from 'next/link';
@@ -92,7 +92,16 @@ const formatDuration = (minutes: number) => {
   return `${hours}h ${mins}m`;
 };
 
-export default function ConfirmationPage() {
+// Loading component
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  );
+}
+
+function ConfirmationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { trip } = useTripCart();
@@ -430,5 +439,14 @@ export default function ConfirmationPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// Default export for Next.js page
+export default function ConfirmationPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <ConfirmationContent />
+    </Suspense>
   );
 }

@@ -3,12 +3,11 @@ import { Duffel } from '@duffel/api';
 // Initialize Duffel client with API key from environment variables
 const duffel = new Duffel({
   token: process.env.DUFFEL_ACCESS_TOKEN!,
-  debug: { verbose: true },
-  environment: process.env.NODE_ENV === 'production' ? 'production' : 'test',
+  debug: { verbose: process.env.NODE_ENV !== 'production' },
 });
 
 // Types for Duffel API
-type PaymentType = 'balance' | 'arc_bsp_cash' | 'arc_bsp_credit' | 'arc_bsp_credit_card';
+type PaymentType = 'balance' | 'arc_bsp_cash';
 
 interface PaymentRequest {
   type: PaymentType;
@@ -26,14 +25,14 @@ interface PaymentRequest {
 
 interface PassengerDetails {
   type: 'adult' | 'child' | 'infant_without_seat' | 'infant_with_seat';
-  title: string;
+  title: 'mr' | 'ms' | 'mrs' | 'miss' | 'dr';
   firstName: string;
   lastName: string;
   dateOfBirth: string;
-  gender: 'm' | 'f' | 'x' | '';
+  gender: 'm' | 'f';
   email: string;
   phone: string;
-  documentType: 'passport' | 'passport_card' | 'national_identity_card' | 'driving_licence' | 'other';
+  documentType: 'passport' | 'tax_id';
   documentNumber: string;
   documentIssuingCountryCode: string;
   documentExpiryDate: string;
@@ -55,8 +54,10 @@ export async function createPayment(
   try {
     // 1. Create an order
     const order = await duffel.orders.create({
+      type: 'instant',
       selected_offers: [offerId],
-      passengers: passengers.map(passenger => ({
+      passengers: passengers.map((passenger, index) => ({
+        id: `pax_${index + 1}`, // Add a unique ID for each passenger
         born_on: passenger.dateOfBirth,
         email: passenger.email,
         family_name: passenger.lastName,
@@ -78,15 +79,13 @@ export async function createPayment(
           type: payment.type,
           currency: payment.currency,
           amount: payment.amount,
-          ...(payment.type === 'arc_bsp_credit_card' && payment.card_details
-            ? {
+          ...(payment.type === 'balance' && payment.card_details ? {
                 card_number: payment.card_details.number,
                 expiry_month: payment.card_details.expiry_month,
                 expiry_year: payment.card_details.expiry_year,
                 cvc: payment.card_details.cvc,
                 name: payment.card_details.name,
-              }
-            : {}),
+              } : {})
         },
       ],
       metadata,
@@ -104,9 +103,7 @@ export async function createPayment(
 
 export async function getOrderDetails(orderId: string) {
   try {
-    const order = await duffel.orders.get(orderId, {
-      return_available_services: true,
-    });
+    const order = await duffel.orders.get(orderId);
     return { success: true, order };
   } catch (error: any) {
     console.error('Error fetching order details:', error);

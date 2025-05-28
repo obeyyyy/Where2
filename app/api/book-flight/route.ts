@@ -24,34 +24,50 @@ export async function POST(request: Request) {
     }
 
     // Process payment with Duffel
-    const paymentResult = await createPayment(
-      offerId,
-      {
-        type: paymentMethod,
-        amount: body.amount,
-        currency: body.currency,
-        order_id: `order_${Date.now()}`,
-        ...(paymentMethod === 'arc_bsp_credit_card' && cardDetails ? { 
-          card_details: cardDetails 
-        } : {}),
-      },
-      passengers,
-      metadata
-    );
+    try {
+      const paymentResult = await createPayment(
+        offerId,
+        {
+          type: paymentMethod as 'balance' | 'arc_bsp_cash',
+          amount: body.amount,
+          currency: body.currency,
+          order_id: `order_${Date.now()}`,
+          ...(paymentMethod === 'balance' && cardDetails ? { 
+            card_details: cardDetails 
+          } : {}),
+        },
+        passengers,
+        metadata
+      );
 
-    if (!paymentResult.success) {
+      if (!paymentResult?.success) {
+        return NextResponse.json(
+          { error: paymentResult?.error || 'Payment processing failed' },
+          { status: 400 }
+        );
+      }
+
+      // At this point, we know payment was successful
+      if (!paymentResult.order) {
+        return NextResponse.json(
+          { error: 'Order creation failed - no order returned' },
+          { status: 500 }
+        );
+      }
+
+      // Return success response with order details
+      return NextResponse.json({
+        success: true,
+        bookingId: paymentResult.order.data?.id || 'unknown',
+        order: paymentResult.order,
+      });
+    } catch (error) {
+      console.error('Payment processing error:', error);
       return NextResponse.json(
-        { error: paymentResult.error || 'Payment processing failed' },
-        { status: 400 }
+        { error: 'An error occurred while processing your payment' },
+        { status: 500 }
       );
     }
-
-    // Return success response with order details
-    return NextResponse.json({
-      success: true,
-      bookingId: paymentResult.order.id,
-      order: paymentResult.order,
-    });
 
   } catch (error: any) {
     console.error('Booking error:', error);

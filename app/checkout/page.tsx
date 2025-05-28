@@ -1,13 +1,23 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTripCart } from '@/app/components/TripCartContext';
-import { FiCreditCard, FiLock, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import { FiCreditCard, FiLock, FiCheckCircle, FiAlertCircle, FiLoader } from 'react-icons/fi';
 
-export default function CheckoutPage() {
-  const router = useRouter();
+// Loading component
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  );
+}
+
+// Main checkout component
+function CheckoutContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { trip } = useTripCart();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -191,81 +201,67 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold mb-6">Payment Information</h2>
-        
-        {success ? (
-          <div className="text-center py-8">
-            <FiCheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Payment Successful!</h3>
-            <p className="text-gray-600">Your booking is being confirmed. Redirecting...</p>
+      {success ? (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6">
+          <div className="flex items-center">
+            <FiCheckCircle className="mr-2 text-2xl" />
+            <span>Payment successful! Redirecting to confirmation page...</span>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            {/* Payment Method Selection */}
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Payment Method</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  className={`flex items-center justify-center p-4 border rounded-lg transition-colors ${
-                    paymentMethod === 'card' 
-                      ? 'border-orange-500 bg-orange-50' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  onClick={() => setPaymentMethod('card')}
-                >
-                  <FiCreditCard className="mr-2" />
-                  Credit/Debit Card
-                </button>
-                <button
-                  type="button"
-                  className={`flex items-center justify-center p-4 border rounded-lg transition-colors ${
-                    paymentMethod === 'paypal' 
-                      ? 'border-orange-500 bg-orange-50' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  onClick={() => setPaymentMethod('paypal')}
-                >
-                  <span className="text-blue-600 font-bold mr-2">Pay</span>Pal
-                </button>
-                <button
-                  type="button"
-                  className={`flex items-center justify-center p-4 border rounded-lg transition-colors ${
-                    paymentMethod === 'apple_pay' 
-                      ? 'border-orange-500 bg-orange-50' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  onClick={() => setPaymentMethod('apple_pay')}
-                >
-                  <span className="text-black font-semibold"> Pay</span>
-                </button>
-              </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-6">Payment Information</h2>
+          
+          <div className="mb-6">
+            <div className="flex space-x-4 mb-4">
+              <button
+                onClick={() => setPaymentMethod('card')}
+                className={`px-4 py-2 rounded-md ${paymentMethod === 'card' 
+                  ? 'bg-orange-500 text-white' 
+                  : 'bg-gray-100 text-gray-700'}`}
+              >
+                Credit/Debit Card
+              </button>
+              <button
+                onClick={() => setPaymentMethod('paypal')}
+                className={`px-4 py-2 rounded-md ${paymentMethod === 'paypal' 
+                  ? 'bg-orange-500 text-white' 
+                  : 'bg-gray-100 text-gray-700'}`}
+              >
+                PayPal
+              </button>
+              <button
+                onClick={() => setPaymentMethod('apple_pay')}
+                className={`px-4 py-2 rounded-md ${paymentMethod === 'apple_pay' 
+                  ? 'bg-orange-500 text-white' 
+                  : 'bg-gray-100 text-gray-700'}`}
+              >
+                Apple Pay
+              </button>
             </div>
 
-            {/* Card Details Form */}
             {paymentMethod === 'card' && (
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="card-number" className="block text-sm font-medium text-gray-700 mb-1">
+              <form onSubmit={handleSubmit}>
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="cardNumber">
                     Card Number
                   </label>
                   <input
                     type="text"
-                    id="card-number"
+                    id="cardNumber"
                     name="number"
                     value={cardDetails.number}
                     onChange={handleCardInputChange}
                     placeholder="1234 5678 9012 3456"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                    required
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    disabled={processing}
                   />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label htmlFor="expiry" className="block text-sm font-medium text-gray-700 mb-1">
-                      Expiry Date
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="expiry">
+                      Expiry Date (MM/YY)
                     </label>
                     <input
                       type="text"
@@ -274,12 +270,12 @@ export default function CheckoutPage() {
                       value={cardDetails.expiry}
                       onChange={handleCardInputChange}
                       placeholder="MM/YY"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                      required
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      disabled={processing}
                     />
                   </div>
                   <div>
-                    <label htmlFor="cvc" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="cvc">
                       CVC
                     </label>
                     <input
@@ -289,65 +285,95 @@ export default function CheckoutPage() {
                       value={cardDetails.cvc}
                       onChange={handleCardInputChange}
                       placeholder="123"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                      required
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      disabled={processing}
                     />
                   </div>
                 </div>
-                
-                <div>
-                  <label htmlFor="card-name" className="block text-sm font-medium text-gray-700 mb-1">
+
+                <div className="mb-6">
+                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
                     Name on Card
                   </label>
                   <input
                     type="text"
-                    id="card-name"
+                    id="name"
                     name="name"
                     value={cardDetails.name}
                     onChange={handleCardInputChange}
                     placeholder="John Doe"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                    required
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    disabled={processing}
                   />
                 </div>
+
+                <button
+                  type="submit"
+                  disabled={processing}
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-md focus:outline-none focus:shadow-outline disabled:opacity-50 flex items-center justify-center"
+                >
+                  {processing ? (
+                    <>
+                      <FiLoader className="animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <FiLock className="mr-2" />
+                      Pay {trip?.trip.price.total} {trip?.trip.price.currency}
+                    </>
+                  )}
+                </button>
+
+                {error && (
+                  <div className="mt-4 flex items-center text-red-600 text-sm">
+                    <FiAlertCircle className="mr-2" />
+                    {error}
+                  </div>
+                )}
+              </form>
+            )}
+
+            {paymentMethod === 'paypal' && (
+              <div className="text-center py-8">
+                <p className="mb-4">You will be redirected to PayPal to complete your payment.</p>
+                <button
+                  onClick={() => setError('PayPal integration not implemented yet')}
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-md focus:outline-none focus:shadow-outline"
+                >
+                  Continue with PayPal
+                </button>
               </div>
             )}
 
-            {/* Payment Button */}
-            <div className="mt-8">
-              <button
-                type="submit"
-                disabled={processing}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
-              >
-                {processing ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                  </>
-                ) : (
-                  `Pay ${trip?.trip.price.total} ${trip?.trip.price.currency}`
-                )}
-              </button>
-              
-              <div className="mt-4 flex items-center justify-center text-sm text-gray-500">
-                <FiLock className="mr-2" />
-                Secure payment powered by Duffel
+            {paymentMethod === 'apple_pay' && (
+              <div className="text-center py-8">
+                <p className="mb-4">Complete your purchase with Apple Pay.</p>
+                <button
+                  onClick={() => setError('Apple Pay integration not implemented yet')}
+                  className="bg-black hover:bg-gray-800 text-white font-bold py-3 px-6 rounded-md focus:outline-none focus:shadow-outline"
+                >
+                  Pay with Apple Pay
+                </button>
               </div>
-              
-              {error && (
-                <div className="mt-4 flex items-center text-red-600 text-sm">
-                  <FiAlertCircle className="mr-2" />
-                  {error}
-                </div>
-              )}
-            </div>
-          </form>
-        )}
-      </div>
+            )}
+          </div>
+
+          <div className="flex items-center text-sm text-gray-500">
+            <FiLock className="mr-2" />
+            <span>Your payment is secure and encrypted</span>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// Default export for Next.js page
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <CheckoutContent />
+    </Suspense>
   );
 }
