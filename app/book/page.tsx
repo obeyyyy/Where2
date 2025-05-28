@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { FiArrowLeft, FiCheckCircle } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 // Import the airports data
 const airports = require('airports-json').airports;
+// Import world countries data with dynamic import
+const countriesData = require('world-countries/countries.json');
 
 // Import components
 import { FlightItineraryCard } from "@/app/components/FlightItineraryCard";
@@ -82,6 +84,27 @@ const BookingPage: React.FC = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+
+  // Get list of all countries from world-countries package
+  const countries = useMemo(() => {
+    try {
+      return countriesData
+        .map((country: any) => ({
+          code: country.cca2,
+          name: country.name.common
+        }))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+    } catch (error) {
+      console.error('Error loading countries:', error);
+      return [
+        { code: 'US', name: 'United States' },
+        { code: 'GB', name: 'United Kingdom' },
+        { code: 'FR', name: 'France' },
+        { code: 'DE', name: 'Germany' },
+        { code: 'JP', name: 'Japan' },
+      ];
+    }
+  }, [countriesData]);
 
   // Initialize booking data and passenger info
   useEffect(() => {
@@ -169,18 +192,40 @@ const BookingPage: React.FC = () => {
     setError(null);
     
     try {
-      // Validate all required fields
-      const requiredFields: (keyof PassengerInfo)[] = [
-        'title', 'firstName', 'lastName', 'dateOfBirth', 'gender',
-        'email', 'phone', 'documentNumber', 'documentIssuingCountryCode', 'documentExpiryDate', 'documentNationality'
-      ];
+      // Define all required fields with user-friendly names
+      const requiredFields = [
+        { key: 'title', name: 'Title' },
+        { key: 'firstName', name: 'First Name' },
+        { key: 'lastName', name: 'Last Name' },
+        { key: 'dateOfBirth', name: 'Date of Birth' },
+        { key: 'gender', name: 'Gender' },
+        { key: 'email', name: 'Email' },
+        { key: 'phone', name: 'Phone Number' },
+        { key: 'documentNumber', name: 'Passport/ID Number' },
+        { key: 'documentIssuingCountryCode', name: 'Document Issuing Country' },
+        { key: 'documentExpiryDate', name: 'Document Expiry Date' },
+        { key: 'documentNationality', name: 'Nationality' }
+      ] as const;
 
+      // Validate all required fields for each passenger
       for (let i = 0; i < passengerData.length; i++) {
         const passenger = passengerData[i];
-        for (const field of requiredFields) {
-          if (!passenger[field]) {
-            throw new Error(`Please fill in all required fields for passenger ${i + 1}`);
+        const missingFields = [];
+        
+        // Check each required field
+        for (const { key, name } of requiredFields) {
+          const value = passenger[key as keyof typeof passenger];
+          if (!value || (typeof value === 'string' && value.trim() === '')) {
+            missingFields.push(name);
           }
+        }
+        
+        // If any fields are missing, show a detailed error
+        if (missingFields.length > 0) {
+          throw new Error(
+            `Please fill in the following required fields for passenger ${i + 1}:\n` +
+            missingFields.join(', ')
+          );
         }
       }
 
@@ -328,7 +373,7 @@ const BookingPage: React.FC = () => {
                     index={index}
                     passenger={passenger}
                     onChange={handlePassengerChange}
-                    countries={airports}
+                    countries={countries}
                   />
                 </div>
               ))}

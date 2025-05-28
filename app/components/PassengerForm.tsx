@@ -74,6 +74,13 @@ const PassengerForm: React.FC<PassengerFormProps> = ({ passenger, index, onChang
   const [isExpanded, setIsExpanded] = useState(true);
 
   const handleInputChange = (field: keyof PassengerInfo, value: any) => {
+    // If nationality changes, update the document issuing country to match
+    if (field === 'documentNationality' && value) {
+      const selectedCountry = countries.find(c => c.name === value);
+      if (selectedCountry) {
+        onChange(index, 'documentIssuingCountryCode', selectedCountry.code);
+      }
+    }
     onChange(index, field, value);
   };
 
@@ -194,6 +201,28 @@ const PassengerForm: React.FC<PassengerFormProps> = ({ passenger, index, onChang
                     </option>
                   ))}
                 </select>
+                <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Document Issuing Country */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Document Issuing Country</label>
+              <div className="relative">
+                <select
+                  value={passenger.documentIssuingCountryCode}
+                  onChange={(e) => handleInputChange('documentIssuingCountryCode', e.target.value)}
+                  className="w-full p-3.5 pr-10 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FFA500]/50 focus:border-transparent appearance-none"
+                  required
+                >
+                  <option value="">Select Issuing Country</option>
+                  {countries.map((country) => (
+                    <option key={country.code} value={country.code}>
+                      {country.name}
+                    </option>
+                  ))}
+                </select>
+                <FiGlobe className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
             </div>
