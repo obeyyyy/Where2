@@ -113,13 +113,10 @@ export default function TripSummaryPage() {
       
       const total = totalFlightPrice + hotelPrice;
       
+      // Format prices for display
       const formatPrice = (amount: number, currency: string = 'USD') => {
-        return new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: currency || 'USD',
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0
-        }).format(amount);
+        // Return the raw number as a string to preserve decimal precision
+        return amount.toString();
       };
       
       const currency = trip.trip.price?.currency || 'USD';
@@ -162,12 +159,14 @@ export default function TripSummaryPage() {
           ...trip.trip,
           // Ensure we have the latest price information
           price: {
-            total: prices.total.replace(/[^0-9.]/g, ''), // Extract just the number
+            total: prices.total.toString(), // Keep as string to preserve exact decimal
             currency: prices.currency,
             breakdown: {
-              outbound: prices.outbound.replace(/[^0-9.]/g, ''),
-              return: prices.return.replace(/[^0-9.]/g, ''),
-              hotel: prices.hotel.replace(/[^0-9.]/g, '')
+              outbound: prices.outbound.toString(),
+              return: prices.return.toString(),
+              hotel: prices.hotel.toString(),
+              // Add any other breakdown items if they exist
+              ...(trip.trip.price?.breakdown || {})
             }
           },
           // Include all itineraries
@@ -184,14 +183,16 @@ export default function TripSummaryPage() {
           price: prices.total
         },
         // Include calculated total price
-        totalPrice: prices.total
+        totalPrice: prices.total,
+        // Add a timestamp to force refresh
+        timestamp: Date.now()
       };
       
-      // Save to localStorage
-      localStorage.setItem('current_booking_offer', JSON.stringify(bookingData));
+      // Encode the booking data as a URL parameter
+      const bookingDataString = encodeURIComponent(JSON.stringify(bookingData));
       
-      // Navigate to booking page
-      router.push('/book');
+      // Navigate to booking page with the data in the URL
+      router.push(`/book?bookingData=${bookingDataString}`);
     } catch (error) {
       console.error('Error preparing booking:', error);
       // Fallback to simple save if there's an error

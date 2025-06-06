@@ -106,50 +106,191 @@ const BookingPage: React.FC = () => {
     }
   }, [countriesData]);
 
-  // Initialize booking data and passenger info
-  useEffect(() => {
+  // Load saved booking data from storage, checking both sessionStorage and localStorage
+  const loadSavedBookingData = () => {
     try {
-      const stored = localStorage.getItem('current_booking_offer');
-      if (stored) {
-        const data = JSON.parse(stored);
-        setBookingData(data);
+      // First check sessionStorage (newer data)
+      const savedSessionData = sessionStorage.getItem('current_booking_data');
+      if (savedSessionData) {
+        const parsedSessionData = JSON.parse(savedSessionData);
+        // Only load if the data is less than 1 hour old
+        const oneHourAgo = new Date();
+        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
         
-        // Initialize passenger data based on number of travelers
-        const travelers = data?.searchParams?.travelers || 1;
-        const initialPassengers: BookingPassengerInfo[] = Array(Number(travelers)).fill({}).map((_, index) => ({
-          type: 'adult' as const, // First passenger is always adult
-          title: 'mr',
-          firstName: "",
-          lastName: "",
-          dateOfBirth: "",
-          gender: '' as const,
-          email: "",
-          phone: "",
-          documentType: 'passport' as const,
-          documentNumber: "",
-          documentIssuingCountryCode: "",
-          documentExpiryDate: "",
-          documentNationality: "",
-          address: {
-            addressLine1: "",
-            city: "",
-            countryCode: "",
-            postalCode: ""
-          },
-          specialAssistance: false,
-          mealPreferences: []
-        }));
-        
-        setPassengerData(initialPassengers);
-      } else {
-        setFlightError('No booking data found. Please restart your booking.');
+        if (new Date(parsedSessionData.timestamp) > oneHourAgo) {
+          return parsedSessionData;
+        }
+      }
+      
+      // If no valid session data, check localStorage (legacy)
+      const savedLocalData = localStorage.getItem('current_booking_offer');
+      if (savedLocalData) {
+        const parsedLocalData = JSON.parse(savedLocalData);
+        // Convert to the format expected by the booking page
+        return {
+          trip: parsedLocalData.trip,
+          searchParams: parsedLocalData.searchParams,
+          passengers: [],
+          timestamp: new Date().toISOString()
+        };
       }
     } catch (error) {
-      console.error('Error initializing booking data:', error);
-      setFlightError('Failed to load booking data. Please try again.');
-    } finally {
-      setFlightLoading(false);
+      console.error('Error loading booking data:', error);
     }
+    return null;
+  };
+
+  // Listen for storage events to handle updates from other tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if ((e.key === 'current_booking_data' || e.key === 'current_booking_offer') && e.newValue) {
+        try {
+          const newData = JSON.parse(e.newValue);
+          
+          // Force a complete reload of the booking data
+          const savedData = loadSavedBookingData();
+          if (savedData) {
+            setBookingData({
+              trip: savedData.trip || {},
+              searchParams: savedData.searchParams || {},
+              budget: savedData.searchParams?.budget || 0
+            });
+            
+            if (savedData.passengers && savedData.passengers.length > 0) {
+              setPassengerData(savedData.passengers);
+            }
+            
+            // Force a re-render of any components that depend on bookingData
+            setFlightLoading(false);
+          }
+        } catch (error) {
+          console.error('Error handling storage update:', error);
+        }
+      }
+    };
+
+    // Also check for changes periodically (in case the storage event doesn't fire)
+    const interval = setInterval(() => {
+      const savedData = loadSavedBookingData();
+      if (savedData && bookingData && savedData.trip?.id !== bookingData.trip?.id) {
+        setBookingData(prev => ({
+          ...prev!,
+          trip: savedData.trip,
+          searchParams: savedData.searchParams || {}
+        }));
+      }
+    }, 1000);
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [bookingData]);  // Add bookingData to dependency array
+
+  // Initialize booking data and passenger info
+  useEffect(() => {
+    const initializeBooking = async () => {
+      try {
+        setFlightLoading(true);
+        
+        // First, check for data in URL parameters
+        const params = new URLSearchParams(window.location.search);
+        const bookingDataParam = params.get('bookingData');
+        
+        let savedData;
+        
+        if (bookingDataParam) {
+          // Use data from URL parameters if available
+          savedData = JSON.parse(decodeURIComponent(bookingDataParam));
+          // Also save to session storage for persistence
+          sessionStorage.setItem('current_booking_data', JSON.stringify(savedData));
+        } else {
+          // Fall back to saved data if no URL parameter
+          savedData = loadSavedBookingData();
+        }
+        
+        if (savedData) {
+          // Define default passenger data with proper types
+          const defaultPassenger: BookingPassengerInfo = {
+            type: 'adult',
+            title: 'mr',
+            firstName: '',
+            lastName: '',
+            dateOfBirth: '',
+            gender: 'm', // Default to 'm' to satisfy type
+            email: '',
+            phone: '',
+            documentType: 'passport',
+            documentNumber: '',
+            documentIssuingCountryCode: '',
+            documentExpiryDate: '',
+            documentNationality: '',
+            address: {
+              addressLine1: '',
+              city: '',
+              countryCode: '',
+              postalCode: ''
+            },
+            specialAssistance: false,
+            mealPreferences: []
+          };
+          
+          // Set booking data with proper defaults
+          const bookingData = {
+            trip: savedData.trip || {},
+            searchParams: {
+              from: savedData.searchParams?.from || '',
+              to: savedData.searchParams?.to || '',
+              departureDate: savedData.searchParams?.departureDate || '',
+              returnDate: savedData.searchParams?.returnDate || '',
+              travelers: savedData.searchParams?.travelers || 1,
+              tripType: (savedData.searchParams?.tripType as 'oneway' | 'roundtrip') || 'oneway',
+              budget: savedData.searchParams?.budget || 0,
+              currency: savedData.searchParams?.currency || 'USD'
+            },
+            budget: savedData.searchParams?.budget || 0
+          };
+          
+          setBookingData(bookingData);
+          
+          // Set passenger data or use default if none exists
+          if (savedData.passengers && savedData.passengers.length > 0) {
+            // Ensure all passengers have required fields
+            const validPassengers = savedData.passengers.map((p: Partial<BookingPassengerInfo>) => ({
+              ...defaultPassenger,
+              ...p,
+              gender: (['m', 'f', 'x'].includes(p.gender || '') ? p.gender : 'm') as 'm' | 'f' | 'x',
+              type: p.type || 'adult',
+              title: p.title || 'mr',
+              documentType: p.documentType || 'passport',
+              specialAssistance: p.specialAssistance || false,
+              mealPreferences: p.mealPreferences || [],
+              address: {
+                ...defaultPassenger.address,
+                ...(p.address || {})
+              }
+            }));
+            setPassengerData(validPassengers);
+          } else {
+            setPassengerData([defaultPassenger]);
+          }
+          
+          // Save the initialized data
+          saveBookingData();
+        } else {
+          setFlightError('No booking data found. Please start a new search.');
+        }
+      } catch (error) {
+        console.error('Error initializing booking data:', error);
+        setFlightError('Failed to load booking data. Please try again.');
+      } finally {
+        setFlightLoading(false);
+      }
+    };
+
+    initializeBooking();
   }, []);
 
   // Handle passenger info changes
@@ -187,6 +328,146 @@ const BookingPage: React.FC = () => {
   };
 
   // Handle booking submission
+  // Save booking data to both sessionStorage and localStorage with marked-up price
+  // This is the single source of truth for all price calculations
+  const saveBookingData = () => {
+    if (!bookingData) return;
+    
+    // Use the exact price from the trip data without recalculating
+    // This ensures we maintain the exact decimal values from the trip summary
+    let outboundPrice = 0;
+    let returnPrice = 0;
+    let totalFlightPrice = 0;
+    
+    const isRoundTrip = bookingData.searchParams?.tripType === 'roundtrip';
+    
+    if (bookingData.trip?.price) {
+      // Use the exact price from the trip data
+      if (bookingData.trip.price.breakdown) {
+        // If we have a breakdown, use those exact values
+        outboundPrice = parseFloat(bookingData.trip.price.breakdown.outbound || '0');
+        returnPrice = isRoundTrip ? parseFloat(bookingData.trip.price.breakdown.return || '0') : 0;
+        totalFlightPrice = outboundPrice + returnPrice;
+      } else {
+        // If no breakdown, use the total price directly
+        totalFlightPrice = parseFloat(bookingData.trip.price.total || '0');
+        outboundPrice = isRoundTrip ? totalFlightPrice * 0.6 : totalFlightPrice;
+        returnPrice = isRoundTrip ? totalFlightPrice * 0.4 : 0;
+      }
+    }
+    
+    // Calculate hotel price if available, using the exact amount
+    const hotelPrice = bookingData.trip.hotels?.[0]?.price?.amount 
+      ? parseFloat(bookingData.trip.hotels[0].price.amount) 
+      : 0;
+    
+    // Use the exact base price from the trip data if available, otherwise calculate it
+    const basePrice = bookingData.trip.price?.breakdown?.basePrice 
+      ? parseFloat(bookingData.trip.price.breakdown.basePrice)
+      : totalFlightPrice + hotelPrice;
+    const passengerCount = passengerData.length;
+    
+    // Calculate fees based on number of passengers
+    const markupPerPassenger = 1.00; // Fixed €1.00 markup per passenger
+    const serviceFeePerPassenger = passengerCount <= 2 ? 2.00 : 1.00; // €2 for 1-2 passengers, €1 for 3+ passengers
+    const totalFeesPerPassenger = markupPerPassenger + serviceFeePerPassenger;
+    const totalMarkup = totalFeesPerPassenger * passengerCount;
+    const totalPrice = basePrice + totalMarkup;
+
+    // Create updated booking data with the correct price information
+    // Format numbers to preserve exactly 2 decimal places without rounding
+    const formatPrice = (value: number): string => {
+      // Convert to string and ensure exactly 2 decimal places
+      const str = value.toString();
+      const parts = str.split('.');
+      if (parts.length === 1) {
+        return `${parts[0]}.00`;
+      }
+      if (parts[1].length === 1) {
+        return `${parts[0]}.${parts[1]}0`;
+      }
+      return str;
+    };
+
+    const updatedBookingData = {
+      ...bookingData,
+      trip: {
+        ...bookingData.trip,
+        // Ensure we preserve the Duffel offer ID
+        id: bookingData.trip.id,
+        price: {
+          ...bookingData.trip.price,
+          // Use the original total price if available, otherwise use the calculated one
+          total: bookingData.trip.price?.total || formatPrice(totalPrice),
+          breakdown: {
+            ...(bookingData.trip.price.breakdown || {}),
+            // Preserve original values if they exist, otherwise use calculated ones
+            outbound: bookingData.trip.price.breakdown?.outbound || formatPrice(outboundPrice),
+            return: isRoundTrip 
+              ? (bookingData.trip.price.breakdown?.return || formatPrice(returnPrice))
+              : '0.00',
+            basePrice: bookingData.trip.price.breakdown?.basePrice || formatPrice(basePrice),
+            markup: markupPerPassenger,
+            serviceFee: serviceFeePerPassenger,
+            totalPassengers: passengerCount,
+            totalFees: formatPrice(totalMarkup),
+            currency: bookingData.trip.price.currency || 'USD',
+            hotel: hotelPrice > 0 
+              ? (bookingData.trip.price.breakdown?.hotel || formatPrice(hotelPrice))
+              : '0.00'
+          }
+        }
+      },
+      passengers: passengerData,
+      timestamp: new Date().toISOString()
+    };
+
+    // Save to session storage
+    sessionStorage.setItem('current_booking_data', JSON.stringify(updatedBookingData));
+    
+    // Also update local storage for backward compatibility
+    localStorage.setItem('current_booking_offer', JSON.stringify({
+      trip: updatedBookingData.trip,
+      searchParams: bookingData.searchParams,
+      budget: bookingData.budget || 0
+    }));
+    
+    // Update the state
+    setBookingData(updatedBookingData);
+  };
+
+  // Load booking data from session storage
+  const loadBookingData = () => {
+    try {
+      const savedData = sessionStorage.getItem('current_booking_data');
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        // Only load if the data is less than 1 hour old
+        const oneHourAgo = new Date();
+        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+        
+        if (new Date(parsedData.timestamp) > oneHourAgo) {
+          // Update both booking data and passenger data
+          if (parsedData.trip) {
+            setBookingData(prev => ({
+              ...prev!,
+              trip: parsedData.trip,
+              searchParams: parsedData.searchParams || {}
+            }));
+          }
+          if (parsedData.passengers) {
+            setPassengerData(parsedData.passengers);
+          }
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading booking data:', error);
+    }
+    return false;
+  };
+
+  // Handle form submission
   const handleSubmit = async () => {
     setSubmitting(true);
     setError(null);
@@ -229,21 +510,11 @@ const BookingPage: React.FC = () => {
         }
       }
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Save booking data to session storage
+      saveBookingData();
       
-      // Save booking
-      const bookingId = `BOOK-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
-      localStorage.setItem('last_booking', JSON.stringify({
-        id: bookingId,
-        trip: bookingData?.trip,
-        passengers: passengerData,
-        date: new Date().toISOString(),
-        status: 'confirmed'
-      }));
-      
-      setConfirmation(bookingId);
-      router.push(`/confirmation?bookingId=${bookingId}`);
+      // Navigate to payment page with booking data
+      router.push(`/book/payment?bookingData=${encodeURIComponent(JSON.stringify(bookingData))}`);
     } catch (err: any) {
       setError(err.message || 'Failed to complete booking. Please try again.');
     } finally {
@@ -281,8 +552,59 @@ const BookingPage: React.FC = () => {
     );
   }
 
+  // Ensure we have valid trip data before rendering
   const { trip, searchParams } = bookingData;
-  const hasReturnFlight = searchParams.tripType === 'roundtrip' && trip?.itineraries?.[1];
+  
+  // Check if we have valid flight data
+  const hasValidOutboundFlight = (trip?.outbound?.segments?.length > 0) || (trip?.itineraries?.[0]?.segments?.length > 0);
+  const hasValidReturnFlight = searchParams.tripType === 'roundtrip' && 
+    ((trip?.return?.segments?.length > 0) || (trip?.itineraries?.[1]?.segments?.length > 0));
+    
+  // Helper function to get the correct segment data based on the trip structure
+  const getFlightSegments = (type: 'outbound' | 'return') => {
+    if (trip?.[type]?.segments?.length > 0) {
+      return trip[type].segments;
+    }
+    const index = type === 'outbound' ? 0 : 1;
+    return trip?.itineraries?.[index]?.segments || [];
+  };
+  
+  // Get the correct flight data based on the trip structure
+  const outboundSegments = getFlightSegments('outbound');
+  const returnSegments = hasValidReturnFlight ? getFlightSegments('return') : [];
+  
+  if (!hasValidOutboundFlight) {
+    return (
+      <div className="min-h-screen bg-[#FFFDF6] flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-xl shadow-md max-w-md w-full text-center">
+          <div className="text-orange-500 text-5xl mb-4">✈️</div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">No Flight Selected</h1>
+          <p className="text-gray-600 mb-6">
+            Please select a flight to continue with your booking.
+          </p>
+          <button
+            onClick={() => router.push('/search')}
+            className="w-full bg-orange-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-orange-600 transition-colors"
+          >
+            Search for Flights
+          </button>
+        </div>
+      </div>
+    );
+  }
+  const hasReturnFlight = hasValidReturnFlight;
+
+  // Get airport data for the flight cards
+  const getAirportData = (iataCode: string) => {
+    return airports.find((a: any) => a.iata === iataCode) || { iata_code: iataCode };
+  };
+
+  // Format price data for the flight cards
+  const priceData = {
+    currency: trip.currency || 'EUR',
+    total: trip.price.total || '0',
+    breakdown: trip.price.breakdown
+  };
 
   return (
     <div className="min-h-screen bg-[#FFFDF6] p-4 md:p-8">
@@ -305,31 +627,37 @@ const BookingPage: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-800 mb-6">Your Flight Itinerary</h2>
               
               {/* Outbound Flight */}
-              {trip?.itineraries?.[0] && (
-                <div className="mb-8">
-                  <div className="flex items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-700">Outbound Flight</h3>
-                    <span className="ml-4 text-sm text-gray-500">
-                      {new Date(searchParams.departureDate).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </span>
-                  </div>
+              <div className="mb-8">
+                <div className="flex items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-700">Outbound Flight</h3>
+                  <span className="ml-4 text-sm text-gray-500">
+                    {new Date(searchParams.departureDate).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </span>
+                </div>
+                <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                   <FlightItineraryCard 
-                    itinerary={trip.itineraries[0]} 
-                    type="outbound"
+                    itinerary={{
+                      segments: outboundSegments,
+                      duration: trip.outbound?.duration || trip.itineraries?.[0]?.duration || ''
+                    }} 
+                    type="outbound" 
                     date={searchParams.departureDate}
-                    price={trip.price}
-                    airports={airports}
+                    price={priceData}
+                    airports={outboundSegments.flatMap((segment: any) => [
+                      getAirportData(segment.departure.iataCode),
+                      getAirportData(segment.arrival.iataCode)
+                    ])}
                   />
                 </div>
-              )}
+              </div>
 
               {/* Return Flight */}
-              {hasReturnFlight && trip?.itineraries?.[1] && (
+              {hasReturnFlight && returnSegments.length > 0 && (
                 <div className="mt-10">
                   <div className="flex items-center mb-4">
                     <h3 className="text-lg font-semibold text-gray-700">Return Flight</h3>
@@ -342,41 +670,49 @@ const BookingPage: React.FC = () => {
                       })}
                     </span>
                   </div>
-                  <FlightItineraryCard 
-                    itinerary={trip.itineraries[1]} 
-                    type="return"
-                    date={searchParams.returnDate || ''}
-                    price={trip.price}
-                    airports={airports}
-                  />
+                  <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <FlightItineraryCard 
+                      itinerary={{
+                        segments: returnSegments,
+                        duration: trip.return?.duration || trip.itineraries?.[1]?.duration || ''
+                      }} 
+                      type="return" 
+                      date={searchParams.returnDate || ''} 
+                      price={priceData}
+                      airports={returnSegments.flatMap((segment: any) => [
+                        getAirportData(segment.departure.iataCode),
+                        getAirportData(segment.arrival.iataCode)
+                      ])}
+                    />
+                  </div>
                 </div>
               )}
-            </div>
 
-            {/* Passenger Information */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6">Passenger Information</h2>
-              
-              {passengerData.map((passenger, index) => (
-                <div key={index} className="mb-8 last:mb-0 border-b border-gray-100 pb-6 last:border-0">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">
-                      {index === 0 ? 'Main Passenger' : `Passenger ${index + 1}`}
-                    </h3>
-                    <span className="text-sm text-gray-500">
-                      {passenger.type === 'adult' ? 'Adult' : 
-                       passenger.type === 'child' ? 'Child' : 'Infant'}
-                    </span>
+              {/* Passenger Information */}
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-6">Passenger Information</h2>
+                
+                {passengerData.map((passenger, index) => (
+                  <div key={index} className="mb-8 last:mb-0 border-b border-gray-100 pb-6 last:border-0">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold">
+                        {index === 0 ? 'Main Passenger' : `Passenger ${index + 1}`}
+                      </h3>
+                      <span className="text-sm text-gray-500">
+                        {passenger.type === 'adult' ? 'Adult' : 
+                         passenger.type === 'child' ? 'Child' : 'Infant'}
+                      </span>
+                    </div>
+                    <PassengerForm
+                      key={index}
+                      index={index}
+                      passenger={passenger}
+                      onChange={handlePassengerChange}
+                      countries={countries}
+                    />
                   </div>
-                  <PassengerForm
-                    key={index}
-                    index={index}
-                    passenger={passenger}
-                    onChange={handlePassengerChange}
-                    countries={countries}
-                  />
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
 
@@ -392,20 +728,59 @@ const BookingPage: React.FC = () => {
                 </div>
                 
                 {trip?.price?.total && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Price per passenger:</span>
-                    <span className="font-medium">${trip.price.total}</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Base fare (per passenger):</span>
+                      <span className="font-medium">
+                        {trip.price.breakdown?.currency || '€'}
+                        {parseFloat(trip.price.total.toString()).toFixed(2)}
+                      </span>
+                    </div>
+                    {trip.price.breakdown?.serviceFee && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Service fee (per passenger):</span>
+                        <span className="font-medium">
+                          {trip.price.breakdown.currency || '€'}
+                          {parseFloat(trip.price.breakdown.serviceFee.toString()).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    {trip.price.breakdown?.markup && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Markup (per passenger):</span>
+                        <span className="font-medium">
+                          {trip.price.breakdown.currency || '€'}
+                          {parseFloat(trip.price.breakdown.markup.toString()).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="border-t border-gray-200 mt-2 pt-2">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Subtotal per passenger:</span>
+                        <span className="font-medium">
+                          {trip.price.breakdown?.currency || '€'}
+                          {(
+                            parseFloat(trip.price.total.toString()) + 
+                            (trip.price.breakdown?.serviceFee ? parseFloat(trip.price.breakdown.serviceFee.toString()) : 0) + 
+                            (trip.price.breakdown?.markup ? parseFloat(trip.price.breakdown.markup.toString()) : 0)
+                          ).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {trip?.price?.total && (
                   <div className="border-t border-gray-200 pt-4 mt-4">
                     <div className="flex justify-between text-lg font-bold">
-                      <span>Total:</span>
+                      <span>Total for {passengerData.length} {passengerData.length === 1 ? 'passenger' : 'passengers'}:</span>
                       <span className="text-orange-500">
-                        ${(trip.price.total * passengerData.length)}
+                        €{((parseFloat(trip.price.total) + 4.00) * passengerData.length).toFixed(2)}
                       </span>
                     </div>
+                    <p className="text-xs text-gray-500 mt-1 text-right">
+                      Includes €3.00 markup + €1.00 service fee per passenger
+                    </p>
                   </div>
                 )}
 

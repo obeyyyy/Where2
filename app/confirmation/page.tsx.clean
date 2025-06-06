@@ -13,8 +13,7 @@ import {
   FiArrowRight,
   FiCalendar,
   FiGlobe,
-  FiInfo,
-  FiCreditCard
+  FiInfo
 } from 'react-icons/fi';
 
 type BookingStatus = 'pending' | 'confirmed' | 'failed' | 'succeeded';

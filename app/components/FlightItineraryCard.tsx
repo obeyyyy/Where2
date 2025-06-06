@@ -98,7 +98,8 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
     <div className={`relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm ${className}`}>
       {/* Header with gradient - Improved mobile flex */}
       <div className={`relative ${type === 'outbound' ? 'bg-gradient-to-r from-blue-600 to-blue-500' : 'bg-gradient-to-r from-green-600 to-green-500'} p-3 sm:p-4 text-white`}>
-        <div className="absolute top-0 left-0 w-1 h-full bg-white/20"></div>
+        <div className="absolute top-0 left-0  h-full bg-white/20"></div>
+       
         <div className="flex flex-col sm:flex-row sm:items-start gap-3">
           {/* Flight info with icon */}
           <div className="flex-1 min-w-0">
@@ -132,11 +133,11 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
           </div>
 
           {/* Price Tag */}
-          {price?.breakdown?.[type] && (
+          {price?.total && (
             <div className={`bg-white/95 backdrop-blur-sm ${
               type === 'outbound' ? 'text-blue-600 border-blue-100' : 'text-green-600 border-green-100'
             } text-sm sm:text-base font-bold px-3 py-1.5 rounded-md sm:rounded-lg shadow-sm border flex-shrink-0 self-center sm:self-start mt-1 sm:mt-0`}>
-              <span className="text-xs sm:text-sm">{price.currency}</span> {price.breakdown[type]}
+              <span className="text-xs sm:text-sm">{price.currency || '$'}</span> {parseFloat(price.total).toFixed(2)}
             </div>
           )}
         </div>

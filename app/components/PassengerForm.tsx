@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiUser, FiMail, FiPhone, FiCalendar, FiGlobe, FiChevronDown, FiInfo } from "react-icons/fi";
 import { FaPassport, FaUserTie, FaUser, FaWheelchair } from "react-icons/fa";
 import { GiMeal } from "react-icons/gi";
@@ -71,6 +71,39 @@ const genderOptions = [
 ];
 
 const PassengerForm: React.FC<PassengerFormProps> = ({ passenger, index, onChange, countries }) => {
+  // Prefill with test data in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && !passenger.firstName) {
+      const testData = {
+        type: 'adult',
+        title: 'mr',
+        firstName: 'Test',
+        lastName: 'User',
+        dateOfBirth: '1990-01-01',
+        gender: 'm' as const,
+        email: 'test@example.com',
+        phone: '+1234567890',
+        documentType: 'passport',
+        documentNumber: 'AB123456',
+        documentIssuingCountryCode: 'US',
+        documentExpiryDate: '2030-12-31',
+        documentNationality: 'US',
+        address: {
+          addressLine1: '123 Test St',
+          city: 'New York',
+          countryCode: 'US',
+          postalCode: '10001'
+        }
+      };
+
+      // Apply test data to all fields
+      Object.entries(testData).forEach(([key, value]) => {
+        onChange(index, key as keyof PassengerInfo, value);
+      });
+
+      console.log('Prefilled passenger form with test data');
+    }
+  }, []); // Empty dependency array ensures this runs once on mount
   const [isExpanded, setIsExpanded] = useState(true);
 
   const handleInputChange = (field: keyof PassengerInfo, value: any) => {
