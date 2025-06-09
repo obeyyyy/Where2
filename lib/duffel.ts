@@ -210,16 +210,47 @@ export async function createOrder(
       return '';
     };
 
-    // Format passengers for Duffel API
-    const formattedPassengers = passengers.map((passenger) => {
+    // First, fetch the offer to get the passenger IDs
+    const offerResponse = await fetch(`https://api.duffel.com/air/offers/${selectedOffers[0]}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${process.env.DUFFEL_API}`,
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip',
+        'Duffel-Version': 'v2'
+      }
+    });
+
+    if (!offerResponse.ok) {
+      const errorData = await offerResponse.json();
+      console.error('Failed to fetch offer details:', errorData);
+      throw new Error(`Failed to fetch offer details: ${offerResponse.status} ${offerResponse.statusText}`);
+    }
+
+    const offerData = await offerResponse.json();
+    const offerPassengers = offerData.data.passengers || [];
+    
+    if (offerPassengers.length !== passengers.length) {
+      console.warn(`Mismatch in passenger counts: offer has ${offerPassengers.length}, we have ${passengers.length}`);
+    }
+
+    // Format passengers for Duffel API, using the IDs from the offer
+    const formattedPassengers = passengers.map((passenger, index) => {
       const formattedPhone = formatPhoneNumber(passenger.phone);
       console.log('Final passenger phone formatting:', {
         original: passenger.phone,
         formatted: formattedPhone
       });
       
-      // Do not include an ID - Duffel will generate one
+      // Use the passenger ID from the offer if available, otherwise fall back to the one in the passenger object
+      const passengerId = (index < offerPassengers.length && offerPassengers[index]?.id) || passenger.id;
+      
+      if (!passengerId) {
+        console.warn(`No passenger ID found for passenger at index ${index}`);
+      }
+      
       return {
+        id: passengerId, // Use the ID from the offer
         born_on: passenger.dateOfBirth,
         email: passenger.email,
         family_name: passenger.lastName,
@@ -532,15 +563,40 @@ export async function createOrder(
       });
     }
     
-    // Log flights
+    // Log flights with null checks
     if (order.slices?.length) {
       console.log('\nFlight Segments:');
       order.slices.forEach((slice: any, i: number) => {
-        console.log(`  Segment ${i + 1}:`);
-        console.log(`  - ${slice.origin.name} (${slice.origin.iata_code}) to ${slice.destination.name} (${slice.destination.iata_code})`);
-        console.log(`  - Departure: ${slice.departure_date_time_utc}`);
-        console.log(`  - Arrival: ${slice.arrival_date_time_utc}`);
-        console.log(`  - Flight Number: ${slice.marketing_carrier.iata_code}${slice.marketing_flight_number}`);
+        try {
+          console.log(`  Segment ${i + 1}:`);
+          
+          // Safely get origin and destination info
+          const originName = slice.origin?.name || 'Unknown origin';
+          const originCode = slice.origin?.iata_code || '?';
+          const destName = slice.destination?.name || 'Unknown destination';
+          const destCode = slice.destination?.iata_code || '?';
+          
+          console.log(`  - ${originName} (${originCode}) to ${destName} (${destCode})`);
+          
+          // Safely log departure and arrival times
+          if (slice.departure_date_time_utc) {
+            console.log(`  - Departure: ${slice.departure_date_time_utc}`);
+          }
+          if (slice.arrival_date_time_utc) {
+            console.log(`  - Arrival: ${slice.arrival_date_time_utc}`);
+          }
+          
+          // Safely log flight number
+          const carrierCode = slice.marketing_carrier?.iata_code || '';
+          const flightNumber = slice.marketing_flight_number || '';
+          if (carrierCode || flightNumber) {
+            console.log(`  - Flight Number: ${carrierCode}${flightNumber}`);
+          }
+          
+        } catch (segmentError) {
+          console.error(`Error logging segment ${i + 1}:`, segmentError);
+          console.log('  Raw segment data:', JSON.stringify(slice, null, 2));
+        }
       });
     }
     

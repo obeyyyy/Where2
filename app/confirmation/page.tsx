@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { 
   FiCheckCircle, 
   FiClock, 
@@ -14,60 +15,119 @@ import {
   FiCalendar,
   FiGlobe,
   FiInfo,
-  FiCreditCard
+  FiCreditCard,
+  FiBriefcase,
+  FiClock as FiClockIcon,
+  FiCoffee,
+  FiWifi,
+  FiFilm,
+  FiZap,
+  FiDroplet,
+  FiDollarSign,
+  FiX,
+  FiCheck
 } from 'react-icons/fi';
+
+const AnimatedStepCharacter = dynamic(
+  () => import('@/app/components/AnimatedStepCharacter'),
+  { ssr: false }
+);
 
 type BookingStatus = 'pending' | 'confirmed' | 'failed' | 'succeeded';
 
 interface PassengerInfo {
-  id?: string;
+  id: string;
   type?: 'adult' | 'child' | 'infant';
   title?: string;
-  firstName: string;
-  lastName: string;
+  given_name: string;
+  family_name: string;
   email?: string;
-  phone?: string;
-  dateOfBirth?: string;
-  gender?: string;
-  documentNumber?: string;
-  documentIssuingCountryCode?: string;
-  documentNationality?: string;
+  phone_number?: string;
+  born_on?: string;
+  gender?: 'm' | 'f' | 'x' | 'u';
+  identity_documents?: Array<{
+    type: string;
+    unique_identifier: string;
+    expires_on: string;
+    issuing_country_code: string;
+    nationality: string;
+  }>;
+  loyalty_programme_accounts?: Array<{
+    account_number: string;
+    airline_iata_code: string;
+  }>;
+  infant_passenger_id?: string | null;
+  user_id?: string | null;
 }
 
 interface Segment {
   id: string;
   origin: {
-    iataCode: string;
+    iata_code: string;
     name: string;
-    city: string;
+    city_name?: string;
     terminal?: string;
-    at: string;
+    type?: string;
+    time_zone?: string;
   };
   destination: {
-    iataCode: string;
+    iata_code: string;
     name: string;
-    city: string;
+    city_name?: string;
     terminal?: string;
-    at: string;
+    type?: string;
+    time_zone?: string;
   };
-  carrierCode: string;
-  number: string;
+  segments: Array<{
+    id: string;
+    origin: {
+      iata_code: string;
+      name: string;
+      city_name?: string;
+      terminal?: string;
+    };
+    destination: {
+      iata_code: string;
+      name: string;
+      city_name?: string;
+      terminal?: string;
+    };
+    departing_at: string;
+    arriving_at: string;
+    duration: string;
+    marketing_carrier: {
+      iata_code: string;
+      name: string;
+    };
+    operating_carrier?: {
+      iata_code: string;
+      name: string;
+    };
+    marketing_carrier_flight_number: string;
+    operating_carrier_flight_number?: string;
+    aircraft?: {
+      name: string;
+    };
+    passengers: Array<{
+      passenger_id: string;
+      cabin_class: string;
+      cabin_class_marketing_name?: string;
+      baggages?: Array<{
+        type: string;
+        quantity: number;
+      }>;
+    }>;
+  }>;
   duration: string;
-  departure: string;
-  arrival: string;
-  cabinClass: string;
-  bookingClass: string;
-  operatingCarrier?: {
-    iataCode: string;
-    name: string;
-  };
-  marketingCarrier: {
-    iataCode: string;
-    name: string;
-  };
-  aircraft?: {
-    code: string;
-    name: string;
+  conditions?: {
+    change_before_departure?: {
+      allowed: boolean;
+      penalty_amount?: string;
+      penalty_currency?: string;
+    };
+    refund_before_departure?: {
+      allowed: boolean;
+    };
   };
 }
 
@@ -145,15 +205,13 @@ export default function ConfirmationPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadBookingData = () => {
+    const loadBookingData = async () => {
       try {
         const bookingId = searchParams.get('bookingId');
-        const ref = searchParams.get('ref');
+        const orderId = searchParams.get('orderId');
+        const paymentIntentId = searchParams.get('payment_intent');
         const status = (searchParams.get('status') as BookingStatus) || 'pending';
-        const paymentStatus = searchParams.get('paymentStatus');
-        const amount = searchParams.get('amount');
-        const currency = searchParams.get('currency');
-
+        
         // Try to load from localStorage first
         const storedBooking = localStorage.getItem('lastBooking');
         
@@ -161,32 +219,9 @@ export default function ConfirmationPage() {
           try {
             const parsedData = JSON.parse(storedBooking);
             
-            // If URL has a bookingId, verify it matches the stored one
-            if (!bookingId || parsedData.bookingId === bookingId || parsedData.id === bookingId) {
-              const paymentData = {
-                ...(parsedData.payment || {}),
-                status: paymentStatus || parsedData.payment?.status || status,
-                amount: amount || parsedData.payment?.amount || parsedData.amount || 0,
-                currency: currency || parsedData.payment?.currency || parsedData.currency || 'EUR',
-              };
-
-              const bookingData = {
-                ...parsedData,
-                status: paymentStatus || parsedData.status || status,
-                bookingId: parsedData.bookingId || parsedData.id || bookingId || `booking-${Date.now()}`,
-                bookingReference: ref || parsedData.bookingReference || parsedData.order?.booking_reference || `REF-${Date.now()}`,
-                totalAmount: amount || parsedData.totalAmount || parsedData.amount || paymentData.amount || 0,
-                currency: currency || parsedData.currency || paymentData.currency || 'EUR',
-                payment: paymentData,
-                passengers: parsedData.passengers || [],
-                segments: parsedData.segments || [],
-                order: parsedData.order || {},
-                trip: parsedData.trip || {}
-              };
-
-              console.log('Setting booking data:', bookingData);
-              setBooking(bookingData);
-              setLoading(false);
+            // If URL has an orderId, verify it matches the stored one
+            if (!orderId || parsedData.order?.id === orderId || parsedData.id === orderId) {
+              await processBookingData(parsedData, status);
               return;
             }
           } catch (e) {
@@ -195,15 +230,35 @@ export default function ConfirmationPage() {
         }
 
 
-        // If we have a bookingId in URL but no matching localStorage data
-        if (bookingId) {
-          // This would be where you'd fetch from your API
-          console.log('Fetching booking details for:', bookingId);
+        // If we have an orderId in URL but no matching localStorage data
+        if (orderId) {
+          try {
+            // Fetch order details from your API
+            const response = await fetch(`/api/orders/${orderId}`);
+            if (response.ok) {
+              const orderData = await response.json();
+              await processBookingData(orderData, status);
+              return;
+            }
+          } catch (err) {
+            console.error('Error fetching order details:', err);
+          }
           setError('Could not load booking details. Please check your email for confirmation.');
-        } else {
-          setError('No booking information found. Please check your email for confirmation or contact support.');
+        } else if (paymentIntentId) {
+          try {
+            // Try to find booking by payment intent ID
+            const response = await fetch(`/api/payments/${paymentIntentId}/order`);
+            if (response.ok) {
+              const orderData = await response.json();
+              await processBookingData(orderData, status);
+              return;
+            }
+          } catch (err) {
+            console.error('Error fetching order by payment intent:', err);
+          }
         }
         
+        setError('No booking information found. Please check your email for confirmation or contact support.');
         setLoading(false);
       } catch (err) {
         console.error('Error loading booking data:', err);
@@ -212,11 +267,98 @@ export default function ConfirmationPage() {
       }
     };
 
+    const processBookingData = async (data: any, status: BookingStatus) => {
+      const order = data.data || data.order || data;
+      const slices = order.slices || [];
+      
+      // Format passengers
+      const passengers = (order.passengers || []).map((p: any) => ({
+        id: p.id,
+        type: p.type || 'adult',
+        title: p.title,
+        given_name: p.given_name,
+        family_name: p.family_name,
+        email: p.email,
+        phone_number: p.phone_number,
+        born_on: p.born_on,
+        gender: p.gender,
+        identity_documents: p.identity_documents,
+        infant_passenger_id: p.infant_passenger_id,
+        loyalty_programme_accounts: p.loyalty_programme_accounts
+      }));
+      
+      // Format segments
+      const segments = slices.map((slice: any) => ({
+        ...slice,
+        segments: (slice.segments || []).map((s: any) => ({
+          ...s,
+          origin: {
+            iata_code: s.origin.iata_code,
+            name: s.origin.name,
+            city_name: s.origin.city_name,
+            terminal: s.origin.terminal,
+            type: s.origin.type,
+            time_zone: s.origin.time_zone
+          },
+          destination: {
+            iata_code: s.destination.iata_code,
+            name: s.destination.name,
+            city_name: s.destination.city_name,
+            terminal: s.destination.terminal,
+            type: s.destination.type,
+            time_zone: s.destination.time_zone
+          },
+          marketing_carrier: s.marketing_carrier && {
+            iata_code: s.marketing_carrier.iata_code,
+            name: s.marketing_carrier.name
+          },
+          operating_carrier: s.operating_carrier && {
+            iata_code: s.operating_carrier.iata_code,
+            name: s.operating_carrier.name
+          }
+        }))
+      }));
+      
+      // Format payment info
+      const payment = {
+        status: order.payment_status?.paid_at ? 'succeeded' : 'pending',
+        amount: order.total_amount,
+        currency: order.total_currency,
+        paymentMethod: 'card', // Default, can be overridden
+        paymentIntentId: order.metadata?.payment_intent_id,
+        timestamp: order.payment_status?.paid_at || order.created_at
+      };
+      
+      const bookingData = {
+        id: order.id,
+        bookingId: order.id,
+        bookingReference: order.booking_reference || order.id,
+        status: order.payment_status?.paid_at ? 'succeeded' : status,
+        createdAt: order.created_at,
+        totalAmount: order.total_amount,
+        amount: order.total_amount,
+        currency: order.total_currency,
+        payment,
+        passengers,
+        segments,
+        order,
+        metadata: order.metadata || {}
+      };
+      
+      console.log('Processed booking data:', bookingData);
+      setBooking(bookingData);
+      setLoading(false);
+    };
+
     loadBookingData();
   }, [searchParams]);
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FFFDF6]">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   if (error) {
@@ -289,41 +431,54 @@ export default function ConfirmationPage() {
   const flightSegments = booking.segments || [];
 
   return (
-    <div className="min-h-screen bg-[#FFFDF6] py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#FFFDF6] py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-            booking.status === 'succeeded' || booking.status === 'confirmed' 
-              ? 'bg-green-100 text-green-500' 
-              : booking.status === 'pending' 
-                ? 'bg-yellow-100 text-yellow-500' 
-                : 'bg-red-100 text-red-500'
-          }`}>
+        {/* Header with Animation */}
+        <div className="text-center mb-8 sm:mb-12">
+          <div className="w-full max-w-xs mx-auto -mt-8 mb-2 sm:mb-4">
             {booking.status === 'succeeded' || booking.status === 'confirmed' ? (
-              <FiCheckCircle className="text-4xl" />
+              <div className="w-full h-auto">
+                <AnimatedStepCharacter 
+                  lottieUrl="https://lottie.host/42f2651e-8c16-434e-b639-1cb75fcf19a3/r95IiVu0pY.json"
+                  alt="Booking Confirmed"
+                  className="w-full h-auto max-h-64 sm:max-h-80"
+                />
+              </div>
             ) : booking.status === 'pending' ? (
-              <FiClock className="text-4xl" />
+              <div className="w-24 h-24 mx-auto text-yellow-500">
+                <FiClock className="w-full h-full animate-pulse" />
+              </div>
             ) : (
-              <FiAlertTriangle className="text-4xl" />
+              <div className="w-24 h-24 mx-auto text-red-500">
+                <FiAlertTriangle className="w-full h-full" />
+              </div>
             )}
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {booking.status === 'succeeded' || booking.status === 'confirmed' 
-              ? 'Booking Confirmed!'
-              : booking.status === 'pending'
-                ? 'Payment Processing'
-                : 'Booking Issue'}
-          </h1>
-          <div className="space-y-2">
-            <p className="text-gray-600">
-              Booking reference: <span className="font-medium">{booking.bookingReference}</span>
-            </p>
-            {booking.status === 'succeeded' && booking.payment?.paymentIntentId && (
-              <p className="text-sm text-gray-500">
-                Payment ID: {booking.payment.paymentIntentId}
-              </p>
-            )}
+          <div className="px-4 sm:px-6">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              {booking.status === 'succeeded' || booking.status === 'confirmed' 
+                ? 'Booking Confirmed! 🎉'
+                : booking.status === 'pending'
+                  ? 'Payment Processing'
+                  : 'Booking Issue'}
+            </h1>
+            <div className="space-y-2">
+              <div className="space-y-2">
+                <p className="text-gray-600 text-base sm:text-lg">
+                  Order #: <span className="font-mono font-bold text-gray-900">{booking.bookingId || booking.id}</span>
+                </p>
+                {booking.bookingReference && booking.bookingReference !== (booking.bookingId || booking.id) && (
+                  <p className="text-sm text-gray-500">
+                    Booking Ref: {booking.bookingReference}
+                  </p>
+                )}
+                {booking.status === 'succeeded' && booking.payment?.paymentIntentId && (
+                  <p className="text-xs text-gray-500 font-mono">
+                    Payment ID: {booking.payment.paymentIntentId}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -419,85 +574,280 @@ export default function ConfirmationPage() {
             </div>
             
             <div className="divide-y divide-gray-100">
-              {flightSegments.map((segment: any, index: number) => (
-                <div key={`segment-${index}`} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <div className="text-xl font-bold text-gray-900">
-                          {segment.origin?.iataCode}
-                        </div>
-                        <FiArrowRight className="text-gray-400" />
-                        <div className="text-xl font-bold text-gray-900">
-                          {segment.destination?.iataCode}
-                        </div>
-                        <span className="ml-2 text-sm text-gray-500">
-                          {segment.carrierCode}{segment.number}
-                        </span>
-                      </div>
-                      
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Departure</p>
-                          <p className="text-2xl font-bold">
-                            {formatDateTime(segment.departure)}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {segment.origin?.name}
-                            {segment.origin?.terminal && ` • Terminal ${segment.origin.terminal}`}
-                          </p>
+              {flightSegments.flatMap((slice: any, sliceIndex: number) => 
+                (slice.segments || []).map((segment: any, segmentIndex: number) => (
+                  <div key={`segment-${sliceIndex}-${segmentIndex}`} className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <div className="text-xl font-bold text-gray-900">
+                            {segment.origin?.iata_code}
+                          </div>
+                          <FiArrowRight className="text-gray-400" />
+                          <div className="text-xl font-bold text-gray-900">
+                            {segment.destination?.iata_code}
+                          </div>
+                          <span className="ml-2 text-sm text-gray-500">
+                            {segment.marketing_carrier?.iata_code}{segment.marketing_carrier_flight_number}
+                          </span>
                         </div>
                         
-                        <div className="flex items-center justify-center">
-                          <div className="text-center">
-                            <div className="text-sm text-gray-500">
-                              {segment.duration ? (
-                                formatDuration(parseInt(segment.duration) || 0)
-                              ) : (
-                                'Duration not available'
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Departure</p>
+                            <p className="text-2xl font-bold text-gray-900">
+                              {formatDateTime(segment.departing_at)}
+                            </p>
+                            <div className="mt-2">
+                              <p className="text-sm font-medium text-gray-900">
+                                {segment.origin?.iata_code} • {segment.origin?.name}
+                              </p>
+                              {segment.origin?.terminal && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Terminal {segment.origin.terminal}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-500">
+                                {segment.origin?.city_name}
+                              </p>
+                            </div>
+                          </div>
+                      
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="relative w-full">
+                              <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t-2 border-dashed border-gray-300"></div>
+                              </div>
+                              <div className="relative flex justify-center">
+                                <span className="bg-white px-3 text-sm text-gray-500">
+                                  {segment.duration || '--:--'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-2 text-center">
+                              <p className="text-xs text-gray-500">
+                                {segment.marketing_carrier?.iata_code}{segment.marketing_carrier_flight_number}
+                              </p>
+                              {segment.aircraft?.name && (
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {segment.aircraft.name}
+                                </p>
                               )}
                             </div>
-                            <div className="h-px w-16 bg-gray-300 my-2 mx-auto"></div>
-                            <div className="text-xs text-gray-500">
-                              {segment.aircraft?.name || segment.aircraft?.code || 'Flight'}
+                          </div>
+                      
+                          <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Arrival</p>
+                            <p className="text-2xl font-bold text-gray-900">
+                              {formatDateTime(segment.arriving_at)}
+                            </p>
+                            <div className="mt-2">
+                              <p className="text-sm font-medium text-gray-900">
+                                {segment.destination?.iata_code} • {segment.destination?.name}
+                              </p>
+                              {segment.destination?.terminal && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Terminal {segment.destination.terminal}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-500">
+                                {segment.destination?.city_name}
+                              </p>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="text-right">
-                          <p className="text-sm font-medium text-gray-900">Arrival</p>
-                          <p className="text-2xl font-bold">
-                            {formatDateTime(segment.arrival)}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {segment.destination?.name}
-                            {segment.destination?.terminal && ` • Terminal ${segment.destination.terminal}`}
-                          </p>
+                        {segment.operating_carrier && 
+                         segment.operating_carrier.iata_code !== segment.marketing_carrier?.iata_code && (
+                          <div className="mt-2 text-xs text-gray-500">
+                            Operated by {segment.operating_carrier.name} ({segment.operating_carrier.iata_code})
+                          </div>
+                        )}
+                        
+                        {/* Passenger and Amenities Section */}
+                        <div className="col-span-full mt-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Passenger Cabin Class */}
+                            <div className="bg-blue-50 p-4 rounded-lg">
+                              <h4 className="text-sm font-medium text-blue-800 mb-3 flex items-center">
+                                <FiUser className="mr-2" /> Passenger Cabin Class
+                              </h4>
+                              <div className="space-y-3">
+                                {segment.passengers?.map((p: any, i: number) => {
+                                  const passenger = booking.passengers?.find((psg: any) => psg.id === p.passenger_id);
+                                  const cabinClass = p.cabin_class_marketing_name || 
+                                                    p.cabin_class?.split('_')
+                                                      .map((word: string) => 
+                                                        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                                                      ).join(' ') || 'Economy';
+                                  
+                                  return (
+                                    <div key={`passenger-${i}`} className="text-sm">
+                                      <div className="flex justify-between items-start">
+                                        <div>
+                                          <span className="font-medium text-gray-900">
+                                            {passenger?.given_name} {passenger?.family_name}
+                                          </span>
+                                          <span className="ml-2 px-2 py-0.5 bg-white text-xs text-blue-700 rounded-full">
+                                            {cabinClass}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Baggage Information */}
+                                      {p.baggages?.some((b: any) => b.quantity > 0) && (
+                                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                          {p.baggages
+                                            .filter((b: any) => b.quantity > 0)
+                                            .map((b: any, idx: number) => {
+                                              const baggageType = b.type
+                                                .split('_')
+                                                .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+                                                .join(' ');
+                                              
+                                              return (
+                                                <span 
+                                                  key={`baggage-${idx}`}
+                                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white text-blue-700 border border-blue-200"
+                                                >
+                                                  <FiBriefcase className="mr-1 h-3 w-3" />
+                                                  {b.quantity}x {baggageType}
+                                                </span>
+                                              );
+                                            })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            
+                            {/* Flight Amenities */}
+                            <div className="bg-green-50 p-4 rounded-lg">
+                              <h4 className="text-sm font-medium text-green-800 mb-3 flex items-center">
+                                <FiZap className="mr-2" /> Flight Amenities
+                              </h4>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="flex items-center">
+                                  <div className="p-1.5 bg-green-100 rounded-full mr-2 text-green-600">
+                                    <FiCoffee className="h-4 w-4" />
+                                  </div>
+                                  <span className="text-sm text-gray-700">Meal Service</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <div className="p-1.5 bg-green-100 rounded-full mr-2 text-green-600">
+                                    <FiWifi className="h-4 w-4" />
+                                  </div>
+                                  <span className="text-sm text-gray-700">WiFi Available</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <div className="p-1.5 bg-green-100 rounded-full mr-2 text-green-600">
+                                    <FiFilm className="h-4 w-4" />
+                                  </div>
+                                  <span className="text-sm text-gray-700">Entertainment</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <div className="p-1.5 bg-green-100 rounded-full mr-2 text-green-600">
+                                    <FiDroplet className="h-4 w-4" />
+                                  </div>
+                                  <span className="text-sm text-gray-700">Beverages</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      
-                      {segment.operatingCarrier && 
-                       segment.operatingCarrier.iataCode !== segment.carrierCode && (
-                        <div className="mt-2 text-xs text-gray-500">
-                          Operated by {segment.operatingCarrier.name} ({segment.operatingCarrier.iataCode})
-                        </div>
-                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
             
-            {booking.trip?.price && (
-              <div className="bg-gray-50 px-6 py-4 border-t border-gray-100">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-900">Total Price</span>
-                  <span className="text-lg font-bold text-gray-900">
-                    {formatAmount(booking.trip.price.total, booking.trip.price.currency)}
-                  </span>
-                </div>
+            {/* Show change/cancellation policy */}
+            {flightSegments.some((s: any) => {
+              const change = s.conditions?.change_before_departure;
+              const refund = s.conditions?.refund_before_departure;
+              return (change && change.allowed) || (refund && refund.allowed);
+            }) && (
+              <div className="bg-blue-50 px-6 py-4 border-t border-blue-100">
+                <h3 className="text-sm font-medium text-blue-800 mb-2">Change & Cancellation Policy</h3>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  {(() => {
+                    interface Policy {
+                      allowed: boolean;
+                      penalty_amount?: string;
+                      penalty_currency?: string;
+                    }
+                    
+                    const changePolicy = flightSegments.find((s: any) => 
+                      s.conditions?.change_before_departure?.allowed
+                    )?.conditions?.change_before_departure as Policy | undefined;
+                    
+                    if (changePolicy) {
+                      const hasFee = changePolicy.penalty_amount && changePolicy.penalty_amount !== '0';
+                      return (
+                        <li key="change-policy" className="flex items-start">
+                          <FiInfo className="h-4 w-4 text-blue-500 mr-1.5 mt-0.5 flex-shrink-0" />
+                          <span>
+                            Changes allowed{
+                              hasFee
+                                ? ` with a fee of ${changePolicy.penalty_amount} ${changePolicy.penalty_currency || ''}`
+                                : ' free of charge'
+                            }
+                          </span>
+                        </li>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
+                  {(() => {
+                    interface Policy {
+                      allowed: boolean;
+                      penalty_amount?: string;
+                      penalty_currency?: string;
+                    }
+                    
+                    const refundPolicy = flightSegments.find((s: any) => 
+                      s.conditions?.refund_before_departure?.allowed
+                    )?.conditions?.refund_before_departure as Policy | undefined;
+                    
+                    if (refundPolicy) {
+                      const hasFee = refundPolicy.penalty_amount && refundPolicy.penalty_amount !== '0';
+                      return (
+                        <li key="refund-policy" className="flex items-start">
+                          <FiInfo className="h-4 w-4 text-blue-500 mr-1.5 mt-0.5 flex-shrink-0" />
+                          <span>
+                            Refunds allowed{
+                              hasFee
+                                ? ` with a fee of ${refundPolicy.penalty_amount} ${refundPolicy.penalty_currency || ''}`
+                                : ' free of charge'
+                            }
+                          </span>
+                        </li>
+                      );
+                    }
+                    return null;
+                  })()}
+                </ul>
               </div>
             )}
+            
+            {/* Total Price */}
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-100">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-900">Total Price</span>
+                <span className="text-lg font-bold text-gray-900">
+                  {formatAmount(booking.totalAmount || 0, booking.currency || 'EUR')}
+                </span>
+              </div>
+              {booking.payment?.status === 'succeeded' && booking.payment?.timestamp && (
+                <div className="mt-1 text-right text-sm text-gray-500">
+                  Paid on {formatDateTime(booking.payment.timestamp)}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
