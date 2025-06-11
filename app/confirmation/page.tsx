@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Loading from '../loading';
 import dynamic from 'next/dynamic';
 import { 
   FiCheckCircle, 
@@ -197,9 +198,18 @@ const LoadingSpinner = () => (
   </div>
 );
 
-export default function ConfirmationPage() {
-  const router = useRouter();
+// Wrapper component to handle Suspense for useSearchParams
+export default function ConfirmationPageWrapper() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <ConfirmationPage />
+    </Suspense>
+  );
+}
+
+function ConfirmationPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

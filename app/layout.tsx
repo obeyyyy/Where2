@@ -6,6 +6,14 @@ import Navbar from "./components/Navbar";
 export const metadata: Metadata = {
   title: "Where2 travels",
   description: "Where2 travels and trips",
+  icons: {
+    icon: [
+      { url: '/logo.png', type: 'image/png' },
+      { url: '/favicon.ico', type: 'image/x-icon' },
+    ],
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({

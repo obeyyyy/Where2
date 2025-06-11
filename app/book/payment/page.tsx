@@ -1,7 +1,8 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import Loading from '../../loading';
 import { FiArrowLeft, FiCheckCircle, FiCreditCard, FiUser, FiCalendar, FiGlobe } from 'react-icons/fi';
 import { FlightItineraryCard } from '@/app/components/FlightItineraryCard';
 import PaymentForm from '@/app/components/PaymentForm';
@@ -39,9 +40,18 @@ interface BookingData {
   };
 }
 
+// Wrapper component to handle Suspense for useSearchParams
 export default function PaymentPage() {
-  const router = useRouter();
+  return (
+    <Suspense fallback={<Loading />}>
+      <PaymentContent />
+    </Suspense>
+  );
+}
+
+function PaymentContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
