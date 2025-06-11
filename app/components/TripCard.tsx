@@ -5,6 +5,56 @@ import Image from 'next/image';
 import { useTripCart } from './TripCartContext';
 import { useRouter } from 'next/navigation';
 
+// Mapping of IATA codes to city names for major airports
+const AIRPORT_CITY_MAP: { [key: string]: string } = {
+  'JFK': 'New York',
+  'LAX': 'Los Angeles',
+  'ORD': 'Chicago',
+  'LHR': 'London',
+  'CDG': 'Paris',
+  'DXB': 'Dubai',
+  'HND': 'Tokyo',
+  'SIN': 'Singapore',
+  'FRA': 'Frankfurt',
+  'AMS': 'Amsterdam',
+  'IST': 'Istanbul',
+  'BCN': 'Barcelona',
+  'MAD': 'Madrid',
+  'FCO': 'Rome',
+  'MUC': 'Munich',
+  'MXP': 'Milan',
+  'LGW': 'London',
+  'LIS': 'Lisbon',
+  'VIE': 'Vienna',
+  'ZRH': 'Zurich',
+  'CPH': 'Copenhagen',
+  'OSL': 'Oslo',
+  'ARN': 'Stockholm',
+  'HEL': 'Helsinki',
+  'DOH': 'Doha',
+  'AUH': 'Abu Dhabi',
+  'KUL': 'Kuala Lumpur',
+  'BKK': 'Bangkok',
+  'HKG': 'Hong Kong',
+  'ICN': 'Seoul',
+  'SYD': 'Sydney',
+  'MEL': 'Melbourne',
+  'YVR': 'Vancouver',
+  'YYZ': 'Toronto',
+  'MEX': 'Mexico City',
+  'GRU': 'Sao Paulo',
+  'EZE': 'Buenos Aires',
+  'JNB': 'Johannesburg',
+  'CAI': 'Cairo',
+  'NBO': 'Nairobi'
+  // Add more airports as needed
+};
+
+// Helper function to get city name from IATA code
+const getCityName = (iataCode: string): string => {
+  return AIRPORT_CITY_MAP[iataCode] || iataCode;
+};
+
 interface FlightSegment {
   departure: {
     iataCode: string;
@@ -184,10 +234,11 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
   // For return flights, use the full journey from the return segments
   const origin = flightType === 'return' 
     ? returnSegments[0]?.departure?.iataCode || 'N/A' 
-    : outbound?.departure?.iataCode || 'N/A';
+    : itineraries?.[0]?.segments?.[0]?.departure?.iataCode || 'N/A';
+  // Always use the last segment's arrival as the final destination
   const destination = flightType === 'return'
     ? returnSegments[returnSegments.length - 1]?.arrival?.iataCode || 'N/A'
-    : outbound?.arrival?.iataCode || 'N/A';
+    : itineraries?.[0]?.segments?.[itineraries[0].segments.length - 1]?.arrival?.iataCode || 'N/A';
 
   // Robust ISO8601 parsing and fallback for invalid dates
   const parseDate = (dateStr?: string) => {
@@ -352,17 +403,45 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-6 text-sm text-gray-600">
-            <span>{formatTime(flightType === 'return' ? returnSegment?.departure?.at : outbound?.departure?.at ?? '')} - {formatTime(flightType === 'return' ? returnSegment?.arrival?.at : outbound?.arrival?.at ?? '')}</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs ${stopsColor}`}>{stopsLabel}</span>
-            <span className="font-medium text-[#FF8C00]">
-              {displayPrice}
-              {price.isBreakdown && (
-                <span className="text-xs text-gray-500 ml-1">
-                  ({flightType === 'outbound' ? 'outbound' : 'return'})
-                </span>
-              )}
-            </span>
+          <div className="flex flex-col gap-2 w-full">
+            <div className="flex items-center gap-6 text-sm text-gray-600">
+              <span>
+                {flightType === 'return' 
+                  ? `${formatTime(returnSegments[0]?.departure?.at)} - ${formatTime(returnSegments[returnSegments.length - 1]?.arrival?.at)}`
+                  : `${formatTime(itineraries?.[0]?.segments?.[0]?.departure?.at)} - ${formatTime(itineraries?.[0]?.segments?.[itineraries[0].segments.length - 1]?.arrival?.at)}`
+                }
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-xs ${stopsColor}`}>
+                {stopsLabel} • {formatDuration(totalDuration)}
+              </span>
+              <span className="font-medium text-[#FF8C00] ml-auto">
+                {displayPrice}
+                {price.isBreakdown && (
+                  <span className="text-xs text-gray-500 ml-1">
+                    ({flightType === 'outbound' ? 'outbound' : 'return'})
+                  </span>
+                )}
+              </span>
+            </div>
+            {stops > 0 && (
+              <div className="text-xs text-gray-500">
+                {flightType === 'return' ? (
+                  <span>Stops: {returnSegments.slice(0, -1).map((seg, idx) => (
+                    <span key={idx} className="font-medium text-gray-700">
+                      {getCityName(seg.arrival.iataCode)} ({seg.arrival.iataCode}) • {Math.round((new Date(returnSegments[idx + 1].departure.at).getTime() - new Date(seg.arrival.at).getTime()) / (1000 * 60))}m
+                      {idx < returnSegments.length - 2 ? ', ' : ''}
+                    </span>
+                  ))}</span>
+                ) : (
+                  <span>Stops: {itineraries?.[0]?.segments?.slice(0, -1).map((seg, idx) => (
+                    <span key={idx} className="font-medium text-gray-700">
+                      {getCityName(seg.arrival.iataCode)} ({seg.arrival.iataCode}) • {Math.round((new Date(itineraries[0].segments[idx + 1].departure.at).getTime() - new Date(seg.arrival.at).getTime()) / (1000 * 60))}m
+                      {idx < itineraries[0].segments.length - 2 ? ', ' : ''}
+                    </span>
+                  ))}</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <button
@@ -394,9 +473,23 @@ export default function TripCard({ trip, budget, searchParams, flightType = 'out
           <div className="relative w-14 h-14 bg-white rounded-xl shadow border flex items-center justify-center">
             {logoUrl && <Image src={logoUrl} alt={`${airlineName} logo`} fill className="object-contain p-2" unoptimized={true} />}
           </div>
-          <div>
-            <div className="font-bold text-xl text-gray-800">{origin} → {destination}</div>
-            <div className="text-gray-500 text-sm">{departureDate ? formatDate(flightSegment?.departure?.at || '') : ''}</div>
+          <div className="flex-1">
+            <div className="font-bold text-xl text-gray-800">
+              {origin} → {destination}
+              {stops > 0 && (
+                <span className="ml-2 text-sm font-normal text-gray-500">
+                  via {flightType === 'return' 
+                    ? returnSegments.slice(0, -1).map(s => `${getCityName(s.arrival.iataCode)} (${s.arrival.iataCode})`).join(', ')
+                    : itineraries?.[0]?.segments?.slice(0, -1).map(s => `${getCityName(s.arrival.iataCode)} (${s.arrival.iataCode})`).join(', ')}
+                </span>
+              )}
+            </div>
+            <div className="text-gray-500 text-sm">
+              {departureDate ? formatDate(flightType === 'return' ? returnSegments[0]?.departure?.at : itineraries?.[0]?.segments?.[0]?.departure?.at || '') : ''}
+              {stops > 0 && (
+                <span className="ml-2">• {stops} stop{stops > 1 ? 's' : ''} • {formatDuration(totalDuration)}</span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center justify-between gap-6 mb-6 w-full">

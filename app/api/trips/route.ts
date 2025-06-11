@@ -275,13 +275,23 @@ export async function GET(request: Request) {
           departure_date: formatDate(retDate)
         });
       }
+      // Get pagination parameters with defaults - increase limit to 20 for Duffel
+      const limit = 20; // Increased limit to get more results from Duffel
+      const after = params.get('after') || undefined;
+      
       const duffelBody = {
         data: {
           cabin_class: 'economy',
           slices,
           passengers: Array(Number(travelers)).fill({ type: 'adult' }),
+          max_connections: 1, // Limit to direct flights
+          sort: 'total_amount', // Sort by price
+          limit,
+          after, // Use the cursor for pagination
         }
       };
+      
+      console.log('Duffel API request:', JSON.stringify(duffelBody, null, 2));
       // Step 1: Create offer request
       const duffelResp = await fetch('https://api.duffel.com/air/offer_requests', {
         method: 'POST',
@@ -299,62 +309,205 @@ export async function GET(request: Request) {
         throw new Error('Duffel API error: ' + duffelResp.status);
       }
       const duffelData = await duffelResp.json();
+      
+      // Log the response for debugging
+      console.log('Duffel API response:', {
+        status: duffelResp.status,
+        statusText: duffelResp.statusText,
+        offersCount: duffelData?.data?.offers?.length || 0,
+        meta: duffelData?.meta,
+        dataKeys: duffelData?.data ? Object.keys(duffelData.data) : []
+      });
       console.log('Duffel API raw response:', JSON.stringify(duffelData, null, 2));
+      
+      // Debug: Check if we have an offers array in the response
+      if (duffelData?.data?.offers && Array.isArray(duffelData.data.offers)) {
+        console.log(`Found ${duffelData.data.offers.length} offers in the response`);
+      }
       if (!duffelData.data || !duffelData.data.id) {
         console.error('Duffel API returned unexpected data structure:', duffelData);
         throw new Error('Duffel API returned unexpected data structure');
       }
       const offerRequestId = duffelData.data.id;
 
-      // Step 2: Fetch up to 20 offers for this request
-      const offersResp = await fetch(`https://api.duffel.com/air/offers?offer_request_id=${offerRequestId}&limit=20`, {
-        method: 'GET',
-        headers: {
-          'Accept-Encoding': 'gzip',
-          'Duffel-Version': 'v2',
-          'Authorization': `Bearer ${duffelToken}`,
-        },
+      // Step 2: Fetch offers for this request with increased limit and sorting
+      const offersLimit = 50; // Increased limit to get more results
+      console.log(`Fetching up to ${offersLimit} offers for request ID: ${offerRequestId}`);
+      
+      // Add sorting by total_amount and specify the limit
+      const offersUrl = `https://api.duffel.com/air/offers?offer_request_id=${offerRequestId}&limit=${offersLimit}&sort=total_amount`;
+      console.log('Offers API URL:', offersUrl);
+      
+      // Log the full request details for debugging
+      const requestHeaders = {
+        'Accept-Encoding': 'gzip',
+        'Duffel-Version': 'v2',
+        'Authorization': `Bearer ${duffelToken}`,
+      };
+      
+      console.log('Request headers:', {
+        ...requestHeaders,
+        'Authorization': 'Bearer ' + requestHeaders.Authorization.substring(0, 20) + '...' // Log only part of the token for security
       });
+      
+      // Create an AbortController to handle timeouts
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      let offersResp;
+      try {
+        offersResp = await fetch(offersUrl, {
+          method: 'GET',
+          headers: requestHeaders,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        console.error('Error fetching offers from Duffel:', error);
+        throw new Error(`Failed to fetch offers: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
       if (!offersResp.ok) {
         const err = await offersResp.text();
         console.error('Duffel Offers API error:', err);
         throw new Error('Duffel Offers API error: ' + offersResp.status);
       }
+      // Log response headers for debugging
+      const responseHeaders: Record<string, string> = {};
+      offersResp.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+      console.log('Duffel API Response Headers:', JSON.stringify(responseHeaders, null, 2));
+      
       const offersData = await offersResp.json();
+      
+      // Debug: Log the raw offers data with metadata
+      console.log('Raw offers data from Duffel:', {
+        meta: offersData.meta,
+        data_length: offersData.data?.length || 0,
+        has_more: offersData.meta?.after ? true : false,
+        rate_limit: {
+          limit: responseHeaders['ratelimit-limit'],
+          remaining: responseHeaders['ratelimit-remaining'],
+          reset: responseHeaders['ratelimit-reset']
+        }
+      });
+      
+      console.log('Number of offers received:', offersData.data?.length || 0);
+      
       if (!offersData.data || !Array.isArray(offersData.data)) {
         console.error('Duffel Offers API returned unexpected data structure:', offersData);
         throw new Error('Duffel Offers API returned unexpected data structure');
       }
-      // Map to a compatible structure for the frontend
-      tripData = {
-        data: offersData.data.map((offer: any) => ({
+      
+      // Log rate limit information if available
+      if (responseHeaders['ratelimit-remaining']) {
+        try {
+          // Safely parse the reset timestamp
+          const resetTime = responseHeaders['ratelimit-reset'];
+          let resetTimeFormatted = 'N/A';
+          
+          if (resetTime) {
+            try {
+              // First try to parse as a date string
+              const resetDate = new Date(resetTime);
+              if (!isNaN(resetDate.getTime())) {
+                resetTimeFormatted = resetDate.toISOString();
+              } else if (/^\d+$/.test(resetTime)) {
+                // If it's a timestamp string, parse as number of seconds since epoch
+                const timestamp = parseInt(resetTime, 10) * 1000;
+                resetTimeFormatted = new Date(timestamp).toISOString();
+              }
+            } catch (e) {
+              console.warn('Failed to format rate limit reset time:', e);
+            }
+          }
+          
+          console.log(`Rate limit: ${responseHeaders['ratelimit-remaining']}/${responseHeaders['ratelimit-limit']} remaining, resets at ${resetTimeFormatted}`);
+        } catch (dateError) {
+          console.warn('Failed to parse rate limit reset time:', dateError);
+          console.log(`Rate limit: ${responseHeaders['ratelimit-remaining']}/${responseHeaders['ratelimit-limit']} remaining`);
+        }
+      }
+      
+      // Debug: Log each offer ID and price
+      console.log('Received offers:');
+      offersData.data.forEach((offer: any, index: number) => {
+        console.log(`Offer ${index + 1}:`, {
           id: offer.id,
-          price: {
+          total: offer.total_amount,
+          currency: offer.total_currency,
+          segments: offer.slices?.[0]?.segments?.length || 0
+        });
+      });
+      
+      // Debug: Log all offer IDs before mapping
+      console.log('All offer IDs:', offersData.data.map((o: any) => o.id));
+      
+      // Process and map all trips without slicing
+      tripData = {
+        data: offersData.data.map((offer: any, index: number) => {
+          // Debug log for each offer being processed
+          console.log(`Processing offer ${index + 1}/${offersData.data.length}:`, {
+            id: offer.id,
             total: offer.total_amount,
-            currency: offer.total_currency,
-          },
-          itineraries: offer.slices.map((slice: any) => ({
-            duration: slice.duration,
-            segments: slice.segments.map((seg: any) => ({
+            slices: offer.slices?.length || 0,
+            firstSliceSegments: offer.slices?.[0]?.segments?.length || 0
+          });
+          // Process each slice (itinerary) in the offer
+          const itineraries = (offer.slices || []).map((slice: any) => {
+            // Debug log for each slice
+            console.log('Processing slice:', {
+              duration: slice.duration,
+              segmentCount: slice.segments?.length || 0,
+              origin: slice.origin?.iata_code,
+              destination: slice.destination?.iata_code
+            });
+            // Process each segment in the slice
+            const segments = (slice.segments || []).map((seg: any) => ({
               departure: {
-                iataCode: seg.departing_at ? seg.origin.iata_code : '',
+                iataCode: seg.origin?.iata_code || '',
                 at: seg.departing_at || '',
-                terminal: seg.origin.terminal || undefined,
+                terminal: seg.origin?.terminal || undefined,
               },
               arrival: {
-                iataCode: seg.arriving_at ? seg.destination.iata_code : '',
+                iataCode: seg.destination?.iata_code || '',
                 at: seg.arriving_at || '',
-                terminal: seg.destination.terminal || undefined,
+                terminal: seg.destination?.terminal || undefined,
               },
-              carrierCode: seg.marketing_carrier ? seg.marketing_carrier.iata_code : '',
+              carrierCode: seg.marketing_carrier?.iata_code || '',
               number: seg.marketing_carrier_flight_number || '',
-              aircraft: { code: seg.aircraft ? seg.aircraft.iata_code : '' },
+              aircraft: { code: seg.aircraft?.iata_code || '' },
               operating: seg.operating_carrier ? { carrierCode: seg.operating_carrier.iata_code } : undefined,
-            }))
-          })),
-          deep_link: offer.conditions && offer.conditions.payment && offer.conditions.payment.redirect_url ? offer.conditions.payment.redirect_url : '',
-        }))
+            }));
+            return {
+              duration: slice.duration || '',
+              segments: segments
+            };
+          });
+          return {
+            id: offer.id,
+            price: {
+              total: offer.total_amount,
+              currency: offer.total_currency
+            },
+            itineraries: itineraries,
+            deep_link: offer.deep_link || ''
+          };
+        })
       };
+      
+      // Debug log the final transformed data
+      console.log('Transformed trip data count:', tripData.data.length);
+      console.log('All transformed trip IDs:', tripData.data.map((t: any) => t.id));
+      console.log('Sample transformed trip:', JSON.stringify(tripData.data[0], null, 2));
+      
+      // Log if any offers were filtered out
+      const originalCount = offersData.data?.length || 0;
+      const transformedCount = tripData.data.length;
+      if (originalCount !== transformedCount) {
+        console.warn(`Filtered out ${originalCount - transformedCount} offers (${transformedCount} remaining)`);
+      }
 
     } else if (useKiwi) {
       let kiwiUrl = '';
@@ -499,10 +652,10 @@ export async function GET(request: Request) {
     filteredFlights = filteredFlights.sort((a: any, b: any) => totalDuration(a.itineraries) - totalDuration(b.itineraries));
     // Replace tripData.data with filtered and sorted flights
     tripData.data = filteredFlights;
-    // Only fetch hotel offers for the top 5 flight options (after filtering/sorting) to avoid rate limits
+    // Only fetch hotel offers for all flight options
     let isFirstTrip = true;
     const tripsWithHotels = await Promise.all(
-      (tripData.data || []).slice(0, 5).map(async (trip: any, tripIdx: number) => {
+      (tripData.data || []).map(async (trip: any, tripIdx: number) => {
         const destinationCode = trip.itineraries?.[0]?.segments?.[0]?.arrival?.iataCode;
         const checkInDate = formatDate(depDate);
         // Only include checkOutDate for round trips
