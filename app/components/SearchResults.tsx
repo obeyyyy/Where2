@@ -139,11 +139,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
                 <TripCard
                   trip={flight}
                   budget={searchParams.budget}
-                  searchParams={{
-                    ...searchParams,
-                    departureDate: searchParams.departureDate,
-                    returnDate: searchParams.returnDate || ''
-                  }}
+                  currency={searchParams.currency || 'EUR'}
                   flightType={searchParams.tripType === 'oneway' ? 'oneway' : 'outbound'}
                   onSelect={() => onSelectOutbound(flight)}
                   selected={false}

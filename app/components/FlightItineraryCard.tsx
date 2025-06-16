@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { MdFlight, MdAirlineSeatReclineNormal, MdAirplanemodeActive } from 'react-icons/md';
+import Image from 'next/image';
 import { FaPlaneDeparture, FaPlaneArrival, FaClock, FaCalendarAlt, FaPlane } from 'react-icons/fa';
 import { getAirlineLogoUrl } from './getAirlineLogoUrl';
 import { motion } from 'framer-motion';
+import { MdAirplanemodeActive } from 'react-icons/md';
 
 interface Segment {
   departure: { iataCode: string; at: string };
@@ -21,9 +22,17 @@ interface Itinerary {
 }
 
 interface FlightItineraryCardProps {
-  itinerary: Itinerary;
-  type: 'outbound' | 'return';
-  date: string;
+  // Original single itinerary props
+  itinerary?: Itinerary;
+  type?: 'outbound' | 'return';
+  date?: string;
+  
+  // New combined itineraries props
+  outboundItinerary?: Itinerary;
+  returnItinerary?: Itinerary;
+  outboundDate?: string;
+  returnDate?: string;
+  
   price?: {
     currency: string;
     total: string;
@@ -31,24 +40,49 @@ interface FlightItineraryCardProps {
   };
   airports: Array<{ iata_code: string; name?: string; city?: string }>;
   className?: string;
+  tripType?: 'oneway' | 'roundtrip';
 }
 
-
 export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
+  // Original props
   itinerary,
-  type,
+  type = 'outbound',
   date,
+  
+  // New combined props
+  outboundItinerary,
+  returnItinerary,
+  outboundDate,
+  returnDate,
+  
   price,
   airports,
   className = '',
+  tripType = 'oneway'
 }) => {
-  const formatTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  // Determine if we're using the combined mode or single itinerary mode
+  const isCombinedMode = !!(outboundItinerary || returnItinerary);
+  
+  // Format time for display (24-hour format)
+  const formatTime = (dateString?: string): string => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  };
+  
+  // Format date for display
+  const formatDate = (dateString?: string): string => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
 
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-  const formatDuration = (duration: string) => {
+  const formatDuration = (duration: string): string => {
     const match = duration.match(/P(?:([0-9]*)D)?T?(?:([0-9]*)H)?(?:([0-9]*)M)?/);
     if (!match) return duration;
     const [_, d, h, m] = match;
@@ -59,46 +93,112 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
     return parts.join(' ');
   };
 
-  const calculateLayover = (arrival: string, departure: string) => {
-    const diff = new Date(departure).getTime() - new Date(arrival).getTime();
+  const calculateLayover = (arrival: string, departure: string): { hours: number, minutes: number } | null => {
+    const arrivalTime = new Date(arrival).getTime();
+    const departureTime = new Date(departure).getTime();
+    
+    if (isNaN(arrivalTime) || isNaN(departureTime)) {
+      console.error('Invalid date format in calculateLayover');
+      return null;
+    }
+    
+    const diff = departureTime - arrivalTime;
+    if (diff < 0) {
+      console.error('Negative layover time detected');
+      return null;
+    }
+    
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
-    return `${h}h ${m}m layover`;
+    return { hours: h, minutes: m };
   };
 
-  const firstSeg = itinerary.segments[0];
-  const lastSeg = itinerary.segments[itinerary.segments.length - 1];
-  const depAirport = airports.find(a => a.iata_code === firstSeg?.departure?.iataCode);
-  const arrAirport = airports.find(a => a.iata_code === lastSeg?.arrival?.iataCode);
-  const hasStops = itinerary.segments.length > 1;
-
   // Calculate total travel time including layovers
-  const calculateTotalTravelTime = () => {
-    if (!itinerary.segments.length) return '0h 0m';
-    const start = new Date(itinerary.segments[0].departure.at);
-    const end = new Date(itinerary.segments[itinerary.segments.length - 1].arrival.at);
+  const calculateTotalTravelTime = (segments: Segment[]): string => {
+    if (!segments || !segments.length) return '0h 0m';
+    const start = new Date(segments[0].departure.at);
+    const end = new Date(segments[segments.length - 1].arrival.at);
     const diff = end.getTime() - start.getTime();
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     return `${h}h ${m}m`;
   };
 
-  const totalTravelTime = calculateTotalTravelTime();
-  const flightTypeColor = type === 'outbound' ? 'blue' : 'green';
-  const flightTypeLabel = type === 'outbound' ? 'Outbound' : 'Return';
-  const totalStops = itinerary.segments.length - 1;
-
   // Format layover time with leading zeros for minutes
-  const formatLayover = (time: string) => {
-    const [h, m] = time.split('h ');
-    return `${h}h ${m.padStart(2, '0')} layover`;
+  const formatLayover = (layover: { hours: number, minutes: number }): string => {
+    const hours = layover.hours > 0 ? `${layover.hours}h ` : '';
+    const minutes = `${layover.minutes.toString().padStart(2, '0')}m`;
+    return `${hours}${minutes} layover`;
   };
+  
+  // For single itinerary mode
+  let firstSeg: Segment | undefined;
+  let lastSeg: Segment | undefined;
+  let depAirport: { iata_code: string; name?: string; city?: string } | undefined;
+  let arrAirport: { iata_code: string; name?: string; city?: string } | undefined;
+  let hasStops = false;
+  let totalTravelTime = '0h 0m';
+  let totalStops = 0;
+  let flightTypeLabel = type === 'outbound' ? 'Outbound Flight' : 'Return Flight';
+  
+  if (!isCombinedMode && itinerary && itinerary.segments.length > 0) {
+    firstSeg = itinerary.segments[0];
+    lastSeg = itinerary.segments[itinerary.segments.length - 1];
+    depAirport = airports.find(a => a.iata_code === firstSeg?.departure?.iataCode);
+    arrAirport = airports.find(a => a.iata_code === lastSeg?.arrival?.iataCode);
+    hasStops = itinerary.segments.length > 1;
+    totalTravelTime = calculateTotalTravelTime(itinerary.segments);
+    totalStops = itinerary.segments.length - 1;
+  }
+
+  // For outbound itinerary in combined mode
+  let outboundFirstSeg: Segment | undefined;
+  let outboundLastSeg: Segment | undefined;
+  let outboundDepAirport: { iata_code: string; name?: string; city?: string } | undefined;
+  let outboundArrAirport: { iata_code: string; name?: string; city?: string } | undefined;
+  let outboundHasStops = false;
+  let outboundTotalTravelTime = '0h 0m';
+  let outboundTotalStops = 0;
+  
+  if (outboundItinerary && outboundItinerary.segments.length > 0) {
+    outboundFirstSeg = outboundItinerary.segments[0];
+    outboundLastSeg = outboundItinerary.segments[outboundItinerary.segments.length - 1];
+    outboundDepAirport = airports.find(a => a.iata_code === outboundFirstSeg?.departure?.iataCode);
+    outboundArrAirport = airports.find(a => a.iata_code === outboundLastSeg?.arrival?.iataCode);
+    outboundHasStops = outboundItinerary.segments.length > 1;
+    outboundTotalTravelTime = calculateTotalTravelTime(outboundItinerary.segments);
+    outboundTotalStops = outboundItinerary.segments.length - 1;
+  }
+
+  // For return itinerary in combined mode
+  let returnFirstSeg: Segment | undefined;
+  let returnLastSeg: Segment | undefined;
+  let returnDepAirport: { iata_code: string; name?: string; city?: string } | undefined;
+  let returnArrAirport: { iata_code: string; name?: string; city?: string } | undefined;
+  let returnHasStops = false;
+  let returnTotalTravelTime = '0h 0m';
+  let returnTotalStops = 0;
+  
+  if (returnItinerary && returnItinerary.segments.length > 0) {
+    returnFirstSeg = returnItinerary.segments[0];
+    returnLastSeg = returnItinerary.segments[returnItinerary.segments.length - 1];
+    returnDepAirport = airports.find(a => a.iata_code === returnFirstSeg?.departure?.iataCode);
+    returnArrAirport = airports.find(a => a.iata_code === returnLastSeg?.arrival?.iataCode);
+    returnHasStops = returnItinerary.segments.length > 1;
+    returnTotalTravelTime = calculateTotalTravelTime(returnItinerary.segments);
+    returnTotalStops = returnItinerary.segments.length - 1;
+  }
+  
+  // Only show price once for roundtrip flights
+  const shouldShowPrice = price?.total && (tripType === 'oneway' || !isCombinedMode || !returnItinerary);
+
+  const flightTypeColor = type === 'outbound' ? 'blue' : 'green';
 
   return (
     <div className={`relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm ${className}`}>
       {/* Header with gradient - Improved mobile flex */}
       <div className={`relative ${type === 'outbound' ? 'bg-gradient-to-r from-blue-600 to-blue-500' : 'bg-gradient-to-r from-green-600 to-green-500'} p-3 sm:p-4 text-white`}>
-        <div className="absolute top-0 left-0  h-full bg-white/20"></div>
+        <div className="absolute top-0 left-0 h-full bg-white/20"></div>
        
         <div className="flex flex-col sm:flex-row sm:items-start gap-3">
           {/* Flight info with icon */}
@@ -132,12 +232,39 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
             </div>
           </div>
 
-          {/* Price Tag */}
-          {price?.total && (
-            <div className={`bg-white/95 backdrop-blur-sm ${
-              type === 'outbound' ? 'text-blue-600 border-blue-100' : 'text-green-600 border-green-100'
-            } text-sm sm:text-base font-bold px-3 py-1.5 rounded-md sm:rounded-lg shadow-sm border flex-shrink-0 self-center sm:self-start mt-1 sm:mt-0`}>
-              <span className="text-xs sm:text-sm">{price.currency || '$'}</span> {parseFloat(price.total).toFixed(2)}
+          {/* Price Tag with Tooltip - Only show for outbound in roundtrip or for one-way */}
+          {shouldShowPrice && (
+            <div className="flex items-center group relative bg-white/95 backdrop-blur-sm border rounded-md sm:rounded-lg shadow-sm px-3 py-1.5 flex-shrink-0 self-center sm:self-start mt-1 sm:mt-0">
+              <span className={`text-sm sm:text-base font-bold ${type === 'outbound' ? 'text-blue-600' : 'text-green-600'}`}>
+                <span className="text-xs sm:text-sm">{price.currency || '$'}</span> {parseFloat(price.total).toFixed(2)}
+                {price.breakdown && type === 'outbound' && (
+                  <span className="block text-[10px] text-gray-500 font-normal">Total trip price</span>
+                )}
+              </span>
+              <div className="ml-1 text-gray-500 group-hover:text-gray-700 cursor-help relative">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="hidden group-hover:block absolute z-10 w-64 p-3 mt-1 -ml-4 text-xs text-gray-700 bg-white border border-gray-200 rounded shadow-lg">
+                  {price.breakdown ? (
+                    <div className="space-y-1">
+                      <p className="font-medium">Price Breakdown:</p>
+                      {price.breakdown.outbound && (
+                        <p>Outbound: {price.currency} {parseFloat(price.breakdown.outbound).toFixed(2)}</p>
+                      )}
+                      {price.breakdown.return && (
+                        <p>Return: {price.currency} {parseFloat(price.breakdown.return).toFixed(2)}</p>
+                      )}
+                      <p className="pt-1 border-t border-gray-100 font-medium">
+                        Total: {price.currency} {parseFloat(price.total).toFixed(2)}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-1">Taxes and fees included. Final price shown at checkout.</p>
+                    </div>
+                  ) : (
+                    <p>Base price shown. Taxes and fees will be added at checkout.</p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -186,12 +313,21 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
 
         {/* Segments */}
         <div className="space-y-4">
-          {itinerary.segments.map((seg, i) => {
+          {itinerary?.segments.map((seg, i) => {
+            console.log(`Rendering segment ${i + 1} of ${itinerary.segments.length}`);
             const dep = airports.find(a => a.iata_code === seg.departure.iataCode);
             const arr = airports.find(a => a.iata_code === seg.arrival.iataCode);
-            const layover = itinerary.segments[i + 1]
-              ? calculateLayover(seg.arrival.at, itinerary.segments[i + 1].departure.at)
-              : null;
+            
+            // Calculate layover only if there's a next segment
+            let layover = null;
+            if (i < itinerary.segments.length - 1) {
+              const nextSeg = itinerary.segments[i + 1];
+              console.log(`Calculating layover between segment ${i + 1} and ${i + 2}`);
+              console.log('Current segment arrival:', seg.arrival.at);
+              console.log('Next segment departure:', nextSeg.departure.at);
+              layover = calculateLayover(seg.arrival.at, nextSeg.departure.at);
+              console.log('Calculated layover:', layover);
+            }
             const segmentDuration = Math.floor(
               (new Date(seg.arrival.at).getTime() - new Date(seg.departure.at).getTime()) / 60000
             );

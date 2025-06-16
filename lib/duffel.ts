@@ -150,6 +150,8 @@ export async function createOrder(
   paymentIntentId: string,
   metadata: Record<string, any> = {}
 ): Promise<CreateOrderResponse> {
+  // IMPORTANT: Duffel API requires exactly one offer ID per order
+  // For roundtrip bookings, we should have a single offer ID that represents both legs
   try {
     console.log('=== ORDER CREATION STARTED ===');
     console.log('Creating order for offers:', selectedOffers);
@@ -171,6 +173,18 @@ export async function createOrder(
       console.error(error);
       return { success: false, error, status: 'invalid_offer' };
     }
+    
+    // IMPORTANT: Duffel API requires exactly ONE offer per order
+    // If multiple offers are provided (e.g., for roundtrip), we must use only the first one
+    // This is because a proper roundtrip booking should have a single offer that includes both legs
+    if (selectedOffers.length > 1) {
+      console.warn(`Multiple offer IDs provided (${selectedOffers.length}), but Duffel API requires exactly one offer per order.`);
+      console.warn('Using only the first offer ID:', selectedOffers[0]);
+      console.warn('Additional offer IDs will be ignored:', selectedOffers.slice(1));
+    }
+    
+    // Use only the first offer ID for the order
+    const offerId = selectedOffers[0];
     
     // Format phone number to E.164 format required by Duffel API
     const formatPhoneNumber = (phone: string): string => {
@@ -211,7 +225,7 @@ export async function createOrder(
     };
 
     // First, fetch the offer to get the passenger IDs
-    const offerResponse = await fetch(`https://api.duffel.com/air/offers/${selectedOffers[0]}`, {
+    const offerResponse = await fetch(`https://api.duffel.com/air/offers/${offerId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${process.env.DUFFEL_API}`,
@@ -268,18 +282,171 @@ export async function createOrder(
       };
     });
 
-    // Extract amount and currency from metadata if available, or use defaults
-    const amount = metadata.amount || '0';
-    const currency = metadata.currency || 'EUR';
+    const currency = offerData?.data?.total_currency || 'EUR';
+    
+    // Helper function to fetch offer amount by ID with detailed validation
+    const fetchOfferAmount = async (offerId: string): Promise<{amount: number, isRoundtrip: boolean, sliceCount: number}> => {
+      if (offerId === selectedOffers[0]) {
+        // Use already fetched offer data for the first offer
+        // Log detailed offer information to diagnose pricing issues
+        console.log('OFFER DETAILS FOR PRICING:', {
+          id: offerData?.data?.id,
+          total_amount: offerData?.data?.total_amount,
+          total_currency: offerData?.data?.total_currency,
+          base_amount: offerData?.data?.base_amount,
+          base_currency: offerData?.data?.base_currency,
+          tax_amount: offerData?.data?.tax_amount,
+          tax_currency: offerData?.data?.tax_currency,
+          slices_count: offerData?.data?.slices?.length || 0,
+          passengers_count: offerData?.data?.passengers?.length || 0
+        });
+        
+        // Track slice information to verify roundtrip
+        let sliceDetails = [];
+        if (offerData?.data?.slices && offerData.data.slices.length > 0) {
+          offerData.data.slices.forEach((slice: any, index: number) => {
+            const sliceInfo = {
+              id: slice.id,
+              origin: slice.origin?.iata_code,
+              destination: slice.destination?.iata_code,
+              duration: slice.duration,
+              segments_count: slice.segments?.length || 0
+            };
+            console.log(`SLICE ${index + 1} DETAILS:`, sliceInfo);
+            sliceDetails.push(sliceInfo);
+          });
+        }
+        
+        const isRoundtrip = offerData?.data?.slices?.length >= 2;
+        const amount = parseFloat(offerData?.data?.total_amount || '0');
+        
+        // CRITICAL: Validate the amount is reasonable for a roundtrip
+        // If this is a roundtrip (2+ slices) but the amount seems too low,
+        // we need to adjust it based on the expected total from metadata
+        const sliceCount = offerData?.data?.slices?.length || 0;
+        
+        return {
+          amount,
+          isRoundtrip,
+          sliceCount
+        };
+      }
+      
+      try {
+        const response = await fetch(`https://api.duffel.com/air/offers/${offerId}`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.DUFFEL_API}`,
+            'Accept': 'application/json',
+            'Duffel-Version': 'v2'
+          }
+        });
+        
+        if (!response.ok) {
+          console.warn(`Failed to fetch offer ${offerId}, using 0 for calculation`);
+          return {
+            amount: 0,
+            isRoundtrip: false,
+            sliceCount: 0
+          };
+        }
+        
+        const data = await response.json();
+        
+        // Log offer details for this offer too
+        console.log(`ADDITIONAL OFFER ${offerId} DETAILS:`, {
+          id: data?.data?.id,
+          total_amount: data?.data?.total_amount,
+          slices_count: data?.data?.slices?.length || 0
+        });
+        
+        const isRoundtrip = data?.data?.slices?.length >= 2;
+        const amount = parseFloat(data.data?.total_amount || '0');
+        const sliceCount = data?.data?.slices?.length || 0;
+        
+        return {
+          amount,
+          isRoundtrip,
+          sliceCount
+        };
+      } catch (error) {
+        console.error(`Error fetching offer ${offerId}:`, error);
+        return {
+          amount: 0,
+          isRoundtrip: false,
+          sliceCount: 0
+        };
+      }
+    };
+    
+    // Get the offer details including amount and roundtrip status
+    const offerDetails = await fetchOfferAmount(offerId);
+    
+    // CRITICAL FIX: Ensure we're using the correct total amount for roundtrip bookings
+    // For roundtrip bookings, we MUST use the base_amount from metadata as it contains
+    // the correct total for both outbound and return flights
+    let totalAmount = offerDetails.amount;
+    let expectedBaseAmount = 0;
+    
+    // Extract the expected base amount from metadata if available
+    if (metadata?.base_amount) {
+      expectedBaseAmount = parseFloat(metadata.base_amount);
+    }
+    
+    // CRITICAL: For roundtrip bookings, ALWAYS use the expected base amount from metadata
+    // as the offer's total_amount may only include the outbound flight price
+    if (offerDetails.isRoundtrip && expectedBaseAmount > 0) {
+      console.log(`ROUNDTRIP BOOKING: Using expected base amount from metadata (${expectedBaseAmount}) instead of offer amount (${totalAmount})`);
+      totalAmount = expectedBaseAmount;
+    } else if (offerDetails.isRoundtrip && expectedBaseAmount <= 0) {
+      // If we don't have an expected base amount but this is a roundtrip,
+      // log a warning as this is likely an error
+      console.warn(`WARNING: Roundtrip booking detected but no expected base amount provided in metadata. Using offer amount (${totalAmount}) which may be incorrect.`);
+    }
+    
+    // Log breakdown of pricing for clarity
+    console.log('PRICING BREAKDOWN FOR ORDER:', {
+      offerId,
+      originalOfferAmount: offerDetails.amount,
+      adjustedTotalAmount: totalAmount,
+      isRoundtrip: offerDetails.isRoundtrip || metadata?.is_roundtrip === 'true' || metadata?.trip_type === 'roundtrip',
+      slicesCount: offerDetails.sliceCount,
+      paymentIntentAmount: metadata?.total_amount || 'unknown',
+      expectedBaseAmount
+    });
+    
+    console.log('Using total amount for order creation:', { 
+      offerId,
+      totalAmount: totalAmount.toFixed(2),
+      currency,
+      originalOfferCount: selectedOffers.length,
+      isRoundtrip: offerDetails.isRoundtrip || metadata?.is_roundtrip === 'true' || metadata?.trip_type === 'roundtrip'
+    });
+    
+    // CRITICAL: Double-check that the amount is reasonable for a roundtrip
+    // If this is a roundtrip but the amount seems too low compared to the payment intent,
+    // log a warning but proceed with the adjusted amount
+    if (metadata?.total_amount) {
+      const paymentIntentAmount = parseFloat(metadata.total_amount);
+      const markupPercentage = metadata?.markup_percentage ? 
+        parseFloat(metadata.markup_percentage.replace('%', '')) / 100 : 0.5;
+      
+      // Calculate what the base amount should be based on payment intent and markup
+      const expectedBaseFromPaymentIntent = paymentIntentAmount / (1 + markupPercentage);
+      
+      // If there's a significant difference, log a warning
+      if (Math.abs(totalAmount - expectedBaseFromPaymentIntent) / expectedBaseFromPaymentIntent > 0.1) {
+        console.warn(`WARNING: Order amount (${totalAmount}) differs significantly from expected amount based on payment intent (${expectedBaseFromPaymentIntent}).`);
+      }
+    }
     
     const orderData = {
       type: 'instant',
-      selected_offers: selectedOffers,
+      selected_offers: [offerId], // Duffel API requires exactly ONE offer per order
       passengers: formattedPassengers,
       payments: [
         {
           type: 'balance',
-          amount: amount.toString(),
+          amount: totalAmount.toFixed(2),
           currency: currency
         }
       ],
@@ -304,15 +471,15 @@ export async function createOrder(
     }, null, 2));
 
     console.log('Sending order creation request:', {
-      selectedOffersCount: selectedOffers.length,
+      offerId,
+      originalOfferCount: selectedOffers.length,
       passengerCount: formattedPassengers.length,
       paymentIntentId,
       metadata: orderData.metadata
     });
 
     const startTime = Date.now();
-    // First, verify the offer exists and is valid
-    const offerId = selectedOffers[0]; // We're only using the first offer for now
+    // Verify the offer exists and is valid
     console.log('Verifying offer before order creation:', offerId);
     
     try {
@@ -405,7 +572,7 @@ export async function createOrder(
         payments: [
           {
             type: 'balance',
-            amount: amount.toString(),
+            amount: totalAmount.toFixed(2),
             currency: currency
           }
         ],

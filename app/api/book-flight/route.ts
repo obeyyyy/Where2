@@ -241,12 +241,47 @@ async function handleNewPaymentIntent({
         { receivedAmount: amount, parsedAmount: paymentAmount }
       );
     }
+    
+    // Verify the offer is still valid but use the passed amount (which includes markups)
+    console.log('Verifying offer:', offerId);
+    const offerResponse = await fetch(`https://api.duffel.com/air/offers/${offerId}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${process.env.DUFFEL_API}`,
+        'Duffel-Version': 'v2'
+      }
+    });
+
+    if (!offerResponse.ok) {
+      const errorData = await offerResponse.json();
+      console.error('Failed to verify offer:', errorData);
+      return errorResponse(
+        'Failed to verify flight offer. Please try again.',
+        offerResponse.status,
+        'offer_verification_failed',
+        { errorData }
+      );
+    }
+
+    const offerData = await offerResponse.json();
+    console.log('Offer verified:', {
+      id: offerData.data.id,
+      expires_at: offerData.data.expires_at,
+      total_amount: offerData.data.total_amount,
+      total_currency: offerData.data.total_currency,
+      owner: offerData.data.owner?.name
+    });
+    
+    // Use the passed amount which includes all markups and fees
+    const paymentCurrency = currency || offerData.data.total_currency;
 
     console.log('Creating payment intent with details:', {
       offerId,
       amount: paymentAmount,
-      currency: currency.toUpperCase(),
-      passengerCount: passengers.length
+      currency: paymentCurrency,
+      passengerCount: passengers.length,
+      source: 'offer_details'
     });
 
     // Step 1: Create a payment intent without payment method
@@ -262,7 +297,7 @@ async function handleNewPaymentIntent({
       body: JSON.stringify({
         data: {
           amount: paymentAmount.toFixed(2),
-          currency: currency.toUpperCase(),
+          currency: paymentCurrency,
           metadata: {
             ...metadata,
             source: 'where2-web',
@@ -270,7 +305,11 @@ async function handleNewPaymentIntent({
             timestamp: new Date().toISOString(),
             offer_id: offerId,
             passenger_count: passengers.length,
-            test: process.env.NODE_ENV !== 'production'
+            test: process.env.NODE_ENV !== 'production',
+            base_amount: offerData.data.total_amount,  // Store base amount for reference
+            total_amount: paymentAmount.toFixed(2),    // Total amount with markups
+            currency: paymentCurrency,
+            markups_included: true
           }
         }
       })

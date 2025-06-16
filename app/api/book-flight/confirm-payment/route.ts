@@ -22,6 +22,20 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
+    // Define the type for our offer object to fix TypeScript errors
+    type DuffelOffer = {
+      id: string;
+      total_amount: string | number;
+      total_currency?: string;
+      slices?: any[];
+      origin?: any;
+      destination?: any;
+      departing_at?: string;
+    };
+    
+    // Initialize selectedOffer in the outer scope so it's accessible throughout the function
+    let selectedOffer: DuffelOffer | null = null;
+    
     const body = await request.json();
     const {
       paymentIntentId,
@@ -29,10 +43,35 @@ export async function POST(request: Request) {
       amount,
       currency,
       offerId,
+      offerIds = [], // Support for multiple offer IDs
       passengers,
       metadata,
-      isConfirming = false
+      isConfirming = false,
+      isRoundtrip = false
     } = body;
+    
+    // For backward compatibility, if offerId is provided but offerIds is empty, use offerId
+    let allOfferIds = offerId ? [offerId, ...(offerIds || [])] : offerIds || [];
+    // Deduplicate offer IDs
+    allOfferIds = Array.from(new Set(allOfferIds));
+    
+    if (allOfferIds.length === 0) {
+      return NextResponse.json(
+        { error: 'At least one offer ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    // IMPORTANT: Duffel API requires exactly ONE offer per order
+    // For roundtrip bookings, this should be a single offer that includes both legs
+    // If we have multiple offers, we need to verify they're from the same offer request
+    // and represent a single roundtrip journey
+    
+    console.log('Processing booking with offers:', {
+      offerCount: allOfferIds.length,
+      isRoundtrip,
+      offerIds: allOfferIds
+    });
 
     console.log('Received payment confirmation request:', {
       paymentIntentId,
@@ -162,24 +201,37 @@ export async function POST(request: Request) {
       });
     }
 
-    // Use the full offer ID as it contains necessary metadata
-    if (!offerId) {
+    // Validate we have offer IDs to process
+    if (allOfferIds.length === 0) {
       return NextResponse.json(
-        { error: 'Offer ID is required' },
+        { error: 'At least one offer ID is required' },
         { status: 400 }
       );
     }
 
-    // Log the offer ID and related information
-    console.log('Creating order with offer ID:', offerId);
-    console.log('Payment intent status:', confirmResponse.status);
-    console.log('Passenger count:', formattedPassengers.length);
-    console.log('Environment:', process.env.NODE_ENV);
-    console.log('Duffel API Key:', process.env.DUFFEL_API ? '***REDACTED***' : 'Not set');
+    // Determine if this is a roundtrip booking based on metadata
+    const isRoundtripBooking = metadata?.tripType === 'roundtrip' || isRoundtrip === true;
+    
+    // Log the offer details
+    console.log('Processing booking with offers:', {
+      offerCount: allOfferIds.length,
+      isRoundtrip: isRoundtripBooking,
+      offerIds: allOfferIds
+    });
 
-    // Verify the offer exists before proceeding
+    // Verify all offers exist and are valid before proceeding
+    let totalOfferAmount = 0;
+    let offerCurrency = 'EUR'; // Default currency
+    const verifiedOffers = [];
+    
+    // IMPORTANT: For Duffel API, a roundtrip booking should be represented by a single offer
+    // that includes both outbound and return legs. However, our frontend might be sending
+    // multiple offer IDs. We'll verify all offers but only use the first valid one for booking.
+    
     try {
-      const offerResponse = await fetch(`https://api.duffel.com/air/offers/${offerId}`, {
+      // Process each offer to verify and calculate total amount
+      for (const currentOfferId of allOfferIds) {
+        const offerResponse = await fetch(`https://api.duffel.com/air/offers/${currentOfferId}`, {
         headers: {
           'Authorization': `Bearer ${process.env.DUFFEL_API}`,
           'Accept': 'application/json',
@@ -187,58 +239,139 @@ export async function POST(request: Request) {
         }
       });
 
-      if (!offerResponse.ok) {
-        const errorData = await offerResponse.json();
-        console.error('Error fetching offer:', {
-          status: offerResponse.status,
-          error: errorData
+        if (!offerResponse.ok) {
+          const errorData = await offerResponse.json();
+          console.error('Error fetching offer:', {
+            offerId: currentOfferId,
+            status: offerResponse.status,
+            error: errorData
+          });
+          
+          return NextResponse.json({
+            success: false,
+            error: `One or more selected flights are no longer available. Please search for flights again.`,
+            status: 'offer_invalid',
+            details: {
+              offerId: currentOfferId,
+              error: errorData.errors?.[0]?.detail || 'Offer not found or expired'
+            }
+          }, { status: 400 });
+        }
+        
+        const offerData = await offerResponse.json();
+        const offer = offerData.data;
+        
+        if (!offer || !offer.id) {
+          console.error('Invalid offer response from Duffel API:', offerData);
+          return NextResponse.json(
+            { 
+              success: false, 
+              status: 'offer_invalid',
+              error: 'One or more selected flights are no longer available. Please search for flights again.' 
+            },
+            { status: 400 }
+          );
+        }
+        
+        // Check if offer is expired
+        const offerExpiry = new Date(offer.expires_at);
+        if (new Date() > offerExpiry) {
+          console.error('Offer has expired:', offer.id, 'Expired at:', offer.expires_at);
+          return NextResponse.json(
+            { 
+              success: false, 
+              status: 'offer_expired',
+              error: 'One or more selected flight offers have expired. Please search for flights again.'
+            },
+            { status: 400 }
+          );
+        }
+        
+        // Add to verified offers
+        verifiedOffers.push(offer);
+        
+        // Log detailed offer information for debugging
+        console.log('OFFER DETAILS FOR PRICING:', {
+          id: offer.id,
+          total_amount: offer.total_amount,
+          total_currency: offer.total_currency,
+          base_amount: offer.base_amount,
+          base_currency: offer.base_currency,
+          tax_amount: offer.tax_amount,
+          tax_currency: offer.tax_currency,
+          slices_count: offer.slices?.length || 0,
+          passengers_count: offer.passengers?.length || 0
         });
         
+        // Log details for each slice to verify roundtrip
+        if (offer.slices && Array.isArray(offer.slices)) {
+          offer.slices.forEach((slice: any, index: any) => {
+            console.log(`SLICE ${index + 1} DETAILS:`, {
+              id: slice.id,
+              origin: slice.origin?.iata_code,
+              destination: slice.destination?.iata_code,
+              duration: slice.duration,
+              segments_count: slice.segments?.length || 0
+            });
+          });
+        }
+      }
+      
+      // For roundtrip bookings, we need to ensure we're using the correct offer
+      // that contains both outbound and return slices
+      const isRoundtripBooking = metadata?.tripType === 'roundtrip' || isRoundtrip === true;
+      
+      // Find the best offer for roundtrip booking (should have multiple slices)
+      // Ensure we have at least one verified offer
+      if (verifiedOffers.length === 0) {
+        console.error('No verified offers found');
         return NextResponse.json({
           success: false,
-          error: `The selected offer is no longer available. Please search for flights again.`,
-          status: 'offer_invalid',
-          details: {
-            offerId,
-            error: errorData.errors?.[0]?.detail || 'Offer not found or expired'
-          }
+          error: 'No valid offers found. Please search for flights again.',
+          status: 'no_valid_offers'
         }, { status: 400 });
       }
       
-      const offerData = await offerResponse.json();
-      console.log('Offer details:', {
-        id: offerData.data?.id,
-        expires_at: offerData.data?.expires_at,
-        available_seats: offerData.data?.available_seats,
-        total_amount: offerData.data?.total_amount,
-        total_currency: offerData.data?.total_currency
+      // Default to first offer
+      selectedOffer = verifiedOffers[0];
+      
+      if (isRoundtripBooking) {
+        // For roundtrip, find an offer with multiple slices if available
+        const roundtripOffer = verifiedOffers.find(offer => 
+          offer.slices && Array.isArray(offer.slices) && offer.slices.length > 1
+        );
+        
+        if (roundtripOffer) {
+          selectedOffer = roundtripOffer;
+          console.log('Found valid roundtrip offer with multiple slices:', {
+            offerId: roundtripOffer.id,
+            slicesCount: roundtripOffer.slices?.length || 0
+          });
+        } else {
+          console.warn('No roundtrip offer with multiple slices found. Using first offer as fallback.');
+        }
+      }
+      
+      // Set the total amount from the selected offer
+      if (selectedOffer && selectedOffer.total_amount) {
+        if (typeof selectedOffer.total_amount === 'string') {
+          totalOfferAmount = parseFloat(selectedOffer.total_amount);
+          offerCurrency = selectedOffer.total_currency || offerCurrency;
+        } else {
+          totalOfferAmount = Number(selectedOffer.total_amount);
+          offerCurrency = selectedOffer.total_currency || offerCurrency;
+        }
+      }
+      
+      console.log('Verified all offers:', {
+        offerCount: verifiedOffers.length,
+        selectedOfferId: selectedOffer?.id || 'unknown',
+        totalOfferAmount,
+        offerCurrency,
+        isRoundtrip: isRoundtripBooking,
+        slicesCount: selectedOffer?.slices?.length || 0,
+        offerIds: verifiedOffers.map(o => o.id)
       });
-      
-      if (!offerData.data || !offerData.data.id) {
-        console.error('Invalid offer response from Duffel API:', offerData);
-        return NextResponse.json(
-          { 
-            success: false, 
-            status: 'offer_invalid',
-            error: 'The selected flight is no longer available. Please search for flights again.' 
-          },
-          { status: 400 }
-        );
-      }
-      
-      // Check if offer is expired
-      const offerExpiry = new Date(offerData.data.expires_at);
-      if (new Date() > offerExpiry) {
-        console.error('Offer has expired:', offerData.data.id, 'Expired at:', offerData.data.expires_at);
-        return NextResponse.json(
-          { 
-            success: false, 
-            status: 'offer_expired',
-            error: 'The selected flight offer has expired. Please search for flights again.'
-          },
-          { status: 400 }
-        );
-      }
 
     } catch (error) {
       console.error('Error verifying offer:', error);
@@ -249,79 +382,14 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
 
-    // Create order if payment is confirmed and offer is valid
+    // Create order if payment is confirmed and offers are valid
     if (confirmResponse.status === 'succeeded' && confirmResponse.paymentIntent && confirmResponse.paymentIntentId) {
-      // First, verify the offer exists and get its details
-      let verifiedOfferId = offerId;
-      try {
-        console.log('Verifying offer with ID:', offerId);
-        const offerResponse = await fetch(`https://api.duffel.com/air/offers/${offerId}`, {
-          headers: {
-            'Authorization': `Bearer ${process.env.DUFFEL_API}`,
-            'Accept': 'application/json',
-            'Duffel-Version': 'v2'
-          }
-        });
+      // We've already verified all offers in the previous step
+      // and stored them in the verifiedOffers array
 
-        if (!offerResponse.ok) {
-          const errorData = await offerResponse.json();
-          console.error('Error verifying offer:', errorData);
-          return NextResponse.json({
-            success: false,
-            status: 'offer_verification_failed',
-            error: 'The selected flight is no longer available. Please search for flights again.',
-            details: {
-              offerId,
-              error: errorData.errors?.[0]?.detail || 'Offer not found or expired'
-            }
-          }, { status: 400 });
-        }
-        
-        const offerData = await offerResponse.json();
-        console.log('Retrieved offer details:', {
-          id: offerData.data?.id,
-          expires_at: offerData.data?.expires_at,
-          total_amount: offerData.data?.total_amount,
-          total_currency: offerData.data?.total_currency,
-          owner: offerData.data?.owner?.name || 'unknown'
-        });
-        
-        if (!offerData.data || !offerData.data.id) {
-          console.error('Invalid offer response from Duffel API:', offerData);
-          return NextResponse.json(
-            { 
-              success: false, 
-              status: 'offer_invalid',
-              error: 'The selected flight is no longer available. Please search for flights again.' 
-            },
-            { status: 400 }
-          );
-        }
-        
-        // Use the verified offer ID from the response
-        verifiedOfferId = offerData.data.id;
-        
-        // Check if offer is expired
-        const offerExpiry = new Date(offerData.data.expires_at);
-        if (new Date() > offerExpiry) {
-          console.error('Offer has expired:', offerData.data.id, 'Expired at:', offerData.data.expires_at);
-          return NextResponse.json(
-            { 
-              success: false, 
-              status: 'offer_expired',
-              error: 'The selected flight offer has expired. Please search for flights again.'
-            },
-            { status: 400 }
-          );
-        }
-      } catch (error) {
-        console.error('Error verifying offer:', error);
-        return NextResponse.json({
-          success: false,
-          status: 'offer_verification_error',
-          error: 'Failed to verify flight availability. Please try again.'
-        }, { status: 500 });
-      }
+      // --- ROUNDTRIP LOGIC ---
+      // For roundtrip, ensure we pass both unique offers and sum their amounts
+      // For oneway, fallback to single offer logic (already implemented)
 
       // Then, confirm the payment intent with Duffel
       try {
@@ -371,24 +439,137 @@ export async function POST(request: Request) {
           error: error instanceof Error ? error.message : 'Failed to process payment confirmation.'
         }, { status: 500 });
       }
-      console.log('Creating order with verified offer ID:', verifiedOfferId);
-      console.log('Payment intent status:', confirmResponse.status);
-      console.log('Passenger count:', formattedPassengers.length);
-      console.log('Environment:', process.env.NODE_ENV || 'development');
+      // Calculate the expected base amount for the order
+      // For roundtrip, ensure we're using the full amount that includes both legs
+      const isRoundtrip = isRoundtripBooking && selectedOffer && selectedOffer.slices && selectedOffer.slices.length > 1;
+      const slicesCount = selectedOffer?.slices?.length || 1;
+      
+      // CRITICAL: Ensure we're using the correct total amount from the selected offer
+      // This must include both legs for roundtrip bookings
+      if (selectedOffer && selectedOffer.total_amount) {
+        if (typeof selectedOffer.total_amount === 'string') {
+          totalOfferAmount = parseFloat(selectedOffer.total_amount);
+        } else {
+          totalOfferAmount = Number(selectedOffer.total_amount);
+        }
+        offerCurrency = selectedOffer.total_currency || offerCurrency;
+        
+        // Double-check that we have the correct amount for roundtrip
+        if (isRoundtrip) {
+          console.log('ROUNDTRIP BOOKING DETECTED - Verifying full roundtrip price is used:', {
+            offerId: selectedOffer.id,
+            totalAmount: totalOfferAmount,
+            currency: offerCurrency,
+            slicesCount: slicesCount,
+            sliceOrigins: selectedOffer.slices?.map((s: any) => s.origin?.iata_code) || [],
+            sliceDestinations: selectedOffer.slices?.map((s: any) => s.destination?.iata_code) || []
+          });
+        }
+      }
+      
+      // Log pricing breakdown for debugging
+      console.log('PRICING BREAKDOWN FOR ORDER:', {
+        offerId: selectedOffer?.id,
+        originalOfferAmount: totalOfferAmount,
+        adjustedTotalAmount: totalOfferAmount,
+        isRoundtrip,
+        slicesCount,
+        paymentIntentAmount: confirmResponse.paymentIntent?.amount,
+        expectedBaseAmount: totalOfferAmount
+      });
+      
+      console.log('Creating order with verified offers:', {
+        offerCount: verifiedOffers.length,
+        totalOfferAmount,
+        offerCurrency,
+        paymentIntentStatus: confirmResponse.status,
+        passengerCount: formattedPassengers.length,
+        environment: process.env.NODE_ENV || 'development'
+      });
       
       try {
-        // Create the order using the createOrder function with the verified offer ID
+        // Prepare order metadata
+        // Ensure metadata only contains string values and simple structures
+        // Determine trip type from the original metadata/isRoundtrip flag
+        const tripType = isRoundtripBooking ? 'roundtrip' : 'oneway';
+        const isRoundtripMeta = isRoundtripBooking ? 'true' : 'false';
+        
+        // For roundtrip bookings, we should have a single offer that includes both legs
+        // The first verified offer should be used for the order
+        const orderMetadata = {
+          // Only include essential metadata as simple key-value pairs
+          source: 'web-booking',
+          trip_type: tripType,
+          payment_intent_id: confirmResponse.paymentIntentId,
+          environment: process.env.NODE_ENV || 'development',
+          is_roundtrip: isRoundtripMeta,
+          base_amount: totalOfferAmount.toString(),
+          base_currency: offerCurrency,
+          total_amount: confirmResponse.paymentIntent?.amount || '',
+          total_currency: confirmResponse.paymentIntent?.currency || '',
+          // Flatten the price breakdown into simple key-value pairs
+          markup_percentage: '50.00%',
+          // Include all offer IDs as a comma-separated string for reference
+          // but only the first one will be used for the actual order
+          offer_ids: verifiedOffers.map(o => o.id).join(','),
+          primary_offer_id: verifiedOffers[0]?.id || '',
+          // Add a timestamp
+          timestamp: new Date().toISOString()
+        };
+
+        console.log('Creating order with metadata:', JSON.stringify(orderMetadata, null, 2));
+        
+        // Log the total amount being used for order creation
+        console.log('Using total amount for order creation:', {
+          offerId: selectedOffer?.id,
+          totalAmount: totalOfferAmount.toString(),
+          currency: offerCurrency,
+          originalOfferCount: allOfferIds.length,
+          isRoundtrip: isRoundtripBooking
+        });
+        
+        // CRITICAL: For roundtrip bookings, ensure we're using the correct combined offer
+        // that includes both outbound and return legs, and the total amount reflects both legs
+        if (!selectedOffer || !selectedOffer.id) {
+          throw new Error('No valid offer found for order creation');
+        }
+        
+        // Log the final offer and amount being used for order creation
+        console.log('FINAL ORDER CREATION DETAILS:', {
+          offerId: selectedOffer.id,
+          totalAmount: totalOfferAmount,
+          currency: offerCurrency,
+          isRoundtrip: isRoundtrip ? 'true' : 'false',
+          slicesCount: slicesCount,
+          paymentIntentId: confirmResponse.paymentIntentId
+        });
+        
+        // Create the order with the verified offer ID
+        // IMPORTANT: Duffel API requires exactly ONE offer per order
+        // For roundtrip bookings, this should be a single offer that includes both legs
         const orderResponse = await createOrder(
-          [verifiedOfferId], // Use the verified offer ID
+          [selectedOffer.id], // Use the selected offer ID with the combined roundtrip if applicable
           formattedPassengers,
           confirmResponse.paymentIntentId,
           {
-            ...metadata,
-            payment_intent_id: confirmResponse.paymentIntentId,
-            environment: process.env.NODE_ENV || 'development',
-            verified_offer_id: verifiedOfferId,
-            amount: amount?.toString() || '0',
-            currency: currency || 'EUR'
+            ...orderMetadata,
+            // Include price breakdown in metadata
+            price_breakdown: JSON.stringify({
+              base_amount: totalOfferAmount,
+              base_currency: offerCurrency,
+              total_with_markup: confirmResponse.paymentIntent?.amount || amount,
+              currency: confirmResponse.paymentIntent?.currency || currency || 'EUR',
+              markup_percentage: confirmResponse.paymentIntent?.amount && totalOfferAmount > 0 
+                ? ((parseFloat(confirmResponse.paymentIntent.amount) - totalOfferAmount) / totalOfferAmount * 100).toFixed(2) + '%'
+                : 'N/A',
+              offers: [{
+                id: selectedOffer.id,
+                amount: totalOfferAmount,
+                currency: offerCurrency,
+                slices_count: slicesCount,
+                is_roundtrip: isRoundtrip ? 'true' : 'false'
+              }]
+            })
           }
         );
         

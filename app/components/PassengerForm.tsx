@@ -82,17 +82,17 @@ const PassengerForm: React.FC<PassengerFormProps> = ({ passenger, index, onChang
         dateOfBirth: '1990-01-01',
         gender: 'm' as const,
         email: 'test@example.com',
-        phone: '+1234567890',
+        phone: '+447958370033',
         documentType: 'passport',
         documentNumber: 'AB123456',
-        documentIssuingCountryCode: 'US',
+        documentIssuingCountryCode: 'GB',
         documentExpiryDate: '2030-12-31',
-        documentNationality: 'US',
+        documentNationality: 'GB',
         address: {
           addressLine1: '123 Test St',
-          city: 'New York',
-          countryCode: 'US',
-          postalCode: '10001'
+          city: 'London',
+          countryCode: 'GB',
+          postalCode: 'SW1A 1AA'
         }
       };
 
@@ -293,7 +293,7 @@ const PassengerForm: React.FC<PassengerFormProps> = ({ passenger, index, onChang
                     value={passenger.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
                     className="w-full p-3.5 pl-10 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FFA500]/50 focus:border-transparent"
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="+447958370033"
                     required
                   />
                   <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />

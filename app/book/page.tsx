@@ -594,6 +594,19 @@ const BookingPage: React.FC = () => {
   }
   const hasReturnFlight = hasValidReturnFlight;
 
+  // Extract price data from the trip object
+  const currency = trip?.price?.currency || 'EUR';
+  const outboundPrice = trip?.price?.breakdown?.outbound || '0';
+  const returnPrice = trip?.price?.breakdown?.return || '0';
+  
+  // Log the extracted data for debugging
+  console.log('Extracted price data:', {
+    currency,
+    outboundPrice,
+    returnPrice,
+    priceBreakdown: trip?.price?.breakdown
+  });
+
   // Get airport data for the flight cards
   const getAirportData = (iataCode: string) => {
     return airports.find((a: any) => a.iata === iataCode) || { iata_code: iataCode };
@@ -631,7 +644,7 @@ const BookingPage: React.FC = () => {
                 <div className="flex items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-700">Outbound Flight</h3>
                   <span className="ml-4 text-sm text-gray-500">
-                    {new Date(searchParams.departureDate).toLocaleDateString('en-US', {
+                    {new Date(outboundSegments?.[0]?.departure?.at).toLocaleDateString('en-US', {
                       weekday: 'long',
                       year: 'numeric',
                       month: 'long',
@@ -646,8 +659,14 @@ const BookingPage: React.FC = () => {
                       duration: trip.outbound?.duration || trip.itineraries?.[0]?.duration || ''
                     }} 
                     type="outbound" 
-                    date={searchParams.departureDate}
-                    price={priceData}
+                    date={outboundSegments?.[0]?.departure?.at || ''}
+                    price={{
+                      currency,
+                      total: outboundPrice,
+                      breakdown: {
+                        outbound: outboundPrice
+                      }
+                    }}
                     airports={outboundSegments.flatMap((segment: any) => [
                       getAirportData(segment.departure.iataCode),
                       getAirportData(segment.arrival.iataCode)
@@ -662,7 +681,7 @@ const BookingPage: React.FC = () => {
                   <div className="flex items-center mb-4">
                     <h3 className="text-lg font-semibold text-gray-700">Return Flight</h3>
                     <span className="ml-4 text-sm text-gray-500">
-                      {new Date(searchParams.returnDate || '').toLocaleDateString('en-US', {
+                      {new Date(returnSegments?.[0]?.departure?.at).toLocaleDateString('en-US', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
@@ -677,8 +696,14 @@ const BookingPage: React.FC = () => {
                         duration: trip.return?.duration || trip.itineraries?.[1]?.duration || ''
                       }} 
                       type="return" 
-                      date={searchParams.returnDate || ''} 
-                      price={priceData}
+                      date={returnSegments?.[0]?.departure?.at || ''} 
+                      price={{
+                        currency,
+                        total: returnPrice,
+                        breakdown: {
+                          return: returnPrice
+                        }
+                      }}
                       airports={returnSegments.flatMap((segment: any) => [
                         getAirportData(segment.departure.iataCode),
                         getAirportData(segment.arrival.iataCode)
@@ -729,7 +754,30 @@ const BookingPage: React.FC = () => {
                 
                 {trip?.price?.total && (
                   <div className="space-y-2">
-                    <div className="flex justify-between">
+                    {/* Outbound Flight Price */}
+                    {trip.price.breakdown?.outbound && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Outbound flight:</span>
+                        <span className="font-medium">
+                          {trip.price.breakdown.currency || '€'}
+                          {parseFloat(trip.price.breakdown.outbound.toString()).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Return Flight Price */}
+                    {trip.price.breakdown?.return && trip.price.breakdown.return !== '0' && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Return flight:</span>
+                        <span className="font-medium">
+                          {trip.price.breakdown.currency || '€'}
+                          {parseFloat(trip.price.breakdown.return.toString()).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Base Fare Total */}
+                    <div className="flex justify-between border-t border-gray-100 pt-2 mt-2">
                       <span className="text-gray-600">Base fare (per passenger):</span>
                       <span className="font-medium">
                         {trip.price.breakdown?.currency || '€'}

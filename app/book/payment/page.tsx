@@ -79,14 +79,33 @@ function PaymentContent() {
         setBookingData(data);
         
         // Extract amount and currency with proper fallbacks
-        const amount = data.trip?.price?.total || 
-                      data.trip?.price?.breakdown?.basePrice || 
-                      '0';
-        const currency = data.trip?.price?.currency || 
-                        data.trip?.price?.breakdown?.currency || 
-                        'EUR';
+        // For roundtrip, we need to sum both outbound and return amounts
+        const isRoundtrip = data.searchParams?.tripType === 'roundtrip';
+        let amount = '0';
+        let currency = 'EUR';
+
+        if (isRoundtrip && data.trip?.price?.breakdown) {
+          // For roundtrip, sum outbound and return amounts
+          const outboundAmount = parseFloat(data.trip.price.breakdown.outbound || '0');
+          const returnAmount = parseFloat(data.trip.price.breakdown.return || '0');
+          amount = (outboundAmount + returnAmount).toString();
+          currency = data.trip.price.breakdown.currency || 'EUR';
+        } else {
+          // For one-way, use the total amount
+          amount = data.trip?.price?.total || 
+                  data.trip?.price?.breakdown?.basePrice || 
+                  '0';
+          currency = data.trip?.price?.currency || 
+                   data.trip?.price?.breakdown?.currency || 
+                   'EUR';
+        }
         
-        console.log('Creating payment intent with:', { amount, currency });
+        console.log('Creating payment intent with:', { 
+          amount, 
+          currency,
+          isRoundtrip,
+          tripPrice: data.trip?.price 
+        });
         
         // Create payment intent
         const response = await fetch('/api/book-flight', {
@@ -96,6 +115,10 @@ function PaymentContent() {
           },
           body: JSON.stringify({
             offerId: data.trip.id,
+            // Always include both outbound and return offer IDs for roundtrip bookings
+            offerIds: isRoundtrip && data.trip.returnOfferId && data.trip.id !== data.trip.returnOfferId
+              ? [data.trip.id, data.trip.returnOfferId]
+              : [data.trip.id],
             passengers: data.passengers,
             amount: amount,
             currency: currency,
@@ -1071,6 +1094,10 @@ function PaymentContent() {
                         amount: bookingData.trip.price?.total || 0,
                         currency: bookingData.trip.price?.currency || 'EUR',
                         offerId: bookingData.trip.id,
+                        // Include all offer IDs for roundtrip bookings
+                        offerIds: bookingData.trip.returnOfferId 
+                          ? [bookingData.trip.id, bookingData.trip.returnOfferId]
+                          : [bookingData.trip.id],
                         passengers: bookingData.passengers,
                         metadata: {
                           ...(bookingData.metadata || {}),
