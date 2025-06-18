@@ -1064,7 +1064,8 @@ function PaymentContent() {
           </div>
 
           {/* Right side - Payment Form */}
-          <div className="lg:col-span-5 bg-gray-50">
+          <div className="lg:col-span-5 bg-gray-50
+          ">
             <div className="rounded-2xl shadow-lg border border-gray-100">
               <h2 className="text-2xl p-8 font-bold text-gray-800 ">Payment Information</h2>
              

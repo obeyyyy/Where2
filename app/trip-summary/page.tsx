@@ -361,13 +361,7 @@ export default function TripSummaryPage() {
                 itinerary={itineraries[0]}
                 type="outbound"
                 date={itineraries[0].segments?.[0]?.departure?.at || ''}
-                price={{
-                  currency: price?.currency || 'USD',
-                  total: prices.outboundRaw.toString(),
-                  breakdown: {
-                    outbound: prices.outboundRaw.toString()
-                  }
-                }}
+                
                 airports={[
                   getAirportData(itineraries[0].segments?.[0]?.departure?.iataCode || ''),
                   getAirportData(itineraries[0].segments?.[itineraries[0].segments.length - 1]?.arrival?.iataCode || '')
@@ -392,13 +386,7 @@ export default function TripSummaryPage() {
                 itinerary={itineraries[1]}
                 type="return"
                 date={itineraries[1].segments?.[0]?.departure?.at || ''}
-                price={{
-                  currency: price?.currency || 'USD',
-                  total: prices.returnRaw.toString(),
-                  breakdown: {
-                    return: prices.returnRaw.toString()
-                  }
-                }}
+               
                 airports={[
                   getAirportData(itineraries[1].segments?.[0]?.departure?.iataCode || ''),
                   getAirportData(itineraries[1].segments?.[itineraries[1].segments.length - 1]?.arrival?.iataCode || '')
