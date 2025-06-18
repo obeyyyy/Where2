@@ -11,6 +11,7 @@ const countriesData = require('world-countries/countries.json');
 
 // Import components
 import { FlightItineraryCard } from "@/app/components/FlightItineraryCard";
+import { computePricing, PricingBreakdown } from "@/lib/pricing";
 import PassengerForm, { PassengerInfo } from "@/app/components/PassengerForm";
 
 // Extend the PassengerInfo interface with additional properties
@@ -84,6 +85,30 @@ const BookingPage: React.FC = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+
+  // Centralised pricing breakdown – must run every render BEFORE early returns to keep hook order stable
+  const priceInfo: PricingBreakdown = useMemo(() => {
+    // If trip data not yet loaded, return a zeroed breakdown to avoid null checks downstream
+    if (!bookingData?.trip) {
+      return {
+        base: 0,
+        markupPerPassenger: 1.0,
+        servicePerPassenger: 2.0,
+        passengers: passengerData.length || 1,
+        markupTotal: 0,
+        serviceTotal: 0,
+        total: 0,
+        currency: 'EUR',
+      };
+    }
+
+    const basePerPassenger = parseFloat(bookingData.trip.price.total.toString());
+    return computePricing({
+      baseAmount: basePerPassenger * (passengerData.length || 1),
+      passengers: passengerData.length || 1,
+      currency: bookingData.trip.price.currency || bookingData.trip.price.breakdown?.currency || 'EUR',
+    });
+  }, [bookingData, passengerData.length]);
 
   // Get list of all countries from world-countries package
   const countries = useMemo(() => {
@@ -594,6 +619,8 @@ const BookingPage: React.FC = () => {
   }
   const hasReturnFlight = hasValidReturnFlight;
 
+ 
+
   // Extract price data from the trip object
   const currency = trip?.price?.currency || 'EUR';
   const outboundPrice = trip?.price?.breakdown?.outbound || '0';
@@ -660,13 +687,6 @@ const BookingPage: React.FC = () => {
                     }} 
                     type="outbound" 
                     date={outboundSegments?.[0]?.departure?.at || ''}
-                    price={{
-                      currency,
-                      total: outboundPrice,
-                      breakdown: {
-                        outbound: outboundPrice
-                      }
-                    }}
                     airports={outboundSegments.flatMap((segment: any) => [
                       getAirportData(segment.departure.iataCode),
                       getAirportData(segment.arrival.iataCode)
@@ -697,13 +717,7 @@ const BookingPage: React.FC = () => {
                       }} 
                       type="return" 
                       date={returnSegments?.[0]?.departure?.at || ''} 
-                      price={{
-                        currency,
-                        total: returnPrice,
-                        breakdown: {
-                          return: returnPrice
-                        }
-                      }}
+                     
                       airports={returnSegments.flatMap((segment: any) => [
                         getAirportData(segment.departure.iataCode),
                         getAirportData(segment.arrival.iataCode)
@@ -781,7 +795,7 @@ const BookingPage: React.FC = () => {
                       <span className="text-gray-600">Base fare (per passenger):</span>
                       <span className="font-medium">
                         {trip.price.breakdown?.currency || '€'}
-                        {parseFloat(trip.price.total.toString()).toFixed(2)}
+                        {(priceInfo.base / passengerData.length).toFixed(2)}
                       </span>
                     </div>
                     {trip.price.breakdown?.serviceFee && (
@@ -823,7 +837,7 @@ const BookingPage: React.FC = () => {
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total for {passengerData.length} {passengerData.length === 1 ? 'passenger' : 'passengers'}:</span>
                       <span className="text-orange-500">
-                        €{((parseFloat(trip.price.total) + 4.00) * passengerData.length).toFixed(2)}
+                        €{priceInfo.total.toFixed(2)}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1 text-right">

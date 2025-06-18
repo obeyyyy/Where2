@@ -2,10 +2,12 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import { computePricing, PricingBreakdown } from '@/lib/pricing';
 import Loading from '../../loading';
 import { FiArrowLeft, FiCheckCircle, FiCreditCard, FiUser, FiCalendar, FiGlobe } from 'react-icons/fi';
 import { FlightItineraryCard } from '@/app/components/FlightItineraryCard';
 import PaymentForm from '@/app/components/PaymentForm';
+import AnimatedStepCharacter from '@/app/components/AnimatedStepCharacter';
 
 interface PassengerInfo {
   title: string;
@@ -57,7 +59,11 @@ function PaymentContent() {
   const [error, setError] = useState<string | null>(null);
   const [clientToken, setClientToken] = useState<string | undefined>(undefined);
   const [paymentIntentId, setPaymentIntentId] = useState<string | undefined>(undefined);
-  
+  const [baseAmount, setBaseAmount] = useState<string>('0');
+  const [amount, setAmount] = useState<string>('0');
+  const [currency, setCurrency] = useState<string>('EUR');
+  const [priceInfo, setPriceInfo] = useState<PricingBreakdown | null>(null);
+
   // Fetch booking data and create payment intent on mount
   useEffect(() => {
     const fetchBookingData = async () => {
@@ -79,49 +85,61 @@ function PaymentContent() {
         setBookingData(data);
         
         // Extract amount and currency with proper fallbacks
-        // For roundtrip, we need to sum both outbound and return amounts
         const isRoundtrip = data.searchParams?.tripType === 'roundtrip';
-        let amount = '0';
-        let currency = 'EUR';
-
-        if (isRoundtrip && data.trip?.price?.breakdown) {
-          // For roundtrip, sum outbound and return amounts
-          const outboundAmount = parseFloat(data.trip.price.breakdown.outbound || '0');
-          const returnAmount = parseFloat(data.trip.price.breakdown.return || '0');
-          amount = (outboundAmount + returnAmount).toString();
-          currency = data.trip.price.breakdown.currency || 'EUR';
+        let localBaseAmount = '0';
+        let localCurrency = 'EUR';
+        
+        if (isRoundtrip && data.trip?.price?.total) {
+          // Use the total price directly from Duffel for roundtrip
+          localBaseAmount = data.trip.price.total;
+          localCurrency = data.trip.price.currency || 'EUR';
+        } else if (isRoundtrip && data.trip?.price?.breakdown) {
+          // If we have a breakdown but no total, use the outbound price as the total
+          // since Duffel returns a single price for roundtrip
+          localBaseAmount = data.trip.price.breakdown.outbound || '0';
+          localCurrency = data.trip.price.breakdown.currency || 'EUR';
         } else {
           // For one-way, use the total amount
-          amount = data.trip?.price?.total || 
-                  data.trip?.price?.breakdown?.basePrice || 
-                  '0';
-          currency = data.trip?.price?.currency || 
+          localBaseAmount = data.trip?.price?.total || 
+                     data.trip?.price?.breakdown?.basePrice || 
+                     '0';
+          localCurrency = data.trip?.price?.currency || 
                    data.trip?.price?.breakdown?.currency || 
                    'EUR';
         }
         
+        // Compute pricing via shared utility
+        const breakdown: PricingBreakdown = computePricing({
+          baseAmount: parseFloat(localBaseAmount),
+          passengers: data.passengers?.length || 1,
+          currency: localCurrency,
+        });
+        const localAmount = breakdown.total.toString();
+
+        // Save breakdown for display & downstream components
+        setPriceInfo(breakdown);
+        
+        // Update state variables
+        setBaseAmount(localBaseAmount);
+        setCurrency(localCurrency);
+        setAmount(localAmount);
+        
         console.log('Creating payment intent with:', { 
-          amount, 
-          currency,
-          isRoundtrip,
-          tripPrice: data.trip?.price 
+          amount: localAmount, 
+          currency: localCurrency,
+          paymentIntentId: data.paymentIntentId || undefined
         });
         
         // Create payment intent
-        const response = await fetch('/api/book-flight', {
+        const response = await fetch('/api/create-payment-intent', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            offerId: data.trip.id,
-            // Always include both outbound and return offer IDs for roundtrip bookings
-            offerIds: isRoundtrip && data.trip.returnOfferId && data.trip.id !== data.trip.returnOfferId
-              ? [data.trip.id, data.trip.returnOfferId]
-              : [data.trip.id],
-            passengers: data.passengers,
-            amount: amount,
-            currency: currency,
+            amount: localAmount,
+            currency: localCurrency,
+            paymentIntentId: data.paymentIntentId || undefined
           }),
         });
         
@@ -349,15 +367,16 @@ function PaymentContent() {
         throw new Error('Booking data not found. Please try again.');
       }
 
-      // Get the amount and currency from the trip data
-      const amount = bookingData.trip?.price?.total || 
-                    bookingData.trip?.price?.breakdown?.basePrice || 
-                    '0';
-      const currency = bookingData.trip?.price?.currency || 
-                      bookingData.trip?.price?.breakdown?.currency || 
-                      'EUR';
+      // Recompute pricing to ensure we charge the exact same total used for the intent
+      const breakdown: PricingBreakdown = computePricing({
+        baseAmount: parseFloat(bookingData.trip?.price?.total || bookingData.trip?.price?.breakdown?.basePrice || '0'),
+        passengers: bookingData.passengers?.length || 1,
+        currency: bookingData.trip?.price?.currency || bookingData.trip?.price?.breakdown?.currency || 'EUR',
+      });
+      const amount = breakdown.total.toFixed(2);
+      const currency = breakdown.currency;
       
-      console.log('Payment submission with amount:', amount, currency);
+      console.log('Payment submission with amount:', amount, currency, breakdown);
       
       if (!amount || isNaN(parseFloat(amount))) {
         throw new Error('Invalid amount for payment');
@@ -839,11 +858,19 @@ function PaymentContent() {
       setLoading(false);
     }
   }, [router]);
+    // Fallback for amount and currency if not provided
+    const displayAmount = priceInfo?.total || parseFloat(amount || bookingData?.trip?.price?.total || '0').toFixed(2);
+    const displayCurrency = currency || bookingData?.trip?.price?.currency || '€';
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+      <div className="min-h-screen bg-[#FFFDF6] flex items-center justify-center p-4">
+        <div className="text-center">
+          
+          
+          <h2 className="text-2xl font-semibold text-gray-700 mb-2">Loading your booking details...</h2>
+          <p className="text-gray-500">Please wait a moment.</p>
+        </div>
       </div>
     );
   }
@@ -851,15 +878,17 @@ function PaymentContent() {
   if (error || !bookingData) {
     return (
       <div className="min-h-screen bg-[#FFFDF6] flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-xl shadow-md max-w-md w-full text-center">
-          <div className="text-red-500 text-5xl mb-4">✕</div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Error</h1>
-          <p className="text-gray-600 mb-6">
-            {error || 'Unable to load booking details. Please try again.'}
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center border border-red-200">
+          <div className="text-red-500 text-6xl mb-4 animate-bounce">
+            <FiCheckCircle className="rotate-45 mx-auto text-red-500" style={{ transform: 'rotate(45deg)' }} /> {/* Using a rotated check for 'x' */}
+          </div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-3">Oops! Something went wrong.</h1>
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            {error || 'We were unable to load your booking details. This might be a temporary issue. Please try again.'}
           </p>
           <button
             onClick={() => router.push('/book')}
-            className="w-full bg-orange-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-orange-600 transition-colors"
+            className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-orange-700 transition-all duration-300 transform hover:scale-105"
           >
             Back to Booking
           </button>
@@ -869,50 +898,50 @@ function PaymentContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFDF6] p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
+    <div className="min-h-screen bg-[#FFFDF6] py-10">
+      <div className="max-w-6xl mx-auto px-4 md:px-6">
+        <div className="mb-10">
           <button
             onClick={() => router.back()}
-            className="flex items-center text-orange-500 hover:text-orange-600 transition-colors mb-6"
+            className="flex items-center text-orange-600 hover:text-orange-700 transition-colors mb-6 text-lg font-medium"
           >
-            <FiArrowLeft className="mr-2" /> Back to booking
+            <FiArrowLeft className="mr-3 text-2xl" /> Back to booking details
           </button>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Complete Your Payment</h1>
-          <p className="text-gray-600">Review your booking details and enter payment information</p>
+          <h1 className="text-4xl font-extrabold text-gray-900 mb-3">Complete Your Payment</h1>
+          <p className="text-gray-700 text-lg">Just a few steps away from confirming your trip. Please review your details and proceed to payment.</p>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="grid gap-5 lg:grid-cols-12">
           {/* Left side - Booking Summary */}
-          <div className="lg:w-2/3">
-            <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6">Your Booking Summary</h2>
-              
+          <div className="lg:col-span-6 space-y-8">
+            <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+              <h2 className="text-2xl font-bold text-gray-800 mb-7">Your Booking Summary</h2>
+
               {/* Passenger Details */}
-              <div className="border-t border-gray-100 pt-6">
-                <h3 className="text-lg font-semibold text-gray-700 mb-4">Passenger Details</h3>
-                <div className="space-y-4">
+              <div className="border-t border-gray-200 pt-7 mt-7">
+                <h3 className="text-xl font-semibold text-gray-700 mb-5">Passenger Details</h3>
+                <div className="space-y-5">
                   {bookingData.passengers.map((passenger, index) => (
-                    <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                      <div className="font-medium text-gray-800">
+                    <div key={index} className="bg-gray-50 p-5 rounded-xl shadow-sm border border-gray-100">
+                      <div className="font-bold text-gray-900 text-lg mb-2">
                         {passenger.title} {passenger.firstName} {passenger.lastName}
                       </div>
-                      <div className="grid grid-cols-2 gap-2 mt-2 text-sm text-gray-600">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
                         <div className="flex items-center">
-                          <FiUser className="mr-2 text-gray-400" />
+                          <FiUser className="mr-3 text-gray-400 text-lg" />
                           {passenger.gender === 'm' ? 'Male' : passenger.gender === 'f' ? 'Female' : 'Other'}
                         </div>
                         <div className="flex items-center">
-                          <FiCalendar className="mr-2 text-gray-400" />
-                          {new Date(passenger.dateOfBirth).toLocaleDateString()}
+                          <FiCalendar className="mr-3 text-gray-400 text-lg" />
+                          {new Date(passenger.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                         </div>
                         <div className="flex items-center">
-                          <FiGlobe className="mr-2 text-gray-400" />
-                          {passenger.documentNationality}
+                          <FiGlobe className="mr-3 text-gray-400 text-lg" />
+                          Nationality: {passenger.documentNationality}
                         </div>
                         <div className="flex items-center">
-                          <FiCreditCard className="mr-2 text-gray-400" />
-                          {passenger.documentNumber}
+                          <FiCreditCard className="mr-3 text-gray-400 text-lg" />
+                          Document: {passenger.documentNumber}
                         </div>
                       </div>
                     </div>
@@ -921,146 +950,154 @@ function PaymentContent() {
               </div>
 
               {/* Flight Itinerary */}
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-gray-700 mb-4">Flight Details</h3>
+              <div className="border-t border-gray-200 pt-7 mt-7">
+                <h3 className="text-xl font-semibold text-gray-700 mb-5">Flight Details</h3>
                 {bookingData.trip?.itineraries?.[0] && (
-                  <div className="mb-6">
-                    <div className="flex items-center mb-2">
-                      <span className="font-medium">Outbound Flight</span>
-                      <span className="mx-2 text-gray-400">•</span>
-                      <span className="text-sm text-gray-500">
+                  <div className="mb-7">
+                    <div className="flex items-center mb-3 text-lg">
+                      <span className="font-bold text-gray-800">Outbound Flight</span>
+                      <span className="mx-3 text-gray-400">•</span>
+                      <span className="text-base text-gray-600">
                         {formatDate(bookingData.searchParams.departureDate)}
                       </span>
                     </div>
-                    <div className="pl-4 border-l-2 border-orange-100">
-                      <FlightItineraryCard 
-                        itinerary={bookingData.trip.itineraries[0]} 
+                    <div className="pl-5 border-l-4 border-orange-200">
+                      {/* Placeholder for FlightItineraryCard */}
+                       <FlightItineraryCard
+                        itinerary={bookingData.trip.itineraries[0]}
                         type="outbound"
                         date={bookingData.searchParams.departureDate}
-                        price={bookingData.trip.price}
                         airports={[
                           { iata_code: bookingData.searchParams.from },
                           { iata_code: bookingData.searchParams.to }
                         ]}
-                      />
+                      /> 
                     </div>
                   </div>
                 )}
 
                 {bookingData.searchParams.tripType === 'roundtrip' && bookingData.trip?.itineraries?.[1] && (
                   <div>
-                    <div className="flex items-center mb-2">
-                      <span className="font-medium">Return Flight</span>
-                      <span className="mx-2 text-gray-400">•</span>
-                      <span className="text-sm text-gray-500">
+                    <div className="flex items-center mb-3 text-lg">
+                      <span className="font-bold text-gray-800">Return Flight</span>
+                      <span className="mx-3 text-gray-400">•</span>
+                      <span className="text-base text-gray-600">
                         {formatDate(bookingData.searchParams.returnDate || '')}
                       </span>
                     </div>
-                    <div className="pl-4 border-l-2 border-orange-100">
-                      <FlightItineraryCard 
-                        itinerary={bookingData.trip.itineraries[1]} 
+                    <div className="pl-5 border-l-4 border-orange-200">
+                      {/* Placeholder for FlightItineraryCard */}
+                      <FlightItineraryCard
+                        itinerary={bookingData.trip.itineraries[1]}
                         type="return"
                         date={bookingData.searchParams.returnDate || ''}
-                        price={bookingData.trip.price}
                         airports={[
                           { iata_code: bookingData.searchParams.to },
                           { iata_code: bookingData.searchParams.from }
                         ]}
                       />
-                </div>
-                
-                {bookingData.trip.price.breakdown && (
-                  <div className="w-full space-y-3">
-                    {/* Flight Price */}
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Flight Price</span>
-                      <span className="font-medium">
-                        {bookingData.trip.price.breakdown.currency || '€'}
-                        {parseFloat(bookingData.trip.price.breakdown.outbound || '0').toFixed(2)}
-                        {bookingData.searchParams.tripType === 'roundtrip' && bookingData.trip.price.breakdown.return && (
-                          <>
-                            <span> + </span>
-                            {parseFloat(bookingData.trip.price.breakdown.return).toFixed(2)}
-                          </>
-                        )}
-                      </span>
-                    </div>
-                    
-                    {/* Hotel Price if available */}
-                    {parseFloat(bookingData.trip.price.breakdown.hotel || '0') > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Hotel Price</span>
-                        <span className="font-medium">
-                          {bookingData.trip.price.breakdown.currency || '€'}
-                          {parseFloat(bookingData.trip.price.breakdown.hotel).toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                    
-                    {/* Markup Fee */}
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">
-                        Markup Fee ({bookingData.trip.price.breakdown.totalPassengers} × €{bookingData.trip.price.breakdown.markup?.toFixed(2) || '1.00'})
-                      </span>
-                      <span className="font-medium">
-                        {bookingData.trip.price.breakdown.currency || '€'}
-                        {((bookingData.trip.price.breakdown.markup || 1) * bookingData.trip.price.breakdown.totalPassengers).toFixed(2)}
-                      </span>
-                    </div>
-                    
-                    {/* Service Fee */}
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">
-                        Service Fee ({bookingData.trip.price.breakdown.totalPassengers} × €{bookingData.trip.price.breakdown.serviceFee?.toFixed(2) || '2.00'})
-                      </span>
-                      <span className="font-medium">
-                        {bookingData.trip.price.breakdown.currency || '€'}
-                        {(bookingData.trip.price.breakdown.serviceFee * bookingData.trip.price.breakdown.totalPassengers).toFixed(2)}
-                      </span>
                     </div>
                   </div>
                 )}
-                
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Passengers</span>
-                  <span className="font-medium">{bookingData.passengers.length}</span>
-                </div>
-                
-                <div className="border-t border-gray-200 my-3"></div>
-                
-                <div className="flex justify-between text-lg font-semibold">
-                  <span>Total Amount</span>
-                  <span className="text-orange-500">
-                    ${parseFloat(bookingData.trip.price.total).toFixed(2)}
-                  </span>
-                </div>
-                
-                <div className="text-xs text-gray-500 mt-2">
-                  Includes all taxes and fees
-                </div>
               </div>
-                 )}
-                 </div>
+            </div>
 
-            {/* Payment Form */}
-            {loading ? (
-              <div className="p-6 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
-                <p className="mt-2 text-gray-600">Loading payment form...</p>
-              </div>
-            ) : error ? (
-              <div className="p-4 bg-red-50 text-red-700 rounded-md">
-                <p className="font-medium">Error loading payment form</p>
-                <p className="text-sm mt-1">{error}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="mt-2 text-sm text-orange-600 hover:text-orange-700 font-medium"
-                >
-                  Try again
-                </button>
-              </div>
-            ) : clientToken ? (
-              <PaymentForm 
+            {/* Price Summary Card */}
+            <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">Price Details</h2>
+                <div className="w-full space-y-4 text-lg">
+                    {/* Flight Price */}
+                    <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                        <span className="text-gray-600">Flight Price</span>
+                        <span className="font-semibold text-gray-800">
+                            {bookingData?.trip?.price?.currency || '€'}
+                            {parseFloat(bookingData?.trip?.price?.total || '0').toFixed(2)}
+                        </span>
+                    </div>
+
+                    {/* Hotel Price if available */}
+                    {parseFloat(bookingData?.trip?.price?.breakdown?.hotel || '0') > 0 && (
+                        <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                            <span className="text-gray-600">Hotel Price</span>
+                            <span className="font-semibold text-gray-800">
+                                {bookingData?.trip?.price?.breakdown?.currency || '€'}
+                                {parseFloat(bookingData?.trip?.price?.breakdown?.hotel).toFixed(2)}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Markup Fee */}
+                    <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                        <span className="text-gray-600">
+                            Markup Fee ({bookingData?.trip?.price?.breakdown?.totalPassengers} × {displayCurrency}
+                            {parseFloat(bookingData?.trip?.price?.breakdown?.markup || '1.00').toFixed(2)})
+                        </span>
+                        <span className="font-semibold text-gray-800">
+                            {displayCurrency}
+                            {((bookingData?.trip?.price?.breakdown?.markup || 1) * bookingData?.trip?.price?.breakdown?.totalPassengers).toFixed(2)}
+                        </span>
+                    </div>
+
+                    {/* Service Fee */}
+                    <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                        <span className="text-gray-600">
+                            Service Fee ({bookingData?.trip?.price?.breakdown?.totalPassengers} × {displayCurrency}
+                            {parseFloat(bookingData?.trip?.price?.breakdown?.serviceFee || '2.00').toFixed(2)})
+                        </span>
+                        <span className="font-semibold text-gray-800">
+                            {displayCurrency}
+                            {(parseFloat(bookingData?.trip?.price?.breakdown?.serviceFee || '2.00') * bookingData?.trip?.price?.breakdown?.totalPassengers).toFixed(2)}
+                        </span>
+                    </div>
+
+                    {/* Total Summary */}
+                    <div className="pt-4 flex justify-between font-bold text-xl text-orange-600">
+                        <span>Total Amount</span>
+                        <span>{displayCurrency} {displayAmount}</span>
+                    </div>
+                </div>
+
+                <div className="text-sm text-gray-500 mt-4 text-right">
+                    Includes all taxes and fees
+                </div>
+            </div>
+          </div>
+
+          {/* Right side - Payment Form */}
+          <div className="lg:col-span-5 bg-gray-50">
+            <div className="rounded-2xl shadow-lg border border-gray-100">
+              <h2 className="text-2xl p-8 font-bold text-gray-800 ">Payment Information</h2>
+             
+                <AnimatedStepCharacter 
+                lottieUrl="https://lottie.host/95c3d083-31e6-486d-bebd-375c3b7e8b13/UOk0JnYYHG.json"
+                alt="Booking Confirmed"
+                className="w-60 h-60 mx-auto p-0 mt-0"
+              />
+              
+              {loading ? (
+                <div className="text-center bg-gray-50 rounded-xl">
+                  {/* Lottie Animation for payment form loading */}
+                  <div className="w-32 h-32 mx-auto p-0">
+                    {/* <Lottie options={{ ...defaultOptions, animationData: animationData }} height={128} width={128} /> */}
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-500 mx-auto"></div>
+                  </div>
+                  <p className="mt-4 text-gray-600 text-lg">Initializing secure payment form...</p>
+                  <p className="text-sm text-gray-500">This might take a moment.</p>
+                </div>
+              ) : error ? (
+                <div className="p-6 bg-red-100 text-red-800 rounded-xl border border-red-300">
+                  <p className="font-bold text-lg mb-2">Error loading payment form</p>
+                  <p className="text-base mt-1">{error}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-4 text-base text-red-600 hover:text-red-700 font-medium underline"
+                  >
+                    Click here to try again
+                  </button>
+                </div>
+              ) : clientToken ? (
+                <div className="rounded-2xl shadow-lg border border-gray-100">
+                <PaymentForm 
                 onSubmit={handlePaymentSubmit} 
                 loading={false}
                 clientToken={clientToken}
@@ -1144,9 +1181,6 @@ function PaymentContent() {
                       const errorMessage = result.error || 'Failed to process your booking. Please try again.';
                       setError(errorMessage);
                       return;
-                      
-                      // For other errors, throw a generic error
-                      throw new Error(result.error || 'Failed to confirm booking');
                     }
 
                     // Prepare complete booking data for confirmation page
@@ -1239,25 +1273,32 @@ function PaymentContent() {
                 }}
                 paymentIntentId={paymentIntentId}
               />
-            ) : (
-              <div className="p-4 bg-yellow-50 text-yellow-700 rounded-md">
-                <p>Unable to initialize payment. Please try again.</p>
               </div>
-            )}
-            
-            <div className="mt-6 text-xs text-gray-500">
-              <p className="flex items-start">
-                <FiCheckCircle className="text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                <span>Your payment is secure and encrypted</span>
+              ) : (
+                <div className="p-6 bg-yellow-100 text-yellow-800 rounded-xl border border-yellow-300">
+                  <p className="font-bold text-lg mb-2">Unable to initialize payment.</p>
+                  <p className="text-base">Please refresh the page or try again later. If the problem persists, contact support.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Security and Policy Information */}
+            <div className="mt-8 p-6 bg-gray-50 rounded-xl shadow-inner text-sm text-gray-600 border border-gray-100">
+              <p className="flex items-start mb-3">
+                <FiCheckCircle className="text-green-600 mr-3 mt-1 flex-shrink-0 text-xl" />
+                <span className="font-medium text-gray-700">Your payment is secure and encrypted with industry-standard protocols.</span>
               </p>
-              <p className="mt-2">
-                By completing this booking, you agree to our Terms of Service and Privacy Policy
+              <p className="flex items-start">
+                <span className="mr-3 mt-1 flex-shrink-0"></span> {/* Placeholder for alignment */}
+                <span>
+                  By completing this booking, you agree to our <a href="/terms" className="text-orange-600 hover:underline font-medium">Terms of Service</a> and <a href="/privacy" className="text-orange-600 hover:underline font-medium">Privacy Policy</a>.
+                </span>
               </p>
             </div>
+            
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 }

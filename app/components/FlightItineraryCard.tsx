@@ -33,11 +33,6 @@ interface FlightItineraryCardProps {
   outboundDate?: string;
   returnDate?: string;
   
-  price?: {
-    currency: string;
-    total: string;
-    breakdown?: { [key: string]: string };
-  };
   airports: Array<{ iata_code: string; name?: string; city?: string }>;
   className?: string;
   tripType?: 'oneway' | 'roundtrip';
@@ -55,7 +50,6 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
   outboundDate,
   returnDate,
   
-  price,
   airports,
   className = '',
   tripType = 'oneway'
@@ -189,9 +183,6 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
     returnTotalStops = returnItinerary.segments.length - 1;
   }
   
-  // Only show price once for roundtrip flights
-  const shouldShowPrice = price?.total && (tripType === 'oneway' || !isCombinedMode || !returnItinerary);
-
   const flightTypeColor = type === 'outbound' ? 'blue' : 'green';
 
   return (
@@ -231,42 +222,6 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Price Tag with Tooltip - Only show for outbound in roundtrip or for one-way */}
-          {shouldShowPrice && (
-            <div className="flex items-center group relative bg-white/95 backdrop-blur-sm border rounded-md sm:rounded-lg shadow-sm px-3 py-1.5 flex-shrink-0 self-center sm:self-start mt-1 sm:mt-0">
-              <span className={`text-sm sm:text-base font-bold ${type === 'outbound' ? 'text-blue-600' : 'text-green-600'}`}>
-                <span className="text-xs sm:text-sm">{price.currency || '$'}</span> {parseFloat(price.total).toFixed(2)}
-                {price.breakdown && type === 'outbound' && (
-                  <span className="block text-[10px] text-gray-500 font-normal">Total trip price</span>
-                )}
-              </span>
-              <div className="ml-1 text-gray-500 group-hover:text-gray-700 cursor-help relative">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div className="hidden group-hover:block absolute z-10 w-64 p-3 mt-1 -ml-4 text-xs text-gray-700 bg-white border border-gray-200 rounded shadow-lg">
-                  {price.breakdown ? (
-                    <div className="space-y-1">
-                      <p className="font-medium">Price Breakdown:</p>
-                      {price.breakdown.outbound && (
-                        <p>Outbound: {price.currency} {parseFloat(price.breakdown.outbound).toFixed(2)}</p>
-                      )}
-                      {price.breakdown.return && (
-                        <p>Return: {price.currency} {parseFloat(price.breakdown.return).toFixed(2)}</p>
-                      )}
-                      <p className="pt-1 border-t border-gray-100 font-medium">
-                        Total: {price.currency} {parseFloat(price.total).toFixed(2)}
-                      </p>
-                      <p className="text-[10px] text-gray-500 mt-1">Taxes and fees included. Final price shown at checkout.</p>
-                    </div>
-                  ) : (
-                    <p>Base price shown. Taxes and fees will be added at checkout.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

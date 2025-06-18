@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { DuffelPayments } from '@duffel/components';
+import { FiArrowLeft, FiCheckCircle, FiCreditCard } from 'react-icons/fi';
 
 interface PaymentFormProps {
   clientToken: string;
@@ -229,92 +230,133 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     }
   }, [clientToken, paymentIntentId]);
 
+  // Debug: log props on mount/update
+  useEffect(() => {
+    console.log('PaymentForm props - amount:', amount, 'currency:', currency);
+  }, [amount, currency]);
+
   return (
-    <div className="space-y-4">
-      {error && (
-        <div className="p-4 bg-red-50 text-red-700 rounded-md">
-          <p>{error}</p>
+    <div className="m-2 mt-8 bg-gray-50 flex items-center justify-center sm:px-4">
+      <div className=" w-full max-w-sm mx-auto"> {/* Max width reduced, space-y reduced */}
+
+        {/* Error Message */}
+        {error && (
+          <div className="p-3 bg-red-100 text-red-800 rounded-lg border border-red-300 text-sm" role="alert">
+            <p className="font-semibold">Payment Error</p>
+            <p className="mt-0.5">{error}</p>
+          </div>
+        )}
+
+        {/* Main Payment Card */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"> {/* Reduced padding, softer shadow */}
+          <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center"> {/* Smaller heading */}
+            <FiCreditCard className="mr-2 text-blue-600 text-2xl" /> {/* Smaller icon */}
+            Payment Details
+          </h3>
+
+          {/* Loading State for Payment Form */}
+          {!clientToken ? (
+            <div className="p-4 bg-blue-50 text-blue-700 rounded-md border border-blue-200 flex items-center justify-center space-x-2 text-sm"> {/* Reduced padding, font size */}
+              <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <p className="font-medium">Loading payment form...</p>
+            </div>
+          ) : (
+            <div className="space-y-4"> {/* Reduced space-y */}
+              {/* Payment Summary */}
+              <div className="rounded-md overflow-hidden border border-blue-300"> {/* Softer border radius */}
+                <div className="bg-blue-600 text-white p-3.5"> {/* Reduced padding */}
+                  <div className="flex justify-between items-center text-lg"> {/* Smaller font size for summary */}
+                    <h4 className="font-semibold">Payment Summary</h4>
+                    <span className="font-bold">
+                      {new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: currency || 'EUR',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }).format(amount)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-200 mt-0.5">Includes all taxes and fees</p> {/* Reduced margin */}
+                </div>
+
+                <div className="p-3 bg-blue-50"> {/* Reduced padding */}
+                  <div className="flex items-center text-sm text-blue-800">
+                    <FiCheckCircle className="mr-2 text-blue-600" />
+                    <span>Secure payment processing</span>
+                  </div>
+                  {paymentIntentId && (
+                    <p className="text-xs text-blue-600 pl-5 break-words">Transaction ID: <span className="font-mono">{paymentIntentId}</span></p> 
+                  )}
+
+                </div>
+              </div>
+
+              {/* Card Details Input */}
+              <div className="border border-gray-300 rounded-md overflow-hidden"> {/* Softer border radius */}
+                <div className="p-3 bg-gray-50 border-b border-gray-200"> {/* Reduced padding */}
+                  <h4 className="font-medium text-gray-700 text-base">Enter Card Details</h4> {/* Smaller heading */}
+                </div>
+                <div className="p-4"> {/* Reduced padding */}
+                  <DuffelPayments
+                    key={clientToken}
+                    paymentIntentClientToken={clientToken}
+                    onSuccessfulPayment={() => {
+                      if (paymentIntentId) {
+                        handlePaymentSuccess({
+                          paymentIntentId,
+                          status: 'succeeded',
+                          timestamp: new Date().toISOString()
+                        });
+                      } else {
+                        console.error('Payment succeeded but no paymentIntentId is available');
+                        handlePaymentError('Payment succeeded but we encountered an issue. Please contact support.');
+                      }
+                    }}
+                    onFailedPayment={(error) => {
+                      console.error('Payment failed:', error);
+                      handlePaymentError(error?.message || 'Payment failed. Please try again.');
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Security Message */}
+              <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 p-2 bg-gray-100 rounded-md"> {/* Reduced padding, smaller font */}
+                <svg className="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 16V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 8H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span>Your payment is securely processed by our partners **Duffel** and **Stripe**.</span>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-      
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h3 className="text-lg font-medium mb-4">Payment Details</h3>
-        
-        {!clientToken ? (
-          <div className="p-4 bg-yellow-50 text-yellow-700 rounded-md">
-            <p>Loading payment form...</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="p-4 bg-blue-50 text-blue-700 rounded-md text-sm">
-              <p>Payment form loaded. Please enter your payment details below.</p>
-              <p className="text-xs opacity-75 mt-1">Payment intent ID: {paymentIntentId}</p>
+
+        {/* Action Buttons */}
+        <div className="flex justify-between items-center pt-2">
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center transition-colors duration-200"
+            disabled={isProcessing || loading}
+          >
+            <FiArrowLeft className="mr-1.5" /> Back
+          </button>
+
+          {loading && (
+            <div className="flex items-center text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-md shadow-sm"> {/* Reduced padding */}
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="font-medium">Processing payment...</span>
             </div>
-            
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50 text-blue-700 rounded-md text-sm">
-                <p>Processing payment for {new Intl.NumberFormat('en-US', {
-                  style: 'currency',
-                  currency: currency || 'EUR',
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }).format(amount)}</p>
-                <p className="text-xs opacity-75 mt-1">Payment ID: {paymentIntentId}</p>
-              </div>
-              
-              <div className="border rounded-lg p-4 bg-white">
-                <DuffelPayments
-                  key={clientToken}
-                  paymentIntentClientToken={clientToken}
-                  onSuccessfulPayment={() => {
-                    // The payment was successful, but we don't get any result data here
-                    // We'll use the paymentIntentId we already have
-                    if (paymentIntentId) {
-                      handlePaymentSuccess({
-                        paymentIntentId,
-                        status: 'succeeded',
-                        timestamp: new Date().toISOString()
-                      });
-                    } else {
-                      console.error('Payment succeeded but no paymentIntentId is available');
-                      handlePaymentError('Payment succeeded but we encountered an issue. Please contact support.');
-                    }
-                  }}
-                  onFailedPayment={(error) => {
-                    console.error('Payment failed:', error);
-                    handlePaymentError(error?.message || 'Payment failed. Please try again.');
-                  }}
-                />
-              </div>
-              
-              <div className="text-xs text-gray-500">
-                <p>Your payment is securely processed by our payment partners Duffel and Stripe.</p>
-                <p className="mt-1">We accept all major credit and debit cards.</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      
-      <div className="flex justify-between pt-4">
-        <button
-          type="button"
-          onClick={() => window.history.back()}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          disabled={isProcessing || loading}
-        >
-          Back
-        </button>
-        
-        {loading && (
-          <div className="flex items-center text-sm text-gray-500">
-            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Processing payment...
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

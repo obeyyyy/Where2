@@ -298,6 +298,14 @@ async function handleNewPaymentIntent({
         data: {
           amount: paymentAmount.toFixed(2),
           currency: paymentCurrency,
+          payment: {
+            type: 'card',
+            card: {
+              capture_now: true
+            }
+          },
+          // Return URL is required so the user can be redirected back after 3-D Secure challenge
+          return_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/payment/complete`,
           metadata: {
             ...metadata,
             source: 'where2-web',

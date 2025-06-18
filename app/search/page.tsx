@@ -19,9 +19,7 @@ type TripType = 'roundtrip' | 'oneway';
 interface SearchParams {
   budget: number;
   currency: string;
-  originType: 'Airport' | 'City' | 'Country';
   origin: string;
-  destinationType: 'Airport' | 'City' | 'Country';
   destination: string;
   departureDate: string;
   returnDate: string;
@@ -29,7 +27,6 @@ interface SearchParams {
   travelers: number;
   nights: number;
   includeHotels: boolean;
-  useKiwi: boolean; // Kiwi/Amadeus toggle
   useDuffel: boolean; // Duffel toggle
 }
 
@@ -81,9 +78,7 @@ function HomePage() {
   const [searchParams, setSearchParams] = useState<SearchParams>({
     budget: 750,
     currency: 'USD',
-    originType: 'Airport',
     origin: 'MAD',
-    destinationType: 'Airport',
     destination: 'PAR',
     departureDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 week from now
     returnDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 weeks from now
@@ -91,8 +86,7 @@ function HomePage() {
     travelers: 1,
     nights: 7,
     includeHotels: true,
-    useKiwi: true, // default to Kiwi
-    useDuffel: false
+    useDuffel: true
   });
   const [selectedOutbound, setSelectedOutbound] = useState<FlightOffer | null>(null);
   // No longer need selectedReturn state for roundtrip flights
@@ -198,8 +192,8 @@ function HomePage() {
 
       // Prepare query parameters
       const queryParams = new URLSearchParams({
-        origin: `${searchParams.originType}:${searchParams.origin}`,
-        destination: `${searchParams.destinationType}:${searchParams.destination}`,
+        origin: searchParams.origin,
+        destination: searchParams.destination,
         departureDate: searchParams.departureDate,
         returnDate: searchParams.returnDate || '',
         tripType: searchParams.tripType,
@@ -208,7 +202,6 @@ function HomePage() {
         currency: searchParams.currency,
         budget: searchParams.budget.toString(),
         includeHotels: searchParams.includeHotels ? 'true' : 'false',
-        useKiwi: searchParams.useKiwi ? 'true' : 'false',
         useDuffel: searchParams.useDuffel ? 'true' : 'false',
       });
 
@@ -241,7 +234,7 @@ function HomePage() {
       setViewState('results');
 
       // CACHE the flight offers in localStorage
-      const cacheKey = `flight_search_${searchParams.origin}_${searchParams.destination}_${searchParams.departureDate}_${searchParams.returnDate || ''}_${searchParams.tripType}_${searchParams.nights}_${searchParams.travelers}_${searchParams.currency}_${searchParams.budget}_${searchParams.includeHotels}_${searchParams.useKiwi}_${searchParams.useDuffel}`;
+      const cacheKey = `flight_search_${searchParams.origin}_${searchParams.destination}_${searchParams.departureDate}_${searchParams.returnDate || ''}_${searchParams.tripType}_${searchParams.nights}_${searchParams.travelers}_${searchParams.currency}_${searchParams.budget}_${searchParams.includeHotels}_${searchParams.useDuffel}`;
       try {
         localStorage.setItem(cacheKey, JSON.stringify(data.data));
         console.log('Cached offers under key:', cacheKey, data.data);
@@ -628,53 +621,32 @@ function HomePage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Origin
                     </label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <select
-                        value={searchParams.originType}
-                        onChange={e => handleInputChange('originType', e.target.value as 'Airport' | 'City' | 'Country')}
-                        className="p-2 border border-gray-300 rounded-xl text-sm bg-white"
-                      >
-                        <option value="Airport">Airport</option>
-                        <option value="City">City</option>
-                        <option value="Country">Country</option>
-                      </select>
-                      <div className="flex-1">
-                        <AirportAutocomplete
-                          label="Origin Airport"
-                          value={(function() {
-                            const a = airportsJson.airports.find((ap: any) => ap.iata === searchParams.origin);
-                            return a ? {
-                              iata: a.iata,
-                              name: a.name,
-                              city: a.city,
-                              country: a.country,
-                              label: `${a.iata} - ${a.name}, ${a.city}, ${a.country}`
-                            } : null;
-                          })()}
-                          onChange={val => handleInputChange('origin', val ? val.iata : '')}
-                          required
-                        />
-                      </div>
+                    <div className="flex-1">
+                      <AirportAutocomplete
+                        label="Origin"
+                        value={(function() {
+                          const a = airportsJson.airports.find((ap: any) => ap.iata === searchParams.origin);
+                          return a ? {
+                            iata: a.iata,
+                            name: a.name,
+                            city: a.city,
+                            country: a.country,
+                            label: `${a.iata} - ${a.name}, ${a.city}, ${a.country}`
+                          } : null;
+                        })()}
+                        onChange={val => handleInputChange('origin', val ? val.iata : '')}
+                        required
+                      />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Destination
                     </label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <select
-                        value={searchParams.destinationType}
-                        onChange={e => handleInputChange('destinationType', e.target.value as 'Airport' | 'City' | 'Country')}
-                        className="p-2 border border-gray-300 rounded-xl text-sm bg-white"
-                      >
-                        <option value="Airport">Airport</option>
-                        <option value="City">City</option>
-                        <option value="Country">Country</option>
-                      </select>
-                      <div className="flex-1">
-                        <AirportAutocomplete
-                         label="Destination Airport"
-                         value={(function() {
+                    <div className="flex-1">
+                      <AirportAutocomplete
+                        label="Destination"
+                        value={(function() {
                           const a = airportsJson.airports.find((ap: any) => ap.iata === searchParams.destination);
                           return a ? {
                             iata: a.iata,
@@ -684,10 +656,9 @@ function HomePage() {
                             label: `${a.iata} - ${a.name}, ${a.city}, ${a.country}`
                           } : null;
                         })()}
-                         onChange={val => handleInputChange('destination', val ? val.iata : '')}
-                         required
-                       />
-                       </div>
+                        onChange={val => handleInputChange('destination', val ? val.iata : '')}
+                        required
+                      />
                     </div>
                   </div>
                 </div>                
@@ -719,7 +690,7 @@ function HomePage() {
     </label>
     <button
       onClick={() => handleInputChange('includeHotels', !searchParams.includeHotels)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
         searchParams.includeHotels ? 'bg-[#FFA500]' : 'bg-gray-200'
       }`}
     >
@@ -733,34 +704,6 @@ function HomePage() {
       ? 'Hotels will be included in your search'
       : 'Only flights will be included in your search'}
   </p>
-  {/* Flight Search Source Selection */}
-  <div className="flex items-center justify-between mt-4">
-    <label className="block text-sm font-medium text-gray-700">
-      Flight Search Source
-    </label>
-    <select
-      value={searchParams.useDuffel ? 'duffel' : searchParams.useKiwi ? 'kiwi' : 'amadeus'}
-      onChange={e => {
-        if (e.target.value === 'duffel') {
-          handleInputChange('useDuffel', true);
-          handleInputChange('useKiwi', false);
-        } else if (e.target.value === 'kiwi') {
-          handleInputChange('useDuffel', false);
-          handleInputChange('useKiwi', true);
-        } else {
-          handleInputChange('useDuffel', false);
-          handleInputChange('useKiwi', false);
-        }
-      }}
-      className="w-32 p-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FFA500] focus:border-transparent text-sm bg-white"
-    >
-      <option value="kiwi">Kiwi.com not working</option>
-      <option value="amadeus">Amadeus not working</option>
-      <option value="duffel">Duffel</option>
-    </select>
-  </div>
-  <p className="text-xs text-gray-500 mt-1">
-    Choose which provider to use for flight search. Kiwi.com is recommended for best results.</p>
 </div>
               </motion.div>
             )}
@@ -897,7 +840,7 @@ const handleContinueToBooking = async (trip?: FlightOffer) => {
     await setTripInCart(tripToBook);
 
     // Navigate to booking page
-    router.push('/book');
+    router.push('/trip-summary');
 
     // Clear selections after navigation
     setSelectedOutbound(null);

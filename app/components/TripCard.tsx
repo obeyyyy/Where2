@@ -667,7 +667,7 @@ export default function TripCard({
               
               // For roundtrip, go directly to booking
               if (effectiveTripType === 'roundtrip') {
-                router.push('/book');
+                router.push('/trip-summary');
               } else {
                 // For one-way, go to trip summary
                 // Force a re-render by navigating to a different route first if we're already on trip-summary

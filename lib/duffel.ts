@@ -381,10 +381,11 @@ export async function createOrder(
     // Get the offer details including amount and roundtrip status
     const offerDetails = await fetchOfferAmount(offerId);
     
-    // CRITICAL FIX: Ensure we're using the correct total amount for roundtrip bookings
-    // For roundtrip bookings, we MUST use the base_amount from metadata as it contains
-    // the correct total for both outbound and return flights
-    let totalAmount = offerDetails.amount;
+    // Determine amount we will pay to Duffel
+    // Prefer explicit total_amount passed via metadata (includes our markups/fees)
+    let totalAmount = metadata?.total_amount ? parseFloat(metadata.total_amount) : offerDetails.amount;
+
+    // Previous logic kept base_amount separately – still capture for reference
     let expectedBaseAmount = 0;
     
     // Extract the expected base amount from metadata if available

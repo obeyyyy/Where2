@@ -171,22 +171,11 @@ export default function TripSummaryPage() {
       };
 
       // Get prices from the breakdown if available, otherwise calculate them
-      let outboundPrice = 0;
-      let returnPrice = 0;
       let totalFlightPrice = 0;
       
-      const isRoundTrip = trip.trip.itineraries?.length > 1;
-      
-      if (trip.trip.price?.breakdown) {
-        // Use the breakdown if available
-        outboundPrice = parseFloat(trip.trip.price.breakdown.outbound || '0');
-        returnPrice = parseFloat(trip.trip.price.breakdown.return || '0');
-        totalFlightPrice = outboundPrice + returnPrice;
-      } else {
-        // Fallback to splitting the total price
-        totalFlightPrice = parseFloat(trip.trip.price?.total || '0');
-        outboundPrice = isRoundTrip ? totalFlightPrice * 0.6 : totalFlightPrice;
-        returnPrice = isRoundTrip ? totalFlightPrice * 0.4 : 0;
+      if (trip.trip.price?.total) {
+        // Use the total price from Duffel for roundtrip
+        totalFlightPrice = parseFloat(trip.trip.price.total);
       }
       
       // Calculate hotel price if available
@@ -205,10 +194,10 @@ export default function TripSummaryPage() {
       const currency = trip.trip.price?.currency || 'USD';
       
       return {
-        outbound: formatPrice(outboundPrice, currency),
-        outboundRaw: outboundPrice,
-        return: isRoundTrip ? formatPrice(returnPrice, currency) : 'N/A',
-        returnRaw: returnPrice,
+        outbound: formatPrice(totalFlightPrice, currency),
+        outboundRaw: totalFlightPrice,
+        return: formatPrice(totalFlightPrice, currency), // Same as outbound
+        returnRaw: totalFlightPrice,
         hotel: hotelPrice > 0 ? formatPrice(hotelPrice, currency) : 'N/A',
         hotelRaw: hotelPrice,
         total: formatPrice(total, currency),
@@ -417,6 +406,15 @@ export default function TripSummaryPage() {
               />
             </div>
           )}
+        </div>
+        
+        {/* Flight Price */}
+        <div className="bg-white shadow rounded-lg p-4 mb-6">
+          <h3 className="text-lg font-bold text-gray-800">Flight Price</h3>
+          <p className="text-xl font-semibold text-[#FFA500]">
+            {prices.currency} {parseFloat(prices.total).toFixed(2)}
+          </p>
+          <p className="text-sm text-gray-500">Includes all taxes and fees</p>
         </div>
         
         {/* Book Button */}
