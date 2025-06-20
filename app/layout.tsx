@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { TripCartProvider } from "./components/TripCartContext";
 import Navbar from "./components/Navbar";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 export const metadata: Metadata = {
   title: "Where2 travels",
@@ -29,6 +30,7 @@ export default function RootLayout({
           <Navbar />
           {children}
         </TripCartProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
