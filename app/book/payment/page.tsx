@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { computePricing, PricingBreakdown } from '@/lib/pricing';
 import Loading from '../../loading';
 import { FiArrowLeft, FiCheckCircle, FiCreditCard, FiUser, FiCalendar, FiGlobe } from 'react-icons/fi';
-import FlightItineraryCard from "@/app/components/FlightItineraryCard";
+import { FlightItineraryCard } from "@/app/components/FlightItineraryCard";
 import PaymentForm from '@/app/components/PaymentForm';
 import AnimatedStepCharacter from '@/app/components/AnimatedStepCharacter';
 

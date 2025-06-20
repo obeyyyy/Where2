@@ -1,4 +1,3 @@
-
 declare module 'airports-data' {
   interface Airport {
     iata: string;

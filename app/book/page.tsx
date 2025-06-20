@@ -10,7 +10,7 @@ const airports = require('airports-json').airports;
 const countriesData = require('world-countries/countries.json');
 
 // Import components
-import FlightItineraryCard from "@/app/components/FlightItineraryCard";
+import { FlightItineraryCard } from "@/app/components/FlightItineraryCard";
 import { computePricing, PricingBreakdown } from "@/lib/pricing";
 import PassengerForm, { PassengerInfo } from "@/app/components/PassengerForm";
 

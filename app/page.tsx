@@ -91,9 +91,6 @@ export default function LandingPage() {
         >
           {/* Enhanced Hero Section */}
           <div className="flex flex-col items-center mb-8">
-            
-         
-            
             <div className="mb-8">
               <h1 className="text-4xl md:text-6xl font-black mb-4 text-gray-800">
                 Your Next
