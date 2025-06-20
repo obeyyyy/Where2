@@ -28,6 +28,9 @@ import {
   FiX,
   FiCheck
 } from 'react-icons/fi';
+import FlightItineraryCard from '@/app/components/FlightItineraryCard';
+import airportsJson from 'airports-json';
+import type { ItinerarySegment } from '@/app/components/FlightItineraryCard';
 
 const AnimatedStepCharacter = dynamic(
   () => import('@/app/components/AnimatedStepCharacter'),
@@ -79,46 +82,7 @@ interface Segment {
     type?: string;
     time_zone?: string;
   };
-  segments: Array<{
-    id: string;
-    origin: {
-      iata_code: string;
-      name: string;
-      city_name?: string;
-      terminal?: string;
-    };
-    destination: {
-      iata_code: string;
-      name: string;
-      city_name?: string;
-      terminal?: string;
-    };
-    departing_at: string;
-    arriving_at: string;
-    duration: string;
-    marketing_carrier: {
-      iata_code: string;
-      name: string;
-    };
-    operating_carrier?: {
-      iata_code: string;
-      name: string;
-    };
-    marketing_carrier_flight_number: string;
-    operating_carrier_flight_number?: string;
-    aircraft?: {
-      name: string;
-    };
-    passengers: Array<{
-      passenger_id: string;
-      cabin_class: string;
-      cabin_class_marketing_name?: string;
-      baggages?: Array<{
-        type: string;
-        quantity: number;
-      }>;
-    }>;
-  }>;
+  segments: ItinerarySegment[];
   duration: string;
   conditions?: {
     change_before_departure?: {
@@ -445,13 +409,13 @@ function ConfirmationPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header with Animation */}
         <div className="text-center mb-8 sm:mb-12">
-          <div className="w-full max-w-xs mx-auto -mt-8 mb-2 sm:mb-4">
+          <div className="w-full max-w-xs mx-auto mt-0 sm:-mt-8 mb-4">
             {booking.status === 'succeeded' || booking.status === 'confirmed' ? (
-              <div className="w-full h-auto">
+              <div className="w-full h-auto sm:p-4">
                 <AnimatedStepCharacter 
                   lottieUrl="https://lottie.host/42f2651e-8c16-434e-b639-1cb75fcf19a3/r95IiVu0pY.json"
                   alt="Booking Confirmed"
-                  className="w-full h-auto max-h-64 sm:max-h-80"
+                  className="w-full h-auto max-h-64 sm:max-h-50"
                 />
               </div>
             ) : booking.status === 'pending' ? (
@@ -465,7 +429,7 @@ function ConfirmationPage() {
             )}
           </div>
           <div className="px-4 sm:px-6">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+            <h1 className="relative z-10 text-3xl md:text-4xl font-bold text-gray-900 mb-3">
               {booking.status === 'succeeded' || booking.status === 'confirmed' 
                 ? 'Booking Confirmed! 🎉'
                 : booking.status === 'pending'
@@ -578,285 +542,18 @@ function ConfirmationPage() {
 
         {/* Flight Details */}
         {flightSegments.length > 0 && (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Flight Details</h2>
-            </div>
-            
-            <div className="divide-y divide-gray-100">
-              {flightSegments.flatMap((slice: any, sliceIndex: number) => 
-                (slice.segments || []).map((segment: any, segmentIndex: number) => (
-                  <div key={`segment-${sliceIndex}-${segmentIndex}`} className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <div className="text-xl font-bold text-gray-900">
-                            {segment.origin?.iata_code}
-                          </div>
-                          <FiArrowRight className="text-gray-400" />
-                          <div className="text-xl font-bold text-gray-900">
-                            {segment.destination?.iata_code}
-                          </div>
-                          <span className="ml-2 text-sm text-gray-500">
-                            {segment.marketing_carrier?.iata_code}{segment.marketing_carrier_flight_number}
-                          </span>
-                        </div>
-                        
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                            <p className="text-sm font-medium text-gray-500 mb-1">Departure</p>
-                            <p className="text-2xl font-bold text-gray-900">
-                              {formatDateTime(segment.departing_at)}
-                            </p>
-                            <div className="mt-2">
-                              <p className="text-sm font-medium text-gray-900">
-                                {segment.origin?.iata_code} • {segment.origin?.name}
-                              </p>
-                              {segment.origin?.terminal && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Terminal {segment.origin.terminal}
-                                </p>
-                              )}
-                              <p className="text-xs text-gray-500">
-                                {segment.origin?.city_name}
-                              </p>
-                            </div>
-                          </div>
-                      
-                          <div className="flex flex-col items-center justify-center">
-                            <div className="relative w-full">
-                              <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t-2 border-dashed border-gray-300"></div>
-                              </div>
-                              <div className="relative flex justify-center">
-                                <span className="bg-white px-3 text-sm text-gray-500">
-                                  {segment.duration || '--:--'}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="mt-2 text-center">
-                              <p className="text-xs text-gray-500">
-                                {segment.marketing_carrier?.iata_code}{segment.marketing_carrier_flight_number}
-                              </p>
-                              {segment.aircraft?.name && (
-                                <p className="text-xs text-gray-400 mt-1">
-                                  {segment.aircraft.name}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                      
-                          <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                            <p className="text-sm font-medium text-gray-500 mb-1">Arrival</p>
-                            <p className="text-2xl font-bold text-gray-900">
-                              {formatDateTime(segment.arriving_at)}
-                            </p>
-                            <div className="mt-2">
-                              <p className="text-sm font-medium text-gray-900">
-                                {segment.destination?.iata_code} • {segment.destination?.name}
-                              </p>
-                              {segment.destination?.terminal && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Terminal {segment.destination.terminal}
-                                </p>
-                              )}
-                              <p className="text-xs text-gray-500">
-                                {segment.destination?.city_name}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {segment.operating_carrier && 
-                         segment.operating_carrier.iata_code !== segment.marketing_carrier?.iata_code && (
-                          <div className="mt-2 text-xs text-gray-500">
-                            Operated by {segment.operating_carrier.name} ({segment.operating_carrier.iata_code})
-                          </div>
-                        )}
-                        
-                        {/* Passenger and Amenities Section */}
-                        <div className="col-span-full mt-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Passenger Cabin Class */}
-                            <div className="bg-blue-50 p-4 rounded-lg">
-                              <h4 className="text-sm font-medium text-blue-800 mb-3 flex items-center">
-                                <FiUser className="mr-2" /> Passenger Cabin Class
-                              </h4>
-                              <div className="space-y-3">
-                                {segment.passengers?.map((p: any, i: number) => {
-                                  const passenger = booking.passengers?.find((psg: any) => psg.id === p.passenger_id);
-                                  const cabinClass = p.cabin_class_marketing_name || 
-                                                    p.cabin_class?.split('_')
-                                                      .map((word: string) => 
-                                                        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                                                      ).join(' ') || 'Economy';
-                                  
-                                  return (
-                                    <div key={`passenger-${i}`} className="text-sm">
-                                      <div className="flex justify-between items-start">
-                                        <div>
-                                          <span className="font-medium text-gray-900">
-                                            {passenger?.given_name} {passenger?.family_name}
-                                          </span>
-                                          <span className="ml-2 px-2 py-0.5 bg-white text-xs text-blue-700 rounded-full">
-                                            {cabinClass}
-                                          </span>
-                                        </div>
-                                      </div>
-                                      
-                                      {/* Baggage Information */}
-                                      {p.baggages?.some((b: any) => b.quantity > 0) && (
-                                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                                          {p.baggages
-                                            .filter((b: any) => b.quantity > 0)
-                                            .map((b: any, idx: number) => {
-                                              const baggageType = b.type
-                                                .split('_')
-                                                .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-                                                .join(' ');
-                                              
-                                              return (
-                                                <span 
-                                                  key={`baggage-${idx}`}
-                                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white text-blue-700 border border-blue-200"
-                                                >
-                                                  <FiBriefcase className="mr-1 h-3 w-3" />
-                                                  {b.quantity}x {baggageType}
-                                                </span>
-                                              );
-                                            })}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                            
-                            {/* Flight Amenities */}
-                            <div className="bg-green-50 p-4 rounded-lg">
-                              <h4 className="text-sm font-medium text-green-800 mb-3 flex items-center">
-                                <FiZap className="mr-2" /> Flight Amenities
-                              </h4>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="flex items-center">
-                                  <div className="p-1.5 bg-green-100 rounded-full mr-2 text-green-600">
-                                    <FiCoffee className="h-4 w-4" />
-                                  </div>
-                                  <span className="text-sm text-gray-700">Meal Service</span>
-                                </div>
-                                <div className="flex items-center">
-                                  <div className="p-1.5 bg-green-100 rounded-full mr-2 text-green-600">
-                                    <FiWifi className="h-4 w-4" />
-                                  </div>
-                                  <span className="text-sm text-gray-700">WiFi Available</span>
-                                </div>
-                                <div className="flex items-center">
-                                  <div className="p-1.5 bg-green-100 rounded-full mr-2 text-green-600">
-                                    <FiFilm className="h-4 w-4" />
-                                  </div>
-                                  <span className="text-sm text-gray-700">Entertainment</span>
-                                </div>
-                                <div className="flex items-center">
-                                  <div className="p-1.5 bg-green-100 rounded-full mr-2 text-green-600">
-                                    <FiDroplet className="h-4 w-4" />
-                                  </div>
-                                  <span className="text-sm text-gray-700">Beverages</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            
-            {/* Show change/cancellation policy */}
-            {flightSegments.some((s: any) => {
-              const change = s.conditions?.change_before_departure;
-              const refund = s.conditions?.refund_before_departure;
-              return (change && change.allowed) || (refund && refund.allowed);
-            }) && (
-              <div className="bg-blue-50 px-6 py-4 border-t border-blue-100">
-                <h3 className="text-sm font-medium text-blue-800 mb-2">Change & Cancellation Policy</h3>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  {(() => {
-                    interface Policy {
-                      allowed: boolean;
-                      penalty_amount?: string;
-                      penalty_currency?: string;
-                    }
-                    
-                    const changePolicy = flightSegments.find((s: any) => 
-                      s.conditions?.change_before_departure?.allowed
-                    )?.conditions?.change_before_departure as Policy | undefined;
-                    
-                    if (changePolicy) {
-                      const hasFee = changePolicy.penalty_amount && changePolicy.penalty_amount !== '0';
-                      return (
-                        <li key="change-policy" className="flex items-start">
-                          <FiInfo className="h-4 w-4 text-blue-500 mr-1.5 mt-0.5 flex-shrink-0" />
-                          <span>
-                            Changes allowed{
-                              hasFee
-                                ? ` with a fee of ${changePolicy.penalty_amount} ${changePolicy.penalty_currency || ''}`
-                                : ' free of charge'
-                            }
-                          </span>
-                        </li>
-                      );
-                    }
-                    return null;
-                  })()}
-                  
-                  {(() => {
-                    interface Policy {
-                      allowed: boolean;
-                      penalty_amount?: string;
-                      penalty_currency?: string;
-                    }
-                    
-                    const refundPolicy = flightSegments.find((s: any) => 
-                      s.conditions?.refund_before_departure?.allowed
-                    )?.conditions?.refund_before_departure as Policy | undefined;
-                    
-                    if (refundPolicy) {
-                      const hasFee = refundPolicy.penalty_amount && refundPolicy.penalty_amount !== '0';
-                      return (
-                        <li key="refund-policy" className="flex items-start">
-                          <FiInfo className="h-4 w-4 text-blue-500 mr-1.5 mt-0.5 flex-shrink-0" />
-                          <span>
-                            Refunds allowed{
-                              hasFee
-                                ? ` with a fee of ${refundPolicy.penalty_amount} ${refundPolicy.penalty_currency || ''}`
-                                : ' free of charge'
-                            }
-                          </span>
-                        </li>
-                      );
-                    }
-                    return null;
-                  })()}
-                </ul>
-              </div>
-            )}
-            
-            {/* Total Price */}
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-100">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-900">Total Price</span>
-                <span className="text-lg font-bold text-gray-900">
-                  {formatAmount(booking.totalAmount || 0, booking.currency || 'EUR')}
-                </span>
-              </div>
-              {booking.payment?.status === 'succeeded' && booking.payment?.timestamp && (
-                <div className="mt-1 text-right text-sm text-gray-500">
-                  Paid on {formatDateTime(booking.payment.timestamp)}
-                </div>
-              )}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-4">Flight Details</h3>
+            <div className="space-y-6">
+              {booking.segments?.map((segment, index) => (
+                <FlightItineraryCard 
+                  key={index}
+                  itinerary={segment}
+                  type={index === 0 ? 'outbound' : 'return'}
+                  airports={Object.values(airportsJson)}
+                  className="bg-white rounded-xl shadow-sm"
+                />
+              ))}
             </div>
           </div>
         )}

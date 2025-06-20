@@ -1,29 +1,82 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { FaPlaneDeparture, FaPlaneArrival, FaClock, FaCalendarAlt, FaPlane } from 'react-icons/fa';
 import { getAirlineLogoUrl } from './getAirlineLogoUrl';
 import { motion } from 'framer-motion';
 import { MdAirplanemodeActive } from 'react-icons/md';
+import airportsJson from 'airports-json';
+import { Airport } from '@duffel/components';
 
-interface Segment {
-  departure: { iataCode: string; at: string };
-  arrival: { iataCode: string; at: string };
-  carrierCode: string;
-  carrierName: string;
-  number: string;
-  aircraft: { code: string };
+export interface ItinerarySegment {
+  id: string;
+  origin: {
+    iata_code: string;
+    name: string;
+    city_name?: string;
+    terminal?: string;
+    type?: string;
+    time_zone?: string;
+  };
+  destination: {
+    iata_code: string;
+    name: string;
+    city_name?: string;
+    terminal?: string;
+    type?: string;
+    time_zone?: string;
+  };
+  departing_at: string;
+  arriving_at: string;
+  duration: string;
+  marketing_carrier: {
+    iata_code: string;
+    name: string;
+  };
+  operating_carrier?: {
+    iata_code: string;
+    name: string;
+  };
+  marketing_carrier_flight_number: string;
+  operating_carrier_flight_number?: string;
+  aircraft?: {
+    name: string;
+  };
+  passengers?: Array<{
+    passenger_id: string;
+    cabin_class: string;
+    cabin_class_marketing_name?: string;
+    baggages?: Array<{
+      type: string;
+      quantity: number;
+    }>;
+  }>;
 }
 
-interface Itinerary {
-  segments: Segment[];
-  duration: string;
+export interface Itinerary {
+  id?: string;
+  segments: ItinerarySegment[];
+  price?: {
+    total: string;
+    currency: string;
+  };
+  conditions?: {
+    change_before_departure?: {
+      allowed: boolean;
+      penalty_amount?: string;
+      penalty_currency?: string;
+    };
+    refund_before_departure?: {
+      allowed: boolean;
+    };
+  };
+  duration?: string;
 }
 
 interface FlightItineraryCardProps {
   // Original single itinerary props
-  itinerary?: Itinerary;
+  itinerary?: Itinerary | { segments: ItinerarySegment[] };
   type?: 'outbound' | 'return';
   date?: string;
   
@@ -38,7 +91,30 @@ interface FlightItineraryCardProps {
   tripType?: 'oneway' | 'roundtrip';
 }
 
-export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
+const getCityName = (iataCode: string): string => {
+  if (!iataCode) return '';
+  const code = iataCode.toUpperCase();
+  
+  // First try direct lookup
+  const airport: Airport = (airportsJson as any)[code] || (airportsJson as any).airports?.[code];
+ 
+  if (airport?.name) return airport.name;
+  
+  // Fallback search if needed
+  const airportsList: Airport[] = (airportsJson as any).airports 
+    ? Object.values((airportsJson as any).airports)
+    : Object.values(airportsJson as any);
+    
+  const found = airportsList.find((a: Airport) => 
+    (a.iata_code ) === code
+  );
+  
+  if (found?.name) return found.name;
+  
+  return code;
+};
+
+const FlightItineraryCard = React.memo(({
   // Original props
   itinerary,
   type = 'outbound',
@@ -53,30 +129,39 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
   airports,
   className = '',
   tripType = 'oneway'
-}) => {
+}: FlightItineraryCardProps) => {
   // Determine if we're using the combined mode or single itinerary mode
   const isCombinedMode = !!(outboundItinerary || returnItinerary);
   
-  // Format time for display (24-hour format)
-  const formatTime = (dateString?: string): string => {
+  // Memoize expensive calculations
+  const segments = useMemo(() => {
+    if (outboundItinerary || returnItinerary) {
+      return type === 'outbound' 
+        ? outboundItinerary?.segments || []
+        : returnItinerary?.segments || [];
+    }
+    return itinerary?.segments || [];
+  }, [itinerary, outboundItinerary, returnItinerary, type]);
+
+  // Memoize format functions
+  const formatTime = useCallback((dateString?: string): string => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
     });
-  };
-  
-  // Format date for display
-  const formatDate = (dateString?: string): string => {
+  }, []);
+
+  const formatDate = useCallback((dateString?: string): string => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
     });
-  };
+  }, []);
 
-  const formatDuration = (duration: string): string => {
+  const formatDuration = useCallback((duration: string): string => {
     const match = duration.match(/P(?:([0-9]*)D)?T?(?:([0-9]*)H)?(?:([0-9]*)M)?/);
     if (!match) return duration;
     const [_, d, h, m] = match;
@@ -85,9 +170,9 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
     if (h) parts.push(`${h}h`);
     if (m || parts.length === 0) parts.push(`${m || '0'}m`);
     return parts.join(' ');
-  };
+  }, []);
 
-  const calculateLayover = (arrival: string, departure: string): { hours: number, minutes: number } | null => {
+  const calculateLayover = useCallback((arrival: string, departure: string): { hours: number, minutes: number } | null => {
     const arrivalTime = new Date(arrival).getTime();
     const departureTime = new Date(departure).getTime();
     
@@ -105,29 +190,29 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     return { hours: h, minutes: m };
-  };
+  }, []);
 
   // Calculate total travel time including layovers
-  const calculateTotalTravelTime = (segments: Segment[]): string => {
+  const calculateTotalTravelTime = useCallback((segments: ItinerarySegment[]): string => {
     if (!segments || !segments.length) return '0h 0m';
-    const start = new Date(segments[0].departure.at);
-    const end = new Date(segments[segments.length - 1].arrival.at);
+    const start = new Date(segments[0].departing_at);
+    const end = new Date(segments[segments.length - 1].arriving_at);
     const diff = end.getTime() - start.getTime();
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     return `${h}h ${m}m`;
-  };
+  }, []);
 
   // Format layover time with leading zeros for minutes
-  const formatLayover = (layover: { hours: number, minutes: number }): string => {
+  const formatLayover = useCallback((layover: { hours: number, minutes: number }): string => {
     const hours = layover.hours > 0 ? `${layover.hours}h ` : '';
     const minutes = `${layover.minutes.toString().padStart(2, '0')}m`;
     return `${hours}${minutes} layover`;
-  };
-  
+  }, []);
+
   // For single itinerary mode
-  let firstSeg: Segment | undefined;
-  let lastSeg: Segment | undefined;
+  let firstSeg: ItinerarySegment | undefined;
+  let lastSeg: ItinerarySegment | undefined;
   let depAirport: { iata_code: string; name?: string; city?: string } | undefined;
   let arrAirport: { iata_code: string; name?: string; city?: string } | undefined;
   let hasStops = false;
@@ -138,16 +223,16 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
   if (!isCombinedMode && itinerary && itinerary.segments.length > 0) {
     firstSeg = itinerary.segments[0];
     lastSeg = itinerary.segments[itinerary.segments.length - 1];
-    depAirport = airports.find(a => a.iata_code === firstSeg?.departure?.iataCode);
-    arrAirport = airports.find(a => a.iata_code === lastSeg?.arrival?.iataCode);
+    depAirport = airports.find(a => a.iata_code === firstSeg?.origin.iata_code);
+    arrAirport = airports.find(a => a.iata_code === lastSeg?.destination.iata_code);
     hasStops = itinerary.segments.length > 1;
     totalTravelTime = calculateTotalTravelTime(itinerary.segments);
     totalStops = itinerary.segments.length - 1;
   }
 
   // For outbound itinerary in combined mode
-  let outboundFirstSeg: Segment | undefined;
-  let outboundLastSeg: Segment | undefined;
+  let outboundFirstSeg: ItinerarySegment | undefined;
+  let outboundLastSeg: ItinerarySegment | undefined;
   let outboundDepAirport: { iata_code: string; name?: string; city?: string } | undefined;
   let outboundArrAirport: { iata_code: string; name?: string; city?: string } | undefined;
   let outboundHasStops = false;
@@ -157,16 +242,16 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
   if (outboundItinerary && outboundItinerary.segments.length > 0) {
     outboundFirstSeg = outboundItinerary.segments[0];
     outboundLastSeg = outboundItinerary.segments[outboundItinerary.segments.length - 1];
-    outboundDepAirport = airports.find(a => a.iata_code === outboundFirstSeg?.departure?.iataCode);
-    outboundArrAirport = airports.find(a => a.iata_code === outboundLastSeg?.arrival?.iataCode);
+    outboundDepAirport = airports.find(a => a.iata_code === outboundFirstSeg?.origin.iata_code);
+    outboundArrAirport = airports.find(a => a.iata_code === outboundLastSeg?.destination.iata_code);
     outboundHasStops = outboundItinerary.segments.length > 1;
     outboundTotalTravelTime = calculateTotalTravelTime(outboundItinerary.segments);
     outboundTotalStops = outboundItinerary.segments.length - 1;
   }
 
   // For return itinerary in combined mode
-  let returnFirstSeg: Segment | undefined;
-  let returnLastSeg: Segment | undefined;
+  let returnFirstSeg: ItinerarySegment | undefined;
+  let returnLastSeg: ItinerarySegment | undefined;
   let returnDepAirport: { iata_code: string; name?: string; city?: string } | undefined;
   let returnArrAirport: { iata_code: string; name?: string; city?: string } | undefined;
   let returnHasStops = false;
@@ -176,8 +261,8 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
   if (returnItinerary && returnItinerary.segments.length > 0) {
     returnFirstSeg = returnItinerary.segments[0];
     returnLastSeg = returnItinerary.segments[returnItinerary.segments.length - 1];
-    returnDepAirport = airports.find(a => a.iata_code === returnFirstSeg?.departure?.iataCode);
-    returnArrAirport = airports.find(a => a.iata_code === returnLastSeg?.arrival?.iataCode);
+    returnDepAirport = airports.find(a => a.iata_code === returnFirstSeg?.origin.iata_code);
+    returnArrAirport = airports.find(a => a.iata_code === returnLastSeg?.destination.iata_code);
     returnHasStops = returnItinerary.segments.length > 1;
     returnTotalTravelTime = calculateTotalTravelTime(returnItinerary.segments);
     returnTotalStops = returnItinerary.segments.length - 1;
@@ -230,12 +315,10 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
         <div className="grid grid-cols-10 items-center gap-1 sm:gap-2 mb-4 sm:mb-6">
           {/* Departure */}
           <div className="col-span-4">
-            <div className="text-xl xs:text-2xl sm:text-3xl font-extrabold text-[#5D4037] leading-tight">
-              {firstSeg?.departure?.iataCode}
+            <div className="text-xl xs:text-xl sm:text-2xl font-extrabold text-[#5D4037] leading-tight">
+            {firstSeg?.origin.iata_code}
             </div>
-            <div className="text-xs xs:text-sm sm:text-base font-semibold text-[#5D4037]">
-              {formatTime(firstSeg?.departure?.at)}
-            </div>
+           
             <div className="text-[10px] xs:text-xs sm:text-sm text-[#5D4037] truncate">
               {depAirport?.city || depAirport?.name}
             </div>
@@ -249,17 +332,15 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                 <MdAirplanemodeActive className="text-gray-500 text-base sm:text-lg" />
               </div>
             </div>
-            <div className="text-[10px] xs:text-xs text-gray-500 mt-0.5 sm:mt-1">{totalTravelTime}</div>
+            
           </div>
 
           {/* Arrival */}
           <div className="col-span-4 text-right">
-            <div className="text-xl xs:text-2xl sm:text-3xl font-extrabold text-[#5D4037] leading-tight">
-              {lastSeg?.arrival?.iataCode}
+            <div className="text-xl xs:text-xl sm:text-2xl font-extrabold text-[#5D4037] leading-tight">
+              {lastSeg?.destination.iata_code}
             </div>
-            <div className="text-xs xs:text-sm sm:text-base font-semibold text-[#5D4037]">
-              {formatTime(lastSeg?.arrival?.at)}
-            </div>
+    
             <div className="text-[10px] xs:text-xs sm:text-sm text-[#5D4037] truncate">
               {arrAirport?.city || arrAirport?.name}
             </div>
@@ -268,23 +349,22 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
 
         {/* Segments */}
         <div className="space-y-4">
-          {itinerary?.segments.map((seg, i) => {
-            console.log(`Rendering segment ${i + 1} of ${itinerary.segments.length}`);
-            const dep = airports.find(a => a.iata_code === seg.departure.iataCode);
-            const arr = airports.find(a => a.iata_code === seg.arrival.iataCode);
+          {segments.map((seg, i) => {
+            // Only log rendering in development
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Rendering segment ${i + 1} of ${segments.length}`);
+            }
+            const dep = airports.find(a => a.iata_code === seg.origin.iata_code);
+            const arr = airports.find(a => a.iata_code === seg.destination.iata_code);
             
             // Calculate layover only if there's a next segment
             let layover = null;
-            if (i < itinerary.segments.length - 1) {
-              const nextSeg = itinerary.segments[i + 1];
-              console.log(`Calculating layover between segment ${i + 1} and ${i + 2}`);
-              console.log('Current segment arrival:', seg.arrival.at);
-              console.log('Next segment departure:', nextSeg.departure.at);
-              layover = calculateLayover(seg.arrival.at, nextSeg.departure.at);
-              console.log('Calculated layover:', layover);
+            if (i < segments.length - 1) {
+              const nextSeg = segments[i + 1];
+              layover = calculateLayover(seg.arriving_at, nextSeg.departing_at);
             }
             const segmentDuration = Math.floor(
-              (new Date(seg.arrival.at).getTime() - new Date(seg.departure.at).getTime()) / 60000
+              (new Date(seg.arriving_at).getTime() - new Date(seg.departing_at).getTime()) / 60000
             );
             const segmentHours = Math.floor(segmentDuration / 60);
             const segmentMinutes = segmentDuration % 60;
@@ -299,18 +379,18 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                   <div className="flex items-center gap-2 mb-2 sm:mb-0">
                     <div className="w-12 h-12 rounded-full bg-white border border-gray-200 p-1">
                       <img 
-                        src={getAirlineLogoUrl(seg.carrierCode)}
-                        alt={seg.carrierName}
+                        src={getAirlineLogoUrl(seg.marketing_carrier.iata_code)}
+                        alt={seg.marketing_carrier.name}
                         className="w-full h-full object-contain"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.src = `https://via.placeholder.com/32/cccccc/ffffff?text=${seg.carrierCode}`;
+                          target.src = `https://via.placeholder.com/32/cccccc/ffffff?text=${seg.marketing_carrier.iata_code}`;
                         }}
                       />
                     </div>
                     <div>
-                      <div className="font-medium text-gray-800">{seg.carrierName}</div>
-                      <div className="text-xs text-gray-500">Flight {seg.carrierCode}-{seg.number}</div>
+                      <div className="font-medium text-gray-800">{seg.marketing_carrier.name}</div>
+                      <div className="text-xs text-gray-500">Flight {seg.marketing_carrier.iata_code}-{seg.marketing_carrier_flight_number}</div>
                     </div>
                   </div>
                   
@@ -320,8 +400,8 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                 <div className="grid grid-cols-12 gap-2 items-center text-md">
                   {/* Departure */}
                   <div className="col-span-4 pr-2">
-                    <div className="font-semibold text-gray-900">{formatTime(seg.departure.at)}</div>
-                    <div className="text-sm text-gray-700">{seg.departure.iataCode}</div>
+                    <div className="font-semibold text-gray-900">{formatTime(seg.departing_at)}</div>
+                    <div className="text-sm text-gray-700">{getCityName(seg.origin.iata_code)}</div>
                     <div className="text-xs text-gray-500 truncate">{dep?.city || dep?.name}</div>
                   </div>
 
@@ -344,8 +424,8 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
 
                   {/* Arrival */}
                   <div className="col-span-4 text-right pl-2">
-                    <div className="font-semibold text-gray-900">{formatTime(seg.arrival.at)}</div>
-                    <div className="text-sm text-gray-700">{seg.arrival.iataCode}</div>
+                    <div className="font-semibold text-gray-900">{formatTime(seg.arriving_at)}</div>
+                    <div className="text-sm text-gray-700">{getCityName(seg.destination.iata_code)}</div>
                     <div className="text-xs text-gray-500 truncate">{arr?.city || arr?.name}</div>
                   </div>
                 </div>
@@ -366,4 +446,6 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
       </div>
     </div>
   );
-};
+});
+
+export default FlightItineraryCard;

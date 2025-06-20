@@ -10,7 +10,7 @@ const airports = require('airports-json').airports;
 const countriesData = require('world-countries/countries.json');
 
 // Import components
-import { FlightItineraryCard } from "@/app/components/FlightItineraryCard";
+import FlightItineraryCard from "@/app/components/FlightItineraryCard";
 import { computePricing, PricingBreakdown } from "@/lib/pricing";
 import PassengerForm, { PassengerInfo } from "@/app/components/PassengerForm";
 
@@ -86,21 +86,18 @@ const BookingPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
 
-  // Centralised pricing breakdown – must run every render BEFORE early returns to keep hook order stable
-  const priceInfo: PricingBreakdown = useMemo(() => {
-    // If trip data not yet loaded, return a zeroed breakdown to avoid null checks downstream
-    if (!bookingData?.trip) {
-      return {
-        base: 0,
-        markupPerPassenger: 1.0,
-        servicePerPassenger: 2.0,
-        passengers: passengerData.length || 1,
-        markupTotal: 0,
-        serviceTotal: 0,
-        total: 0,
-        currency: 'EUR',
-      };
-    }
+  // Memoize price calculations
+  const priceInfo = useMemo(() => {
+    if (!bookingData?.trip) return {
+      base: 0,
+      markupPerPassenger: 0,
+      servicePerPassenger: 0,
+      passengers: 0,
+      markupTotal: 0,
+      serviceTotal: 0,
+      total: 0,
+      currency: 'EUR',
+    };
 
     const basePerPassenger = parseFloat(bookingData.trip.price.total.toString());
     return computePricing({
@@ -108,7 +105,7 @@ const BookingPage: React.FC = () => {
       passengers: passengerData.length || 1,
       currency: bookingData.trip.price.currency || bookingData.trip.price.breakdown?.currency || 'EUR',
     });
-  }, [bookingData, passengerData.length]);
+  }, [bookingData?.trip, passengerData.length]); // Only recalculate when these change
 
   // Get list of all countries from world-countries package
   const countries = useMemo(() => {

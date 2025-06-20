@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { computePricing, PricingBreakdown } from '@/lib/pricing';
 import Loading from '../../loading';
 import { FiArrowLeft, FiCheckCircle, FiCreditCard, FiUser, FiCalendar, FiGlobe } from 'react-icons/fi';
-import { FlightItineraryCard } from '@/app/components/FlightItineraryCard';
+import FlightItineraryCard from "@/app/components/FlightItineraryCard";
 import PaymentForm from '@/app/components/PaymentForm';
 import AnimatedStepCharacter from '@/app/components/AnimatedStepCharacter';
 
@@ -713,28 +713,13 @@ function PaymentContent() {
                    bookingData.trip.amount || 
                    0,
             currency: bookingData.trip.price?.currency || bookingData.trip.total_currency || 'EUR',
-            passengers: bookingData.passengers.map(p => ({
-              title: p.title || 'mr',
-              firstName: p.firstName,
-              lastName: p.lastName,
-              dateOfBirth: p.dateOfBirth,
-              gender: p.gender,
-              email: p.email,
-              phone: p.phone,
-              documentNumber: p.documentNumber,
-              documentExpiryDate: p.documentExpiryDate,
-              documentIssuingCountryCode: p.documentIssuingCountryCode,
-              documentNationality: p.documentNationality,
-            })),
-            isConfirming: true,
+            passengers: bookingData.passengers,
             metadata: {
-              ...bookingData.metadata,
-              bookingReference,
-              source: 'web',
-              paymentMethod: 'card',
-              paymentProcessor: 'duffel',
-              timestamp: new Date().toISOString(),
+              ...(bookingData.metadata || {}),
+              source: 'web-booking',
+              tripType: bookingData.searchParams.tripType,
             },
+            isConfirming: true,
           }),
         });
 
