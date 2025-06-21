@@ -590,9 +590,13 @@ export default function TripCard({
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 w-fit">
               Return Flight
             </span>
+            
           </div>
+        
           <div className="relative grid grid-cols-[1fr_auto_1fr] items-center mt-4 px-2 sm:px-4">
             {/* Inbound Departure */}
+            {/* Flight path line - narrower */}
+            <div className="absolute left-1/4 right-1/4 top-1/2 h-[2px] bg-gradient-to-r from-purple-400 to-purple-500 -translate-y-1/2 z-0"></div>
             <div className="text-left pr-3 z-10">
               <div className="text-2xl font-bold text-gray-900">{formatTime(itineraries[1].segments[0].departure.at)}</div>
               <div className="text-sm font-medium text-gray-700">{itineraries[1].segments[0].departure.iataCode}</div>

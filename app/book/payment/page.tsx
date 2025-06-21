@@ -849,12 +849,13 @@ function PaymentContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] flex items-center justify-center p-4">
-        <div className="text-center">
-          
-          
-          <h2 className="text-2xl font-semibold text-gray-700 mb-2">Loading your booking details...</h2>
-          <p className="text-gray-500">Please wait a moment.</p>
+      <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-4xl lg:max-w-7xl">
+          <div className="text-center">
+            
+            <h2 className="text-2xl font-semibold text-gray-700 mb-2">Loading your booking details...</h2>
+            <p className="text-gray-500">Please wait a moment.</p>
+          </div>
         </div>
       </div>
     );
@@ -862,52 +863,54 @@ function PaymentContent() {
 
   if (error || !bookingData) {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center border border-red-200">
-          <div className="text-red-500 text-6xl mb-4 animate-bounce">
-            <FiCheckCircle className="rotate-45 mx-auto text-red-500" style={{ transform: 'rotate(45deg)' }} /> {/* Using a rotated check for 'x' */}
+      <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-4xl lg:max-w-7xl">
+          <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center border border-red-200">
+            <div className="text-red-500 text-6xl mb-4 animate-bounce">
+              <FiCheckCircle className="rotate-45 mx-auto text-red-500" style={{ transform: 'rotate(45deg)' }} /> {/* Using a rotated check for 'x' */}
+            </div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-3">Oops! Something went wrong.</h1>
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              {error || 'We were unable to load your booking details. This might be a temporary issue. Please try again.'}
+            </p>
+            <button
+              onClick={() => router.push('/book')}
+              className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-orange-700 transition-all duration-300 transform hover:scale-105"
+            >
+              Back to Booking
+            </button>
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-3">Oops! Something went wrong.</h1>
-          <p className="text-gray-600 mb-6 leading-relaxed">
-            {error || 'We were unable to load your booking details. This might be a temporary issue. Please try again.'}
-          </p>
-          <button
-            onClick={() => router.push('/book')}
-            className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-orange-700 transition-all duration-300 transform hover:scale-105"
-          >
-            Back to Booking
-          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFDF6] py-10">
-      <div className="max-w-6xl mx-auto px-4 md:px-6">
-        <div className="mb-10">
+    <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-4xl lg:max-w-7xl">
+        <div className="mb-6 sm:mb-8">
           <button
             onClick={() => router.back()}
-            className="flex items-center text-orange-600 hover:text-orange-700 transition-colors mb-6 text-lg font-medium"
+            className="flex items-center text-blue-600 hover:text-blue-700 text-sm sm:text-base"
           >
-            <FiArrowLeft className="mr-3 text-2xl" /> Back to booking details
+            <FiArrowLeft className="mr-2" /> Back
           </button>
-          <h1 className="text-4xl font-extrabold text-gray-900 mb-3">Complete Your Payment</h1>
-          <p className="text-gray-700 text-lg">Just a few steps away from confirming your trip. Please review your details and proceed to payment.</p>
+          <h1 className="text-xl font-bold text-gray-900 mt-4 sm:text-2xl sm:mt-6">Complete Payment</h1>
+          <p className="text-gray-600 text-sm sm:text-base mt-1">Review and confirm your payment details</p>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-12">
+        <div className="flex flex-col gap-6 lg:flex-row lg:gap-5">
           {/* Left side - Booking Summary */}
-          <div className="lg:col-span-6 space-y-8">
-            <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
-              <h2 className="text-2xl font-bold text-gray-800 mb-7">Your Booking Summary</h2>
+          <div className="flex-1">
+            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+              <h2 className="text-2xl font-bold text-[#5D4037] mb-7">Your Booking Summary</h2>
 
               {/* Passenger Details */}
-              <div className="border-t border-gray-200 pt-7 mt-7">
-                <h3 className="text-xl font-semibold text-gray-700 mb-5">Passenger Details</h3>
+              <div className="border-t border-orange-200 pt-7 mt-7">
+                <h3 className="text-xl font-semibold text-[#5D4037] mb-5">Passenger Details</h3>
                 <div className="space-y-5">
                   {bookingData.passengers.map((passenger, index) => (
-                    <div key={index} className="bg-gray-50 p-5 rounded-xl shadow-sm border border-gray-100">
+                    <div key={index} className="bg-amber-50 p-5 rounded-xl shadow-sm border border-amber-200">
                       <div className="font-bold text-gray-900 text-lg mb-2">
                         {passenger.title} {passenger.firstName} {passenger.lastName}
                       </div>
@@ -935,26 +938,26 @@ function PaymentContent() {
               </div>
 
               {/* Flight Itinerary */}
-              <div className="border-t border-gray-200 pt-7 mt-7">
-                <h3 className="text-xl font-semibold text-gray-700 mb-5">Flight Details</h3>
+              <div className="border-t border-orange-200 pt-7 mt-7">
+                <h3 className="text-xl font-semibold text-[#5D4037] mb-5">Flight Details</h3>
                 {bookingData.trip?.itineraries?.[0] && (
                   <div className="mb-7">
                     <div className="flex items-center mb-3 text-lg">
-                      <span className="font-bold text-gray-800">Outbound Flight</span>
+                      <span className="font-bold text-[#5D4037]">Outbound Flight</span>
                       <span className="mx-3 text-gray-400">•</span>
                       <span className="text-base text-gray-600">
                         {formatDate(bookingData.searchParams.departureDate)}
                       </span>
                     </div>
-                    <div className="pl-5 border-l-4 border-orange-200">
+                    <div className="pl-2 border-l-4 border-orange-200">
                       {/* Placeholder for FlightItineraryCard */}
                        <FlightItineraryCard
                         itinerary={bookingData.trip.itineraries[0]}
                         type="outbound"
                         date={bookingData.searchParams.departureDate}
                         airports={[
-                          { iata_code: bookingData.searchParams.from },
-                          { iata_code: bookingData.searchParams.to }
+                          { iata_code: bookingData.trip.itineraries[0].segments[0].departure.iataCode },
+                          { iata_code: bookingData.trip.itineraries[0].segments[0].arrival.iataCode }
                         ]}
                       /> 
                     </div>
@@ -964,21 +967,21 @@ function PaymentContent() {
                 {bookingData.searchParams.tripType === 'roundtrip' && bookingData.trip?.itineraries?.[1] && (
                   <div>
                     <div className="flex items-center mb-3 text-lg">
-                      <span className="font-bold text-gray-800">Return Flight</span>
+                      <span className="font-bold text-[#5D4037]">Return Flight</span>
                       <span className="mx-3 text-gray-400">•</span>
                       <span className="text-base text-gray-600">
                         {formatDate(bookingData.searchParams.returnDate || '')}
                       </span>
                     </div>
-                    <div className="pl-5 border-l-4 border-orange-200">
+                    <div className="pl-2 border-l-4 border-orange-200">
                       {/* Placeholder for FlightItineraryCard */}
                       <FlightItineraryCard
                         itinerary={bookingData.trip.itineraries[1]}
                         type="return"
                         date={bookingData.searchParams.returnDate || ''}
                         airports={[
-                          { iata_code: bookingData.searchParams.to },
-                          { iata_code: bookingData.searchParams.from }
+                          { iata_code: bookingData.trip.itineraries[1].segments[0].departure.iataCode },
+                          { iata_code: bookingData.trip.itineraries[1].segments[0].arrival.iataCode }
                         ]}
                       />
                     </div>
@@ -988,8 +991,8 @@ function PaymentContent() {
             </div>
 
             {/* Price Summary Card */}
-            <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">Price Details</h2>
+            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                <h2 className="text-2xl font-bold  mb-6 text-[#5D4037]">Price Details</h2>
                 <div className="w-full space-y-4 text-lg">
                     {/* Flight Price */}
                     <div className="flex justify-between items-center pb-2 border-b border-gray-100">
@@ -1036,9 +1039,9 @@ function PaymentContent() {
                     </div>
 
                     {/* Total Summary */}
-                    <div className="pt-4 flex justify-between font-bold text-xl text-orange-600">
+                    <div className="pt-4 flex justify-between font-bold text-xl">
                         <span>Total Amount</span>
-                        <span>{displayCurrency} {displayAmount}</span>
+                        <span className="text-[#FFB800]">{displayCurrency} {displayAmount}</span>
                     </div>
                 </div>
 
@@ -1049,15 +1052,14 @@ function PaymentContent() {
           </div>
 
           {/* Right side - Payment Form */}
-          <div className="lg:col-span-5 bg-gray-50
-          ">
-            <div className="rounded-2xl shadow-lg border border-gray-100">
-              <h2 className="text-2xl p-8 font-bold text-gray-800 ">Payment Information</h2>
+          <div className="lg:w-120 lg:sticky lg:top-4">
+            <div className="rounded-2xl shadow-xl bg-white border border-amber-100 p-8">
+              <h2 className="text-2xl font-bold text-[#5D4037]">Payment Information</h2>
              
                 <AnimatedStepCharacter 
                 lottieUrl="https://lottie.host/95c3d083-31e6-486d-bebd-375c3b7e8b13/UOk0JnYYHG.json"
                 alt="Booking Confirmed"
-                className="w-60 h-60 mx-auto p-0 mt-0"
+                className="w-60 h-60 mx-auto mb-0"
               />
               
               {loading ? (
@@ -1082,13 +1084,13 @@ function PaymentContent() {
                   </button>
                 </div>
               ) : clientToken ? (
-                <div className="rounded-2xl shadow-lg border border-gray-100">
+                <div className=" w-full">
                 <PaymentForm 
                 onSubmit={handlePaymentSubmit} 
                 loading={false}
                 clientToken={clientToken}
                 error={null}
-                amount={parseFloat(bookingData.trip.price?.breakdown?.total || bookingData.trip.price?.total || '0')}
+                amount={priceInfo?.total || parseFloat(amount || bookingData?.trip?.price?.total || '0')}
                 currency={bookingData.trip.price?.currency || 'EUR'}
                 onPaymentSuccess={async (paymentIntentId, paymentResult) => {
                   console.log('Payment successful, paymentIntentId:', paymentIntentId);
@@ -1138,11 +1140,11 @@ function PaymentContent() {
                       
                       // Only redirect for specific offer-related errors
                       const isOfferError = result.status === 'offer_invalid' || 
-                                        result.status === 'offer_expired' ||
-                                        (result.error && 
-                                         (result.error.includes('offer') || 
-                                          result.error.includes('expired') ||
-                                          result.error.includes('no longer available')));
+                       result.status === 'offer_expired' ||
+                       (result.error && 
+                        (result.error.includes('offer') || 
+                        result.error.includes('expired') ||
+                        result.error.includes('no longer available')));
                       
                       if (isOfferError) {
                         // Clear any stored booking data

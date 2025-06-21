@@ -402,7 +402,7 @@ export default function TripSummaryPage() {
           <p className="text-xl font-semibold text-[#FFA500]">
             {prices.currency} {parseFloat(prices.total).toFixed(2)}
           </p>
-          <p className="text-sm text-gray-500">Includes all taxes and fees</p>
+          <p className="text-sm text-gray-500">Does not include taxes and fees</p>
         </div>
         
         {/* Book Button */}

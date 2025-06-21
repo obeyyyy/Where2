@@ -768,21 +768,10 @@ const BookingPage: React.FC = () => {
                     {/* Outbound Flight Price */}
                     {trip.price.breakdown?.outbound && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Outbound flight:</span>
+                        <span className="text-gray-600">Flight:</span>
                         <span className="font-medium">
                           {trip.price.breakdown.currency || '€'}
                           {parseFloat(trip.price.breakdown.outbound.toString()).toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                    
-                    {/* Return Flight Price */}
-                    {trip.price.breakdown?.return && trip.price.breakdown.return !== '0' && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Return flight:</span>
-                        <span className="font-medium">
-                          {trip.price.breakdown.currency || '€'}
-                          {parseFloat(trip.price.breakdown.return.toString()).toFixed(2)}
                         </span>
                       </div>
                     )}
@@ -795,33 +784,29 @@ const BookingPage: React.FC = () => {
                         {(priceInfo.base / passengerData.length).toFixed(2)}
                       </span>
                     </div>
-                    {trip.price.breakdown?.serviceFee && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Service fee (per passenger):</span>
-                        <span className="font-medium">
-                          {trip.price.breakdown.currency || '€'}
-                          {parseFloat(trip.price.breakdown.serviceFee.toString()).toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                    {trip.price.breakdown?.markup && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Markup (per passenger):</span>
-                        <span className="font-medium">
-                          {trip.price.breakdown.currency || '€'}
-                          {parseFloat(trip.price.breakdown.markup.toString()).toFixed(2)}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Service fee (per passenger):</span>
+                      <span className="font-medium">
+                        {trip.price.breakdown?.currency || '€'}
+                        {parseFloat(priceInfo.servicePerPassenger.toFixed(2)).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Markup (per passenger):</span>
+                      <span className="font-medium">
+                        {trip.price.breakdown?.currency || '€'}
+                        {parseFloat(priceInfo.markupPerPassenger.toFixed(2)).toFixed(2)}
+                      </span>
+                    </div>
                     <div className="border-t border-gray-200 mt-2 pt-2">
                       <div className="flex justify-between">
                         <span className="font-medium">Subtotal per passenger:</span>
                         <span className="font-medium">
                           {trip.price.breakdown?.currency || '€'}
                           {(
-                            parseFloat(trip.price.total.toString()) + 
-                            (trip.price.breakdown?.serviceFee ? parseFloat(trip.price.breakdown.serviceFee.toString()) : 0) + 
-                            (trip.price.breakdown?.markup ? parseFloat(trip.price.breakdown.markup.toString()) : 0)
+                            parseFloat(priceInfo.base.toString()) + 
+                            (priceInfo.servicePerPassenger ? parseFloat(priceInfo.servicePerPassenger.toString()) : 0) + 
+                            (priceInfo.markupPerPassenger ? parseFloat(priceInfo.markupPerPassenger.toString()) : 0)
                           ).toFixed(2)}
                         </span>
                       </div>
@@ -838,7 +823,7 @@ const BookingPage: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1 text-right">
-                      Includes €3.00 markup + €1.00 service fee per passenger
+                      Includes €2.00 markup + €1.00 service fee per passenger
                     </p>
                   </div>
                 )}

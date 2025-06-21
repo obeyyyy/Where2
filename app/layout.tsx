@@ -9,8 +9,7 @@ export const metadata: Metadata = {
   description: "Where2 travels and trips",
   icons: {
     icon: [
-      { url: '/logo.png', type: 'image/png' },
-      { url: '/favicon.ico', type: 'image/x-icon' },
+      { url: '/logo.png', type: 'image/png' }
     ],
     shortcut: '/logo.png',
     apple: '/logo.png',
@@ -26,11 +25,13 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-[#FFFDF6] font-sans text-[#1A1A1A] w-full">
         {/* TripCartProvider gives cart context to the whole app */}
+        
         <TripCartProvider>
           <Navbar />
+          <SpeedInsights />
           {children}
         </TripCartProvider>
-        <SpeedInsights />
+        
       </body>
     </html>
   );

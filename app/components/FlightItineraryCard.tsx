@@ -7,6 +7,8 @@ import { FaPlaneDeparture, FaPlaneArrival, FaClock, FaCalendarAlt, FaPlane } fro
 import { getAirlineLogoUrl } from './getAirlineLogoUrl';
 import { motion } from 'framer-motion';
 import { MdAirplanemodeActive } from 'react-icons/md';
+import { Airport } from '@duffel/components';
+import airportsJson from 'airports-json';
 
 interface Segment {
   departure: { iataCode: string; at: string };
@@ -186,6 +188,27 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
   
   const flightTypeColor = type === 'outbound' ? 'blue' : 'green';
 
+  const getCityName = (iataCode: string): string => {
+    if (!iataCode) return '';
+    const code = iataCode.toUpperCase();
+    
+    // First try direct lookup
+    const airport: Airport = (airportsJson as any)[code] || (airportsJson as any).airports?.[code];
+
+    if (airport?.name) return airport.name;
+    
+    // Fallback search if needed
+    const airportsList: Airport[] = (airportsJson as any).airports 
+      ? Object.values((airportsJson as any).airports)
+      : Object.values(airportsJson as any);
+      
+    const found = airportsList.find((a: Airport) => 
+      (a.iata_code || a.iata_code) === code
+    );
+    if (found?.name) return found.name;
+    return code;
+  };
+
   return (
     <div className={`relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm ${className}`}>
       {/* Header with gradient - Improved mobile flex */}
@@ -238,7 +261,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
               {formatTime(firstSeg?.departure?.at)}
             </div>
             <div className="text-[10px] xs:text-xs sm:text-sm text-[#5D4037] truncate">
-              {depAirport?.city || depAirport?.name}
+              {getCityName(depAirport?.iata_code || 'none')}
             </div>
           </div>
 
@@ -262,7 +285,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
               {formatTime(lastSeg?.arrival?.at)}
             </div>
             <div className="text-[10px] xs:text-xs sm:text-sm text-[#5D4037] truncate">
-              {arrAirport?.city || arrAirport?.name}
+              {getCityName(arrAirport?.iata_code || 'none')}
             </div>
           </div>
         </div>
@@ -302,7 +325,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                       <img 
                         src={getAirlineLogoUrl(seg.carrierCode)}
                         alt={seg.carrierName}
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-contain "
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.src = `https://via.placeholder.com/32/cccccc/ffffff?text=${seg.carrierCode}`;
@@ -310,7 +333,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                       />
                     </div>
                     <div>
-                      <div className="font-medium text-gray-800">{seg.carrierName}</div>
+                      <div className="font-medium text-gray-900">{seg.carrierName}</div>
                       <div className="text-xs text-gray-500">Flight {seg.carrierCode}-{seg.number}</div>
                     </div>
                   </div>
@@ -323,7 +346,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                   <div className="col-span-4 pr-2">
                     <div className="font-semibold text-gray-900">{formatTime(seg.departure.at)}</div>
                     <div className="text-sm text-gray-700">{seg.departure.iataCode}</div>
-                    <div className="text-xs text-gray-500 truncate">{dep?.city || dep?.name}</div>
+                    <div className="text-xs text-gray-500 truncate">{getCityName(depAirport?.iata_code || 'none')}</div>
                   </div>
 
                   {/* Duration */}
@@ -347,7 +370,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                   <div className="col-span-4 text-right pl-2">
                     <div className="font-semibold text-gray-900">{formatTime(seg.arrival.at)}</div>
                     <div className="text-sm text-gray-700">{seg.arrival.iataCode}</div>
-                    <div className="text-xs text-gray-500 truncate">{arr?.city || arr?.name}</div>
+                    <div className="text-xs text-gray-500 truncate">{getCityName(arrAirport?.iata_code || 'none')}</div>
                   </div>
                 </div>
 
@@ -356,7 +379,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                   <div className="mt-3 text-center">
                     <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                       <FaClock className="mr-1.5" />
-                      {formatLayover(layover)} at {arr?.iata_code}
+                      {formatLayover(layover)} at {arrAirport?.iata_code}
                     </div>
                   </div>
                 )}
