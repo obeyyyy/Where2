@@ -167,10 +167,90 @@ function HomePage() {
 
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-    return () => clearTimeout(timer);
+    const initializeFromURL = async () => {
+      try {
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const origin = urlParams.get('origin');
+        const destination = urlParams.get('destination');
+        const departureDate = urlParams.get('departureDate');
+        const returnDate = urlParams.get('returnDate');
+        const tripType = urlParams.get('tripType') as TripType;
+        const travelers = urlParams.get('travelers');
+        const budget = urlParams.get('budget');
+        const currency = urlParams.get('currency');
+        const includeHotels = urlParams.get('includeHotels');
+        const useDuffel = urlParams.get('useDuffel');
+        const nights = urlParams.get('nights');
+
+        // If we have the required search parameters
+        if (origin && destination && departureDate) {
+          // Update search parameters
+          const newSearchParams = {
+            budget: budget ? parseInt(budget, 10) : 1000,
+            currency: currency || 'USD',
+            origin,
+            destination,
+            departureDate,
+            returnDate: returnDate || '',
+            tripType: tripType || 'oneway',
+            travelers: travelers ? parseInt(travelers, 10) : 1,
+            nights: nights ? parseInt(nights, 10) : 7,
+            includeHotels: includeHotels === 'true',
+            useDuffel: useDuffel !== 'false'
+          };
+
+          // Update state
+          setSearchParams(newSearchParams);
+          setViewState('searching');
+
+          // Prepare query parameters for API call
+          const queryParams = new URLSearchParams({
+            origin: newSearchParams.origin,
+            destination: newSearchParams.destination,
+            departureDate: newSearchParams.departureDate,
+            returnDate: newSearchParams.returnDate,
+            tripType: newSearchParams.tripType,
+            nights: newSearchParams.nights.toString(),
+            travelers: newSearchParams.travelers.toString(),
+            currency: newSearchParams.currency,
+            budget: newSearchParams.budget.toString(),
+            includeHotels: newSearchParams.includeHotels.toString(),
+            useDuffel: newSearchParams.useDuffel.toString()
+          });
+
+          // Make API call
+          const response = await fetch(`/api/trips?${queryParams}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch trip data');
+          }
+
+          const data = await response.json();
+          if (!data || !data.data || data.data.length === 0) {
+            throw new Error('No trips found');
+          }
+
+          // Update UI with results
+          setTripData(data.data);
+          setViewState('results');
+        }
+      } catch (err) {
+        console.error('Search error:', err);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        setViewState('error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Run initialization
+    initializeFromURL();
   }, []);
 
   // Handler functions are defined later in the file

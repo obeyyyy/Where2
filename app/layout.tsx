@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-[#FFFDF6] font-sans text-[#1A1A1A] w-full">
+      <body className="min-h-screen bg-[#FFFDF6] font-[system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif] text-[#1A1A1A] w-full">
         {/* TripCartProvider gives cart context to the whole app */}
         
         <TripCartProvider>

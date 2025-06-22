@@ -2,13 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import Footer from './components/Footer';
+import { FiGlobe, FiMapPin, FiDollarSign, FiArrowRight, FiCalendar, FiBriefcase, FiHome, FiShield, FiZap } from "react-icons/fi";
 import { motion } from "framer-motion";
-import { FiGlobe, FiMapPin, FiDollarSign, FiArrowRight, FiCalendar } from "react-icons/fi";
 import AnimatedStepCharacter from "./components/AnimatedStepCharacter";
 import TrustBadges from "./components/TrustBadges";
 import FAQSection from "./components/FAQSection";
 import TravelBlogSection from "./components/TravelBlogSection";
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
+import { FeatureCard } from './components/FeatureCard';
+import { AirportAutocomplete, type AirportOption } from './components/AirportAutocomplete';
 
 // AnimatedWord component for hero title
 function AnimatedWord({ words, colors, interval = 2000 }: { words: string[]; colors: string[]; interval?: number }) {
@@ -43,7 +46,64 @@ function AnimatedWord({ words, colors, interval = 2000 }: { words: string[]; col
 }
 
 export default function LandingPage() {
-  // ...PASTE THE FULL CONTENT OF YOUR LandingPageClient HERE...
+  const router = useRouter();
+  const [activeSearchType, setActiveSearchType] = useState('all');
+  const [tripType, setTripType] = useState('Round Trip');
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    origin: null as AirportOption | null,
+    destination: null as AirportOption | null,
+    departureDate: '',
+    returnDate: '',
+    travelers: 1,
+    roomCount: 1,
+    guestCount: 1,
+    roomType: 'any',
+    cabinClass: 'economy'
+  });
+
+  const handleFlightSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Skip if required fields are missing
+    if (!formData.origin?.iata || !formData.destination?.iata || !formData.departureDate) {
+      return;
+    }
+
+    // Prepare search parameters
+    const searchParams = new URLSearchParams({
+      origin: formData.origin.iata,
+      destination: formData.destination.iata,
+      departureDate: formData.departureDate,
+      returnDate: tripType === 'Round Trip' ? formData.returnDate : '',
+      tripType: tripType.toLowerCase().replace(' ', '') as 'roundtrip' | 'oneway',
+      travelers: formData.travelers.toString(),
+      currency: 'USD',
+      budget: '1000',
+      includeHotels: 'false',
+      useDuffel: 'true',
+      nights: '7' // Add nights parameter
+    });
+
+    // Log search parameters for debugging
+    console.log('Search parameters:', Object.fromEntries(searchParams.entries()));
+
+    router.push(`/search?${searchParams.toString()}`);
+  };
+
+  const handleHotelSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Implement hotel search route when ready
+    router.push(`/hotels/search?destination=${formData.destination}&checkIn=${formData.departureDate}&checkOut=${formData.returnDate}&rooms=${formData.roomCount}&guests=${formData.guestCount}&type=${formData.roomType}`);
+  };
+
+  const handleInputChange = (field: string, value: string | number | AirportOption | null) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   // Testimonials data
   const testimonials = [
@@ -100,13 +160,230 @@ export default function LandingPage() {
                 </span>
                 <br className="md:hidden" /> Awaits
               </h1>
-              {/* Hero CTA Button */}
-              <div className="mt-6">
-                <Link href="/search" legacyBehavior>
-                  <a className="inline-flex items-center px-8 py-4 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white text-lg md:text-xl font-bold rounded-full shadow-lg hover:scale-105 focus:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-[#FF8C00]" aria-label="Start Searching for Trips">
-                    Find My Trip <FiArrowRight className="ml-2 w-6 h-6" />
-                  </a>
-                </Link>
+              {/* Hero Search Section */}
+              <div className="mt-8 w-full max-w-4xl mx-auto">
+                {/* Search Type Selector */}
+                <div className="flex gap-2 mb-6 p-1 bg-white/90 backdrop-blur-sm rounded-full shadow-md justify-center">
+                  {[
+                    { icon: <FiBriefcase className="w-5 h-5" />, label: 'All-in-One Trip', type: 'all' },
+                    { icon: <FiArrowRight className="w-5 h-5" />, label: 'Flight Only', type: 'flights' },
+                    { icon: <FiHome className="w-5 h-5" />, label: 'Hotel Only', type: 'hotels' }
+                  ].map((item) => (
+                    <motion.button
+                      key={item.type}
+                      onClick={() => setActiveSearchType(item.type)}
+                      className={`flex items-center px-4 py-2 rounded-full transition-all ${activeSearchType === item.type 
+                        ? 'bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white shadow-md' 
+                        : 'text-gray-600 hover:bg-orange-50'}`}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {item.icon}
+                      <span className="ml-2 font-medium">{item.label}</span>
+                    </motion.button>
+                  ))}
+                </div>
+
+                {/* Search Forms */}
+                <motion.div 
+                  className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {activeSearchType === 'all' ? (
+                    <Link href="/search" className="block text-center py-4">
+                      <motion.button
+                        className="inline-flex items-center px-8 py-4 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white text-xl font-bold rounded-full shadow-lg group"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Plan Your Perfect Trip
+                        <FiArrowRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                      </motion.button>
+                      <p className="mt-4 text-gray-600">Find the best flight + hotel combinations</p>
+                    </Link>
+                  ) : activeSearchType === 'flights' ? (
+                    <div className="space-y-6">
+                      {/* Trip Type Selection */}
+                      <div className="flex gap-4 p-1 bg-gray-50 rounded-lg w-fit">
+                        {['Round Trip', 'One Way'].map((type) => (
+                          <button
+                            key={type}
+                            className={`px-4 py-2 rounded-lg transition-all ${tripType === type 
+                              ? 'bg-white shadow text-orange-500 font-medium' 
+                              : 'text-gray-600 hover:bg-white/50'}`}
+                            onClick={() => setTripType(type)}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Flight Search Fields */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="col-span-2 md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
+                          <div className="relative z-20">
+                            <AirportAutocomplete
+                              value={formData.origin}
+                              onChange={(value) => handleInputChange('origin', value)}
+                              label="Origin"
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="col-span-2 md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+                          <div className="relative z-10">
+                            <AirportAutocomplete
+                              value={formData.destination}
+                              onChange={(value) => handleInputChange('destination', value)}
+                              label="Destination"
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Departure</label>
+                          <div className="relative">
+                            <input 
+                              type="date" 
+                              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              value={formData.departureDate}
+                              onChange={(e) => handleInputChange('departureDate', e.target.value)}
+                              required
+                            />
+                            <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          </div>
+                        </div>
+                        {tripType === 'Round Trip' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Return</label>
+                            <div className="relative">
+                              <input 
+                                type="date" 
+                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                value={formData.returnDate}
+                                onChange={(e) => handleInputChange('returnDate', e.target.value)}
+                              />
+                              <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Passenger Selection */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="col-span-2 md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Passengers</label>
+                          <select 
+                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none"
+                            value={formData.travelers}
+                            onChange={(e) => handleInputChange('travelers', parseInt(e.target.value))}
+                          >
+                            {[1,2,3,4,5,6].map(num => (
+                              <option key={num} value={num}>{num} {num === 1 ? 'passenger' : 'passengers'}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-span-2 md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                          <select 
+                            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none"
+                            value={formData.cabinClass}
+                            onChange={(e) => handleInputChange('cabinClass', e.target.value)}
+                          >
+                            {['Economy', 'Premium Economy', 'Business', 'First'].map(cls => (
+                              <option key={cls} value={cls.toLowerCase()}>{cls}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <button 
+                        type="submit"
+                        onClick={handleFlightSearch}
+                        className="w-full py-3 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-shadow group disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={!formData.origin?.iata || !formData.destination?.iata || !formData.departureDate}
+                      >
+                        Search Flights <FiArrowRight className="inline-block ml-2 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Hotel Search Fields */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Destination</label>
+                          <div className="relative">
+                            <input 
+                              type="text" 
+                              placeholder="City or hotel name"
+                              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            />
+                            <FiMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
+                          <div className="relative">
+                            <input 
+                              type="date" 
+                              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            />
+                            <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Check-out</label>
+                          <div className="relative">
+                            <input 
+                              type="date" 
+                              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            />
+                            <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Room and Guest Selection */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Rooms</label>
+                          <select className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none">
+                            {[1,2,3,4].map(num => (
+                              <option key={num} value={num}>{num} {num === 1 ? 'room' : 'rooms'}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Guests</label>
+                          <select className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none">
+                            {[1,2,3,4,5,6].map(num => (
+                              <option key={num} value={num}>{num} {num === 1 ? 'guest' : 'guests'}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Room Type</label>
+                          <select className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none">
+                            {['Any Type', 'Standard', 'Deluxe', 'Suite', 'Family Room', 'Villa'].map(type => (
+                              <option key={type} value={type.toLowerCase()}>{type}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={handleHotelSearch}
+                        className="w-full py-3 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-shadow group"
+                      >
+                        Search Hotels <FiArrowRight className="inline-block ml-2 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
               </div>
             </div>
             <p className="max-w-2xl text-xl md:text-2xl text-gray-700 mb-10 font-medium mx-auto">
@@ -118,214 +395,271 @@ export default function LandingPage() {
             </p>
 
           </div>
+          
+          <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl mb-8 text-center">
+          <span className="block bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent">
+            How It Works
+          </span>
+        </h2>
+          
+          {/* How it works section - horizontal scroll animation */}
+          <motion.div
+            className="mb-24 max-w-4xl mx-auto flex flex-col items-center relative px-4"
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 1 }}
+          >
+           
+            <div className="flex flex-col gap-16 w-full">
+              {/* Step 1 */}
+              <motion.div
+                className="flex flex-col md:flex-row items-center gap-8 group"
+                initial={{ opacity: 0, x: -100 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.7 }}
+              >
+                <div className="relative flex flex-col items-center">
+                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FF8C00] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold border-2 border-white z-10">1</span>
+                  <AnimatedStepCharacter lottieUrl="https://lottie.host/729a30a8-1262-4232-8d66-4e87208ef457/I7JbwosoaA.json" alt="Set Your Budget Character" />
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <span className="font-semibold text-2xl text-[#FF8C00]">Set Your Budget</span>
+                  <p className="text-gray-600 mt-2 text-lg">Tell us your total trip budget. We'll instantly filter the best packages for you—no surprises.</p>
+                </div>
+              </motion.div>
+              {/* Step 2 */}
+              <motion.div
+                className="flex flex-col md:flex-row-reverse items-center gap-8 group"
+                initial={{ opacity: 0, x: 100 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.7, delay: 0.15 }}
+              >
+                <div className="relative flex flex-col items-center">
+                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FFA500] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold border-2 border-white z-10">2</span>
+                  <AnimatedStepCharacter lottieUrl="https://lottie.host/a64ed254-83f8-47ad-9514-0b5209327090/8I3AoRgYZE.json" alt="Pick Your Destination Character" />
+                </div>
+                <div className="flex-1 text-center md:text-right">
+                  <span className="font-semibold text-2xl text-[#FFA500]">Pick Your Destination</span>
+                  <p className="text-gray-600 mt-2 text-lg">Explore a world of possibilities—just pick a city or country and let us do the rest.</p>
+                </div>
+              </motion.div>
+              {/* Step 3 */}
+              <motion.div
+                className="flex flex-col md:flex-row items-center gap-8 group"
+                initial={{ opacity: 0, x: -100 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.7, delay: 0.3 }}
+              >
+                <div className="relative flex flex-col items-center">
+                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FF8C00] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold border-2 border-white z-10">3</span>
+                  <AnimatedStepCharacter lottieUrl="https://lottie.host/989cdfb3-3cc9-4dcc-b046-0b7a763fbe8f/RU2HndI7KD.json" alt="Choose Your Dates Character" />
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <span className="font-semibold text-2xl text-[#FF8C00]">Choose Your Dates</span>
+                  <p className="text-gray-600 mt-2 text-lg">Tell us when you want to travel. We'll match you with the best deals for your schedule.</p>
+                </div>
+              </motion.div>
+              {/* Step 4 */}
+              <motion.div
+                className="flex flex-col md:flex-row-reverse items-center gap-8 group"
+                initial={{ opacity: 0, x: 100 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.7, delay: 0.45 }}
+              >
+                <div className="relative flex flex-col items-center">
+                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FFA500] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold border-2 border-white z-10">4</span>
+                  <AnimatedStepCharacter lottieUrl="https://lottie.host/debd1f55-4862-4559-8829-9daa93e1c9b7/L1e1WecQV3.json" alt="Select Hotel & Flight Character" />
+                </div>
+                <div className="flex-1 text-center md:text-right">
+                  <span className="font-semibold text-2xl text-[#FFA500]">Select Hotel & Flight</span>
+                  <p className="text-gray-600 mt-2 text-lg">Hand-pick your favorite hotels and flights—mix, match, and create your perfect trip.</p>
+                </div>
+              </motion.div>
+              {/* Step 5 */}
+              <motion.div
+                className="flex flex-col md:flex-row items-center gap-8 group"
+                initial={{ opacity: 0, x: -100 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.7, delay: 0.6 }}
+              > 
+                <div className="relative flex flex-col items-center">
+                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FF8C00] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold border-2 border-white z-10">5</span>
+                  <AnimatedStepCharacter lottieUrl="https://lottie.host/ebde747a-6ed6-4502-8b16-e0e272dda9d4/1Ech6zWI4Z.json" alt="Review & Book Character" />
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <span className="font-semibold text-2xl text-[#FF8C00]">Review & Book</span>
+                  <p className="text-gray-600 mt-2 text-lg">Double-check your package details. When you're ready, book everything in one click—secure and simple.</p>
+                </div>
+              </motion.div>
+              {/* Step 6 */}
+              <motion.div
+                className="flex flex-col md:flex-row-reverse items-center gap-8 group"
+                initial={{ opacity: 0, x: 100 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, amount: 0.5 }}
+                transition={{ duration: 0.7, delay: 0.75 }}
+              > 
+                <div className="relative flex flex-col items-center">
+                  <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FFA500] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold border-2 border-white z-10">6</span>
+                  <AnimatedStepCharacter lottieUrl="https://lottie.host/c6ab46c7-8573-409d-85b8-093b284087ee/cU0hmmGLXq.json" alt="Get Instant Confirmation Character" />
+                </div>
+                <div className="flex-1 text-center md:text-right">
+                  <span className="font-semibold text-2xl text-[#FFA500]">Get Instant Confirmation</span>
+                  <p className="text-gray-600 mt-2 text-lg">Your booking is confirmed instantly—no waiting, no stress. Start packing!</p>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
 
           {/* Feature Widgets */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <motion.div
-              className="flex flex-col items-center bg-orange-50 rounded-xl px-6 py-6 shadow-md"
-              initial="offscreen"
-              whileInView="onscreen"
-              viewport={{ once: true, amount: 0.1 }}
-              transition={{ duration: 2 }}
-              variants={widgetVariants}
-            >
-              <FiDollarSign className="w-8 h-8 text-[#FF8C00] mb-2" />
-              <span className="font-semibold text-[#FF8C00] text-lg">Best Value Packages</span>
-              <span className="text-gray-500 text-sm mt-1">Save more by bundling flights and hotels</span>
-            </motion.div>
-            <motion.div
-              className="flex flex-col items-center bg-orange-50 rounded-xl px-6 py-6 shadow-md"
-              initial="offscreen"
-              whileInView="onscreen"
-              transition={{ duration: 2}}
-              viewport={{ once: true, amount: 0.1 }}
-              variants={widgetVariants}
-            >
-              <FiGlobe className="w-8 h-8 text-[#FFA500] mb-2" />
-              <span className="font-semibold text-[#FFA500] text-lg">All-in-One Booking</span>
-              <span className="text-gray-500 text-sm mt-1">Flights, hotels & more in one place</span>
-            </motion.div>
-            <motion.div
-              className="flex flex-col items-center bg-orange-50 rounded-xl px-6 py-6 shadow-md"
-              initial="offscreen"
-              whileInView="onscreen"
-              transition={{ duration: 2 }}
-              viewport={{ once: true, amount: 0.1 }}
-              variants={widgetVariants}
-            >
-              <FiMapPin className="w-8 h-8 text-[#FF8C00] mb-2" />
-              <span className="font-semibold text-[#FF8C00] text-lg">Global Destinations</span>
-              <span className="text-gray-500 text-sm mt-1">Explore cities worldwide</span>
-            </motion.div>
+          <div className="w-full px-4">
+            <div className="max-w-7xl mx-auto">
+              <div className="mb-10 text-center">
+              <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl mt-5">
+                <span className="block bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent">
+                  Why Choose Where2?
+                </span>
+              </h2>
+                <p className="text-lg text-gray-600 max-w-3xl mx-auto mt-5">
+                  Our unique features make travel planning effortless and enjoyable
+                </p>
+              </div>
+              
+              <div className="space-y-8 mb-10">
+                <FeatureCard
+                  title="Best Value Packages"
+                  description="Save up to 40% with our Duffel API-powered flight deals and hotel bundles"
+                  features={[
+                    "Duffel API integration for real-time pricing",
+                    "Smart hotel pairing algorithm",
+                    "Price match guarantee",
+                    "No hidden fees"
+                  ]}
+                  icon={FiDollarSign}
+                />
+                <FeatureCard
+                  title="Secure Payments"
+                  description="Stripe-powered checkout with bank-level encryption and fraud protection"
+                  features={[
+                    "PCI compliant payments",
+                    "Instant booking confirmation",
+                    "Free cancellation options",
+                    "24/7 customer support"
+                  ]}
+                  icon={FiShield}
+                />
+                <FeatureCard
+                  title="Smart Filters"
+                  description="We automatically find the best combination of price and flight duration"
+                  features={[
+                    "Real-time flight tracking",
+                    "Price/duration optimization",
+                    "Layover minimization",
+                    "Airline quality ratings"
+                  ]}
+                  icon={FiZap}
+                />
+              </div>
+            </div>
           </div>
 
-          {/* How it works section - vertical, immersive, scrollable */}
+{/* Testimonials Section */}
+<div className="w-full bg-gradient-to-b from-gray-50 to-white py-16">
+  <div className="max-w-7xl mx-auto px-4">
+    <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl text-center mb-12">
+      <span className="block bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent">
+        What Our Travelers Say
+      </span>
+    </h2>
+    
     <motion.div
-      className="bg-white/90 rounded-3xl shadow-2xl px-8 py-16 mb-24 max-w-2xl mx-auto flex flex-col items-center border border-orange-100 relative"
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 1 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 1 }}
+      className="max-w-4xl mx-auto"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.7 }}
     >
-      
-  <h3 className="text-4xl font-extrabold mb-12 mt-6 text-center bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent tracking-tight">
-    How It Works
-  </h3>
-  <div className="flex flex-col gap-16 w-full">
-    {/* Step 1 */}
-    <motion.div
-      className="flex flex-col md:flex-row items-center gap-8 group"
-      initial={{ opacity: 0, x: -60 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -60 }}
-      viewport={{ once: true, amount: 0.7 }}
-      transition={{ duration: 0.1 }}
-    >
-      <div className="relative flex flex-col items-center">
-        <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FF8C00] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-lg border-2 border-white z-10">1</span>
-        <AnimatedStepCharacter lottieUrl="https://lottie.host/729a30a8-1262-4232-8d66-4e87208ef457/I7JbwosoaA.json" alt="Set Your Budget Character" />
-      </div>
-      <div className="flex-1 text-center md:text-left">
-        <span className="font-semibold text-2xl text-[#FF8C00]">Set Your Budget</span>
-        <p className="text-gray-600 mt-2 text-lg">Tell us your total trip budget. We'll instantly filter the best packages for you—no surprises.</p>
-      </div>
-    </motion.div>
-    {/* Step 2 */}
-    <motion.div
-      className="flex flex-col md:flex-row items-center gap-8 group"
-      initial={{ opacity: 0, x: 60 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 60 }}
-      viewport={{ once: true, amount: 0.7 }}
-      transition={{ duration: 0.7, delay: 0.15 }}
-    >
-      <div className="relative flex flex-col items-center">
-        <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FFA500] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-lg border-2 border-white z-10">2</span>
-        <AnimatedStepCharacter lottieUrl="https://lottie.host/a64ed254-83f8-47ad-9514-0b5209327090/8I3AoRgYZE.json" alt="Pick Your Destination Character" />
-      </div>
-      <div className="flex-1 text-center md:text-left">
-        <span className="font-semibold text-2xl text-[#FFA500]">Pick Your Destination</span>
-        <p className="text-gray-600 mt-2 text-lg">Explore a world of possibilities—just pick a city or country and let us do the rest.</p>
-      </div>
-    </motion.div>
-    {/* Step 3 */}
-    <motion.div
-      className="flex flex-col md:flex-row items-center gap-8 group"
-      initial={{ opacity: 0, x: -60 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -60 }}
-      viewport={{ once: true, amount: 0.7 }}
-      transition={{ duration: 0.7, delay: 0.3 }}
-    >
-      <div className="relative flex flex-col items-center">
-        <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FF8C00] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-lg border-2 border-white z-10">3</span>
-        <AnimatedStepCharacter lottieUrl="https://lottie.host/989cdfb3-3cc9-4dcc-b046-0b7a763fbe8f/RU2HndI7KD.json" alt="Choose Your Dates Character" />
-      </div>
-      <div className="flex-1 text-center md:text-left">
-        <span className="font-semibold text-2xl text-[#FF8C00]">Choose Your Dates</span>
-        <p className="text-gray-600 mt-2 text-lg">Tell us when you want to travel. We'll match you with the best deals for your schedule.</p>
-      </div>
-    </motion.div>
-    {/* Step 4 */}
-    <motion.div
-      className="flex flex-col md:flex-row items-center gap-8 group"
-      initial={{ opacity: 0, x: 60 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 60 }}
-      viewport={{ once: true, amount: 0.7 }}
-      transition={{ duration: 0.7, delay: 0.45 }}
-    >
-      <div className="relative flex flex-col items-center">
-        <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FFA500] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-lg border-2 border-white z-10">4</span>
-        <AnimatedStepCharacter lottieUrl="https://lottie.host/debd1f55-4862-4559-8829-9daa93e1c9b7/L1e1WecQV3.json" alt="Select Hotel & Flight Character" />
-      </div>
-      <div className="flex-1 text-center md:text-left">
-        <span className="font-semibold text-2xl text-[#FFA500]">Select Hotel & Flight</span>
-        <p className="text-gray-600 mt-2 text-lg">Hand-pick your favorite hotels and flights—mix, match, and create your perfect trip.</p>
-      </div>
-    </motion.div>
-    {/* Step 5 */}
-    <motion.div
-      className="flex flex-col md:flex-row items-center gap-8 group"
-      initial={{ opacity: 0, x: -60 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true, amount: 0.7 }}
-      transition={{ duration: 0.7, delay: 0.6 }}
-    > 
-      <div className="relative flex flex-col items-center">
-        <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FF8C00] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-lg border-2 border-white z-10">5</span>
-        <AnimatedStepCharacter lottieUrl="https://lottie.host/ebde747a-6ed6-4502-8b16-e0e272dda9d4/1Ech6zWI4Z.json" alt="Review & Book Character" />
-      </div>
-      <div className="flex-1 text-center md:text-left">
-        <span className="font-semibold text-2xl text-[#FF8C00]">Review & Book</span>
-        <p className="text-gray-600 mt-2 text-lg">Double-check your package details. When you’re ready, book everything in one click—secure and simple.</p>
-      </div>
-    </motion.div>
-    {/* Step 6 */}
-    <motion.div
-      className="flex flex-col md:flex-row items-center gap-8 group"
-      initial={{ opacity: 0, x: 60 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true, amount: 0.7 }}
-      transition={{ duration: 0.7, delay: 0.75 }}
-    > 
-      <div className="relative flex flex-col items-center">
-        <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#FFA500] text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-lg border-2 border-white z-10">6</span>
-        <AnimatedStepCharacter lottieUrl="https://lottie.host/c6ab46c7-8573-409d-85b8-093b284087ee/cU0hmmGLXq.json" alt="Get Instant Confirmation Character" />
-      </div>
-      <div className="flex-1 text-center md:text-left">
-        <span className="font-semibold text-2xl text-[#FFA500]">Get Instant Confirmation</span>
-        <p className="text-gray-600 mt-2 text-lg">Your booking is confirmed instantly—no waiting, no stress. Start packing!</p>
+      <div className="relative">
+        <motion.div
+          key={currentTestimonial}
+          className="bg-white rounded-2xl shadow-lg p-8 md:p-10"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.5 }}
+        >
+          {/* Quote Icon */}
+          <div className="absolute -top-4 left-8 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+            </svg>
+          </div>
+
+          {/* Stars */}
+          <div className="flex items-center gap-1 mb-6">
+            {[...Array(5)].map((_, i) => (
+              <svg key={i} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            ))}
+          </div>
+
+          {/* Testimonial Content */}
+          <p className="text-xl text-gray-700 leading-relaxed mb-8">"{testimonials[currentTestimonial].text}"</p>
+          
+          {/* Author Info */}
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
+              {testimonials[currentTestimonial].name[0]}
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900">{testimonials[currentTestimonial].name}</h4>
+              <p className="text-gray-500 flex items-center gap-1">
+                <span>{testimonials[currentTestimonial].country}</span>
+                <span className="text-orange-500">✈</span>
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Navigation Dots */}
+        <div className="flex justify-center gap-3 mt-8">
+          {testimonials.map((_, idx) => (
+            <button
+              key={idx}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                idx === currentTestimonial 
+                  ? 'bg-orange-500 scale-110' 
+                  : 'bg-gray-300 hover:bg-gray-400'
+              }`}
+              onClick={() => setCurrentTestimonial(idx)}
+              aria-label={`Show testimonial ${idx + 1}`}
+            />
+          ))}
+        </div>
       </div>
     </motion.div>
   </div>
+</div>
+
+{/* Call to Action */}
+<motion.div
+  className="text-center py-16"
+  initial={{ opacity: 0, scale: 0.95 }}
+  animate={{ opacity: 1, scale: 1 }}
+  transition={{ duration: 0.7, delay: 0.2 }}
+>
+  <Link href="/search" legacyBehavior>
+    <a className="inline-flex items-center px-10 py-5 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white text-xl font-bold rounded-full shadow-lg hover:scale-105 transition-transform">
+      Book Your Package Now <FiArrowRight className="ml-3 w-7 h-7" />
+    </a>
+  </Link>
 </motion.div>
-
-
-          {/* Testimonials Carousel */}
-          <motion.div
-            className="max-w-xl mx-auto bg-white/90 rounded-2xl shadow-lg px-8 py-8 mb-12 relative"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7 }}
-          >
-            <h3 className="text-xl font-bold mb-4 text-[#FF8C00]">What Travelers Say</h3>
-            <motion.div
-              key={currentTestimonial}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5 }}
-            >
-              <p className="text-lg text-gray-700 italic mb-2">"{testimonials[currentTestimonial].text}"</p>
-              <div className="flex items-center justify-center gap-2">
-                <span className="font-semibold text-[#FF8C00]">{testimonials[currentTestimonial].name}</span>
-                <span className="text-xl">{testimonials[currentTestimonial].country}</span>
-              </div>
-            </motion.div>
-            <div className="flex justify-center gap-2 mt-4">
-              {testimonials.map((_, idx) => (
-                <button
-                  key={idx}
-                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${idx === currentTestimonial ? 'bg-[#FF8C00]' : 'bg-gray-300'}`}
-                  onClick={() => setCurrentTestimonial(idx)}
-                  aria-label={`Show testimonial ${idx+1}`}
-                />
-              ))}
-            </div>
-          </motion.div>
-          {/* Call to Action */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-          >
-            <Link href="/search" legacyBehavior>
-              <a className="inline-flex items-center px-10 py-5 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white text-xl font-bold rounded-full shadow-lg hover:scale-105 transition-transform">
-                Book Your Package Now <FiArrowRight className="ml-3 w-7 h-7" />
-              </a>
-            </Link>
-          </motion.div>
           {/* Trust Badges */}
           <TrustBadges />
           {/* FAQ Section */}
@@ -339,4 +673,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
