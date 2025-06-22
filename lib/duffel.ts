@@ -440,6 +440,7 @@ export async function createOrder(
       }
     }
     
+    // IMPORTANT: Duffel API requires the payment amount to match the offer's base price exactly
     const orderData = {
       type: 'instant',
       selected_offers: [offerId], // Duffel API requires exactly ONE offer per order
@@ -447,7 +448,7 @@ export async function createOrder(
       payments: [
         {
           type: 'balance',
-          amount: totalAmount.toFixed(2),
+          amount: offerDetails.amount.toFixed(2), // Use the original offer amount, not the total with fees
           currency: currency
         }
       ],
@@ -563,6 +564,7 @@ export async function createOrder(
       };
     }
     
+    // IMPORTANT: Duffel API requires the payment amount to match the offer's base price exactly
     // Prepare the order request
     const orderRequest = {
       data: {
@@ -573,7 +575,7 @@ export async function createOrder(
         payments: [
           {
             type: 'balance',
-            amount: totalAmount.toFixed(2),
+            amount: offerDetails.amount.toFixed(2), // Use the original offer amount, not the total with fees
             currency: currency
           }
         ],

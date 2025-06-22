@@ -334,15 +334,48 @@ function ConfirmationPage() {
         }))
       }));
       
-      // Format payment info
+      // Try to get the payment data from localStorage first (this will have the correct total with fees)
+      let storedPaymentData = null;
+      try {
+        const storedPayment = localStorage.getItem('lastPayment');
+        if (storedPayment) {
+          storedPaymentData = JSON.parse(storedPayment);
+          console.log('Found stored payment data:', storedPaymentData);
+        }
+      } catch (e) {
+        console.error('Error parsing stored payment data:', e);
+      }
+      
+      // Try to get the booking data from localStorage (this will also have the correct total with fees)
+      let storedBookingData = null;
+      try {
+        const storedBooking = localStorage.getItem('current_booking_data');
+        if (storedBooking) {
+          storedBookingData = JSON.parse(storedBooking);
+          console.log('Found stored booking data:', storedBookingData);
+        }
+      } catch (e) {
+        console.error('Error parsing stored booking data:', e);
+      }
+      
+      // Format payment info - prioritize data from localStorage which has the correct total with fees
       const payment = {
         status: order.payment_status?.paid_at ? 'succeeded' : 'pending',
-        amount: order.total_amount,
-        currency: order.total_currency,
-        paymentMethod: 'card', // Default, can be overridden
-        paymentIntentId: order.metadata?.payment_intent_id,
-        timestamp: order.payment_status?.paid_at || order.created_at
+        // Use the amount from stored payment data if available (this includes fees)
+        amount: storedPaymentData?.amount || order.total_amount,
+        currency: storedPaymentData?.currency || order.total_currency,
+        paymentMethod: storedPaymentData?.paymentMethod || 'card',
+        lastFour: storedPaymentData?.lastFour,
+        paymentIntentId: storedPaymentData?.paymentIntentId || order.metadata?.payment_intent_id,
+        timestamp: storedPaymentData?.timestamp || order.payment_status?.paid_at || order.created_at
       };
+      
+      // Get the total amount with fees from various sources, prioritizing localStorage data
+      const totalAmountWithFees = 
+        storedPaymentData?.amount || // First try payment data from localStorage
+        (storedBookingData?.trip?.price?.total) || // Then try booking data from localStorage
+        (order.metadata?.total_with_fees) || // Then try metadata
+        payment.amount; // Fallback to payment amount
       
       const bookingData = {
         id: order.id,
@@ -350,7 +383,9 @@ function ConfirmationPage() {
         bookingReference: order.booking_reference || order.id,
         status: order.payment_status?.paid_at ? 'succeeded' : status,
         createdAt: order.created_at,
-        totalAmount: order.total_amount,
+        // Use the total amount with fees for display
+        totalAmount: totalAmountWithFees,
+        // Keep the base amount for reference
         amount: order.total_amount,
         currency: order.total_currency,
         payment,
@@ -542,7 +577,7 @@ function ConfirmationPage() {
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-1">Total Amount</h3>
                 <p className="text-gray-900 font-medium text-lg">
-                  {formatAmount(booking.totalAmount || booking.amount || 0, booking.currency)}
+                  {formatAmount(booking.totalAmount || booking.payment?.amount || booking.amount || 0, booking.currency)}
                 </p>
               </div>
             </div>
@@ -808,6 +843,67 @@ function ConfirmationPage() {
             </div>
           </div>
         )}
+
+        {/* Payment Details */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">Payment Details</h2>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              {/* Base Price */}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Base Flight Price</span>
+                <span className="text-gray-900">
+                  {formatAmount(booking.trip?.price?.total || booking.trip?.price?.basePrice || '0', booking.currency)}
+                </span>
+              </div>
+              
+              {/* Service Fee */}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Service Fee ({booking.passengers?.length || 1} {(booking.passengers?.length || 1) > 1 ? 'passengers' : 'passenger'})</span>
+                <span className="text-gray-900">
+                  {formatAmount((booking.passengers?.length || 1) * 2, booking.currency)}
+                </span>
+              </div>
+              
+              {/* Markup Fee */}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Booking Fee ({booking.passengers?.length || 1} {(booking.passengers?.length || 1) > 1 ? 'passengers' : 'passenger'})</span>
+                <span className="text-gray-900">
+                  {formatAmount((booking.passengers?.length || 1) * 1, booking.currency)}
+                </span>
+              </div>
+              
+              {/* Divider */}
+              <div className="border-t border-gray-200 my-4"></div>
+              
+              {/* Total Amount */}
+              <div className="flex justify-between items-center font-medium text-lg">
+                <span className="text-gray-900">Total Amount</span>
+                <span className="text-blue-600">
+                  {formatAmount(booking.payment?.amount || booking.totalAmount || '0', booking.currency)}
+                </span>
+              </div>
+              
+              {/* Payment Method */}
+              {booking.payment && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Paid with</span>
+                    <span className="text-gray-900">
+                      {booking.payment.paymentMethod}
+                      {booking.payment.lastFour && ` •••• ${booking.payment.lastFour}`}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    {booking.payment.timestamp && `Processed on ${new Date(booking.payment.timestamp).toLocaleString()}`}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
