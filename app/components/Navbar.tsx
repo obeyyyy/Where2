@@ -3,6 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import { FaClipboardList, FaPlane, FaTimes, FaBars } from "react-icons/fa";
 
 import { useState } from "react";
 
@@ -59,16 +60,31 @@ export default function Navbar() {
             </li>
           ))}
         </ul>
-        {/* Mobile Hamburger */}
-        <button
-          className="md:hidden p-2 rounded focus:outline-none focus:ring-2 focus:ring-[#FFA500]"
-          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-          onClick={() => setMenuOpen((o) => !o)}
-        >
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d={menuOpen ? "M6 18L18 6M6 6l12 12" : "M4 8h16M4 16h16"} />
-          </svg>
-        </button>
+        {/* Desktop View - Keep original buttons */}
+        <div className="hidden md:flex items-center gap-4 ml-4">
+          <Link href="/trip-summary" className="bg-[#FFA500] hover:bg-[#FF8C00] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors duration-200">
+            <FaClipboardList className="text-lg" />
+            Trip Summary
+          </Link>
+          <Link href="/retrieve-booking" className="bg-[#FFA500] hover:bg-[#FF8C00] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors duration-200">
+            <FaPlane className="text-lg" />
+            Retrieve Booking
+          </Link>
+        </div>
+        {/* Mobile View - Compact Retrieve Booking button */}
+        <div className="md:hidden flex items-center gap-2 ml-3">
+          <Link href="/retrieve-booking" className="bg-[#FFA500]/90 hover:bg-[#FF8C00] text-white px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all duration-200 hover:shadow-sm">
+            <FaPlane className="text-xs" />
+            <span>Booking</span>
+          </Link>
+          {/* Hamburger menu button */}
+          <button
+            className="p-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500]/50 hover:bg-gray-100 transition-colors"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            {menuOpen ? <FaTimes className="text-gray-700 text-base" /> : <FaBars className="text-gray-700 text-base" />}
+          </button>
+        </div>
         {/* Mobile Menu */}
         {menuOpen && (
           <ul className="absolute top-full left-0 right-0 bg-white/95 border-b border-gray-100 shadow-lg flex flex-col items-center gap-4 py-6 md:hidden animate-fadeIn">
@@ -90,21 +106,15 @@ export default function Navbar() {
                 </a>
               </li>
             ))}
+            {/* Mobile View - Add to hamburger menu */}
+            <div className="md:hidden flex flex-col gap-2 mt-4">
+              <Link href="/trip-summary" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md text-base font-medium flex items-center gap-2">
+                <FaClipboardList />
+                Trip Summary
+              </Link>
+            </div>
           </ul>
         )}
-        {/* Trip Summary Button */}
-        <div className="flex items-center gap-4 ml-4 md:ml-0">
-          <Link href="/trip-summary">
-            <button
-              className={`relative px-4 py-2 rounded-xl font-bold shadow transition focus:outline-none focus:ring-2 focus:ring-[#FFA500] text-base tracking-tight border-2 border-[#FFA500] ${pathname === "/trip-summary" ? "bg-[#FFA500] text-white" : "bg-yellow-50 text-[#FFA500] hover:bg-[#FFA500] hover:text-white"}`}
-            >
-              Trip Summary
-            </button>
-          </Link>
-          <Link href="/retrieve-booking" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
-            Retrieve Booking
-          </Link>
-        </div>
       </nav>
       <style jsx>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }

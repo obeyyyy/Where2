@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -210,8 +209,8 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
   };
 
   return (
-    <div className={`relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm ${className}`}>
-      {/* Header with gradient - Improved mobile flex */}
+    <div className={`bg-white rounded-xl shadow overflow-hidden w-full ${className || ''}`}>
+      {/* Header */}
       <div className={`relative ${type === 'outbound' ? 'bg-gradient-to-r from-blue-600 to-blue-500' : 'bg-gradient-to-r from-green-600 to-green-500'} p-3 sm:p-4 text-white`}>
         <div className="absolute top-0 left-0 h-full bg-white/20"></div>
        
@@ -249,7 +248,8 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
         </div>
       </div>
 
-      <div className="p-3 sm:p-4 md:p-6">
+      {/* Content */}
+      <div className="p-3 sm:p-4 md:p-6 w-full">
         {/* Flight Summary */}
         <div className="grid grid-cols-10 items-center gap-1 sm:gap-2 mb-4 sm:mb-6">
           {/* Departure */}
@@ -337,7 +337,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                       <div className="text-xs text-gray-500">Flight {seg.carrierCode}-{seg.number}</div>
                     </div>
                   </div>
-                  
+                
                 </div>
 
                 {/* Flight Details */}
@@ -347,7 +347,6 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                     <div className="font-semibold text-gray-900">{formatTime(seg.departure.at)}</div>
                     <div className="text-sm text-gray-700">{seg.departure.iataCode}</div>
                     <div className="text-xs text-gray-500 truncate">{getCityName(depAirport?.iata_code || 'none')}</div>
-                    
                   </div>
 
                   {/* Duration */}
@@ -391,4 +390,4 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
       </div>
     </div>
   );
-};
+}

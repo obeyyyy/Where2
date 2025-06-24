@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server';
 
 interface DuffelSegment {
-  origin: { iata_code: string };
-  destination: { iata_code: string };
+  origin: { iata_code: string; terminal?: string };
+  destination: { iata_code: string; terminal?: string };
   departing_at: string;
   arriving_at: string;
   marketing_carrier: { iata_code: string; name: string };
-  marketing_carrier_flight_number: string;
-  aircraft?: { iata_code: string };
+  operating_carrier_flight_number: string;
+  passengers: {
+    baggages: {
+      type: string;
+      quantity: number;
+    }[];
+    seat?: string;
+  }[];
 }
 
 interface DuffelSlice {
@@ -18,6 +24,12 @@ interface DuffelSlice {
 interface DuffelPassenger {
   given_name: string;
   family_name: string;
+  title?: string;
+  gender?: string;
+  born_on?: string;
+  email?: string;
+  phone_number?: string;
+  type?: string;
 }
 
 interface DuffelOrder {
@@ -75,23 +87,32 @@ export async function GET(
           slice.segments.map((segment: DuffelSegment) => ({
             departure: {
               iataCode: segment.origin.iata_code,
+              terminal: segment.origin.terminal,
               at: segment.departing_at
             },
             arrival: {
               iataCode: segment.destination.iata_code,
+              terminal: segment.destination.terminal,
               at: segment.arriving_at
             },
-            carrierCode: segment.marketing_carrier.iata_code,
-            carrierName: segment.marketing_carrier.name,
-            number: segment.marketing_carrier_flight_number,
-            aircraft: { code: segment.aircraft?.iata_code || '' }
+            flightNumber: segment.operating_carrier_flight_number,
+            airline: segment.marketing_carrier.name,
+            airlineCode: segment.marketing_carrier.iata_code,
+            baggages: segment.passengers[0]?.baggages || [],
+            seats: segment.passengers.map(p => p.seat).filter(Boolean)
           }))
         ),
         duration: order.data.slices[0].duration
       },
       passengers: order.data.passengers.map((passenger: DuffelPassenger) => ({
         given_name: passenger.given_name,
-        family_name: passenger.family_name
+        family_name: passenger.family_name,
+        title: passenger.title,
+        gender: passenger.gender,
+        born_on: passenger.born_on,
+        email: passenger.email,
+        phone_number: passenger.phone_number,
+        type: passenger.type
       })),
       payment: {
         amount: order.data.total_amount,

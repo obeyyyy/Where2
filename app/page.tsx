@@ -522,7 +522,7 @@ export default function LandingPage() {
             <div className="max-w-7xl mx-auto">
               <div className="mb-10 text-center">
               <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl mt-5">
-                <span className="block bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent">
+                <span className="block bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent py-1">
                   Why Choose Where2?
                 </span>
               </h2>

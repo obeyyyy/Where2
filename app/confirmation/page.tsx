@@ -232,7 +232,7 @@ function ConfirmationPage() {
           try {
             const response = await fetch(`/api/orders/${orderId}`);
             if (response.ok) {
-              
+
               console.log('Order detailsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
               const orderData = await response.json();
               await processBookingData(orderData, status);
@@ -664,25 +664,25 @@ function ConfirmationPage() {
               {flightSegments.length > 1 && (
                 <div className="mt-6">
                   <FlightItineraryCard
-                    itinerary={{
-                      segments: flightSegments[1]?.segments.map((seg: any) => {
-                        return {
-                          departure: { 
-                            iataCode: seg.origin?.iata_code || seg.origin_iata_code || '', 
-                            at: seg.departing_at || seg.departure_time || '' 
-                          },
-                          arrival: { 
-                            iataCode: seg.destination?.iata_code || seg.destination_iata_code || '', 
-                            at: seg.arriving_at || seg.arrival_time || '' 
-                          },
-                          carrierCode: seg.marketing_carrier?.iata_code || seg.carrier_code || '',
-                          carrierName: seg.marketing_carrier?.name || seg.carrier_name || '',
-                          number: seg.marketing_carrier_flight_number || seg.flight_number || '',
-                          aircraft: { code: seg.aircraft?.code || seg.aircraft_code || '' }
-                        };
-                      }) || [],
-                      duration: flightSegments[1]?.duration || ''
-                    }}
+                        itinerary={{
+                          segments: flightSegments[1]?.segments.map((seg: any) => {
+                            return {
+                              departure: { 
+                                iataCode: seg.origin?.iata_code || seg.origin_iata_code || '', 
+                                at: seg.departing_at || seg.departure_time || '' 
+                              },
+                              arrival: { 
+                                iataCode: seg.destination?.iata_code || seg.destination_iata_code || '', 
+                                at: seg.arriving_at || seg.arrival_time || '' 
+                              },
+                              carrierCode: seg.marketing_carrier?.iata_code || seg.carrier_code || '',
+                              carrierName: seg.marketing_carrier?.name || seg.carrier_name || '',
+                              number: seg.marketing_carrier_flight_number || seg.flight_number || '',
+                              aircraft: { code: seg.aircraft?.code || seg.aircraft_code || '' }
+                            };
+                          }) || [],
+                          duration: flightSegments[1]?.duration || ''
+                        }}
                     date={flightSegments[1]?.segments[0]?.departing_at || ''}
                     type="return"
                     airports={[
@@ -742,7 +742,7 @@ function ConfirmationPage() {
                     <div className="ml-4 flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <h3 className="text-lg font-medium text-gray-900">
-                          {passenger.firstName} {passenger.lastName}
+                          {passenger.given_name} {passenger.family_name}
                         </h3>
                         <span className="mt-1 sm:mt-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {passenger.type === 'adult' ? 'Adult' : passenger.type === 'child' ? 'Child' : 'Infant'}

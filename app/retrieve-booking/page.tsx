@@ -5,17 +5,19 @@ import { useRouter } from 'next/navigation';
 import { FlightItineraryCard } from '@/app/components/FlightItineraryCard';
 import airportsJson from 'airports-json';
 import Image from 'next/image';
-import { FaBuilding, FaLaptop, FaSuitcase, FaTicketAlt } from 'react-icons/fa';
+import { FaBaby, FaBuilding, FaChild, FaLaptop, FaSuitcase, FaTicketAlt } from 'react-icons/fa';
 import { FaPassport, FaSuitcaseRolling, FaPlaneDeparture, FaMapMarkedAlt, FaPlane, FaSearch, FaUserFriends, FaCreditCard, FaExternalLinkAlt } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 interface Segment {
-  departure: { iataCode: string; at: string };
-  arrival: { iataCode: string; at: string };
+  departure: { iataCode: string; at: string; terminal: string };
+  arrival: { iataCode: string; at: string; terminal: string };
   carrierCode: string;
   carrierName: string;
   number: string;
   aircraft: { code: string };
+  baggage: string;
+  seats: string;
 }
 
 interface BookingData {
@@ -24,6 +26,11 @@ interface BookingData {
     duration: string;
   };
   passengers: {
+    type: string;
+    title: any;
+    born_on: any;
+    email: any;
+    phone_number: any;
     given_name: string;
     family_name: string;
   }[];
@@ -103,8 +110,35 @@ export default function RetrieveBooking() {
       }
 
       const data = await response.json();
-      setBookingData(data);
+      
+      if (!data?.itinerary?.segments) {
+        throw new Error('Invalid booking data format');
+      }
+
+      setBookingData({
+        ...data,
+        itinerary: {
+          ...data.itinerary,
+          segments: data.itinerary.segments.map((segment: any) => ({
+            ...segment,
+            carrierCode: segment.airlineCode,
+            carrierName: segment.airline,
+            number: segment.flightNumber,
+            departure: {
+              ...segment.departure,
+              terminal: segment.departureTerminal
+            },
+            arrival: {
+              ...segment.arrival,
+              terminal: segment.arrivalTerminal
+            },
+            baggage: segment.baggageAllowance,
+            seats: segment.seatAssignments
+          }))
+        }
+      });
     } catch (err) {
+      console.error('Error fetching booking:', err);
       setError(err instanceof Error ? err.message : 'Failed to retrieve booking');
     } finally {
       setLoading(false);
@@ -112,13 +146,17 @@ export default function RetrieveBooking() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-2xl shadow-md overflow-hidden p-8 mb-10">
+    <div className="max-w-5xl mx-auto p-6">
+      <div className="bg-white rounded-2xl  overflow-hidden p-2 mb-10">
         <div className="flex items-center gap-3 mb-6">
-          <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
-            <FaSearch className="text-2xl" />
+          <div className="bg-[#FFA500] p-2 rounded-lg text-white">
+            <FaSearch className="text-3xl" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Retrieve Your Booking</h1>
+          <h2 className="text-4xl font-extrabold text-gray-900 sm:text-4xl text-center mb-3">
+            <span className="block bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent py-1">
+              Retrieve Your Booking
+            </span>
+          </h2>
         </div>
         <p className="text-gray-600 mb-8 text-lg">Enter your booking reference to view your itinerary and travel details.</p>
 
@@ -161,48 +199,49 @@ export default function RetrieveBooking() {
           </form>
         ) : (
           <div className="space-y-10">
-            <div className="bg-white rounded-xl shadow overflow-hidden mt-6 border border-gray-200">
+            <div className="bg-white rounded-xl overflow-hidden mt-6 ">
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-red-100 p-2 rounded-lg text-red-600">
-                    <FaPlane className="text-2xl" />
+                  <div className=" p-2 rounded-lg text-red-600">
+                    <FaPlane className="text-orange-600 text-2xl" />
                   </div>
                   <h2 className="text-2xl font-bold text-gray-900">Check-In Information</h2>
                 </div>
                 
                 <div className="mt-8 space-y-8">
-                  <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-xl shadow-md">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div className="space-y-1">
-                        <h3 className="font-bold text-xl text-white">⏱️ Flight Countdown</h3>
-                        <p className="text-blue-100 text-sm">
-                          Departure: {new Date(bookingData.itinerary.segments[0].departure.at).toLocaleString('en-US', {
-                            weekday: 'long', 
-                            month: 'short', 
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                      <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
-                        <div className="text-3xl font-bold text-white tabular-nums tracking-tight">
-                          <CountdownTimer departureTime={bookingData.itinerary.segments[0].departure.at} />
-                        </div>
+                  <div className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-green-500 to-green-600 rounded-none h-full
+                          shadow-[8px_8px_0_-2.5px_#FF8C00,8px_8px_0_0_#FFA500]
+                          hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#FF8C00]
+                          transition-all duration-300 group flex flex-col">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-xl text-gray-800">⏱️ Flight Countdown</h3>
+                      <p className="text-gray-600 text-sm">
+                        Departure: {new Date(bookingData.itinerary.segments[0].departure.at).toLocaleString('en-US', {
+                          weekday: 'long', 
+                          month: 'short', 
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                    <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
+                      <div className="text-3xl font-bold text-gray-800 tabular-nums tracking-tight">
+                        <CountdownTimer departureTime={bookingData.itinerary.segments[0].departure.at} />
                       </div>
                     </div>
                   </div>
                   <motion.div
-              className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-purple-500 to-purple-600 rounded-none mb-8
-                shadow-[8px_8px_0_-2.5px_#8B5CF6,8px_8px_0_0_#7C3AED]
-                hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#8B5CF6]
+              className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-orange-500 to-orange-600 rounded-none mb-8
+                shadow-[8px_8px_0_-2.5px_#FF8C00,8px_8px_0_0_#FFA500]
+                hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#FF8C00]
                 transition-all duration-300 group"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
               <h2 className="font-bold text-2xl text-gray-800 mb-4 flex items-center gap-3">
-                <FaTicketAlt className="text-purple-500" />
+                <FaTicketAlt className="text-orange-600" />
                 Booking Summary
               </h2>
               <div className="grid md:grid-cols-3 gap-6">
@@ -226,13 +265,71 @@ export default function RetrieveBooking() {
                 </div>
               </div>
             </motion.div>
+            
+            <motion.div 
+                    className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-orange-500 to-orange-600 rounded-none mb-8
+                shadow-[8px_8px_0_-2.5px_#FF8C00,8px_8px_0_0_#FFA500]
+                hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#FF8C00]
+                transition-all duration-300 group"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                  >
+                    <h3 className="font-bold text-xl text-gray-800 mb-4 flex items-center gap-2">
+                      <FaUserFriends className="text-orange-600" />
+                      Passenger Details
+                    </h3>
+                    <div className="space-y-4">
+                      {bookingData.passengers.map((passenger, index) => (
+                        <div key={index} className="border-b border-gray-100 pb-4 last:border-0">
+                          <div className="flex items-start gap-4">
+                            <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+                              {passenger.type === 'adult' ? <FaUserFriends /> : 
+                               passenger.type === 'child' ? <FaChild /> : <FaBaby />}
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900">
+                                {passenger.title ? `${passenger.title} ` : ''}
+                                {passenger.given_name} {passenger.family_name}
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2 text-sm text-gray-600">
+                                {passenger.born_on && (
+                                  <div>
+                                    <span className="font-medium">DOB: </span>
+                                    {new Date(passenger.born_on).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })}
+                                  </div>
+                                )}
+                                {passenger.email && (
+                                  <div>
+                                    <span className="font-medium">Email: </span>
+                                    {passenger.email}
+                                  </div>
+                                )}
+                                {passenger.phone_number && (
+                                  <div>
+                                    <span className="font-medium">Phone: </span>
+                                    {passenger.phone_number}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+
 
                   <div className="grid md:grid-cols-2 gap-8">
                     <div className="space-y-8 flex flex-col">
                       <motion.div 
-                        className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-blue-500 to-blue-600 rounded-none h-full
-                          shadow-[8px_8px_0_-2.5px_#3B82F6,8px_8px_0_0_#1D4ED8]
-                          hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#3B82F6]
+                        className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-orange-500 to-orange-600 rounded-none h-full
+                          shadow-[8px_8px_0_-2.5px_#FF8C00,8px_8px_0_0_#FFA500]
+                          hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#FF8C00]
                           transition-all duration-300 group flex flex-col"
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -240,21 +337,33 @@ export default function RetrieveBooking() {
                       >
                         <div className="flex-1">
                           <h3 className="font-semibold text-lg text-gray-800 mb-3.5 flex items-center gap-2">
-                            <FaPlane className="text-blue-500" />
+                            <FaPlane className="text-orange-600 text-xl" />
                             Flight Details
                           </h3>
                           <div className="space-y-3">
                             <p className="flex justify-between py-2 border-b border-gray-100">
                               <span className="font-medium text-gray-700">Airline:</span>
-                              <span className="text-gray-900">{bookingData.itinerary?.segments[0]?.carrierName || 'N/A'}</span>
+                              <span className="text-gray-900">{bookingData.itinerary.segments[0].carrierName} ({bookingData.itinerary.segments[0].carrierCode})</span>
                             </p>
                             <p className="flex justify-between py-2 border-b border-gray-100">
                               <span className="font-medium text-gray-700">Flight Number:</span>
                               <span className="text-gray-900">{bookingData.itinerary?.segments[0]?.number || 'N/A'}</span>
                             </p>
+                            <p className="flex justify-between py-2 border-b border-gray-100">
+                              <span className="font-medium text-gray-700">Departure Terminal:</span>
+                              <span className="text-gray-900">{bookingData.itinerary?.segments[0]?.departure?.terminal || 'N/A'}</span>
+                            </p>
+                            <p className="flex justify-between py-2 border-b border-gray-100">
+                              <span className="font-medium text-gray-700">Arrival Terminal:</span>
+                              <span className="text-gray-900">{bookingData.itinerary?.segments[0]?.arrival?.terminal || 'N/A'}</span>
+                            </p>
+                            <p className="flex justify-between py-2 border-b border-gray-100">
+                              <span className="font-medium text-gray-700">Baggage Allowance:</span>
+                              <span className="text-gray-900">{bookingData.itinerary?.segments[0]?.baggage || 'N/A'}</span>
+                            </p>
                             <p className="flex justify-between py-2">
-                              <span className="font-medium text-gray-700">Booking Reference:</span>
-                              <span className="font-mono text-gray-900">{bookingData.bookingReference || 'N/A'}</span>
+                              <span className="font-medium text-gray-700">Seat Assignment:</span>
+                              <span className="text-gray-900">{bookingData.itinerary?.segments[0]?.seats || 'N/A'}</span>
                             </p>
                           </div>
                         </div>
@@ -273,9 +382,9 @@ export default function RetrieveBooking() {
                       </motion.div>
 
                       <motion.div 
-                        className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-gray-500 to-gray-600 rounded-none h-full
-                          shadow-[8px_8px_0_-2.5px_#6B7280,8px_8px_0_0_#4B5563]
-                          hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#6B7280]
+                        className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-orange-500 to-orange-600 rounded-none h-full
+                          shadow-[8px_8px_0_-2.5px_#FF8C00,8px_8px_0_0_#FFA500]
+                          hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#FF8C00]
                           transition-all duration-300 group flex flex-col"
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -283,12 +392,12 @@ export default function RetrieveBooking() {
                       >
                         <div className="flex-1">
                           <h3 className="font-semibold text-lg text-gray-800 mb-3.5 flex items-center gap-2">
-                            <FaSuitcaseRolling className="text-gray-600" />
+                            <FaSuitcaseRolling className="text-orange-600 text-xl" />
                             Baggage Allowance
                           </h3>
                           <div className="space-y-3">
                             <p className="text-gray-700">
-                              <span className="font-medium">Cabin Baggage:</span> 1 piece (max 7kg)
+                              <span className="font-medium">Cabin Baggage:</span>
                             </p>
                             <p className="text-gray-700">
                               <span className="font-medium">Checked Baggage:</span> Varies by airline
@@ -303,9 +412,9 @@ export default function RetrieveBooking() {
 
                     <div className="space-y-8 flex flex-col">
                       <motion.div 
-                        className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-blue-400 to-blue-500 rounded-none h-full
-                          shadow-[8px_8px_0_-2.5px_#60A5FA,8px_8px_0_0_#3B82F6]
-                          hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#60A5FA]
+                        className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-orange-500 to-orange-600 rounded-none h-full
+                          shadow-[8px_8px_0_-2.5px_#FF8C00,8px_8px_0_0_#FFA500]
+                          hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#FF8C00]
                           transition-all duration-300 group flex flex-col"
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -313,7 +422,7 @@ export default function RetrieveBooking() {
                       >
                         <div className="flex-1">
                           <h3 className="font-semibold text-lg text-gray-800 mb-3.5 flex items-center gap-2">
-                            <FaLaptop className="text-blue-400" />
+                            <FaLaptop className="text-orange-600 text-xl" />
                             Online Check-In
                           </h3>
                           <ul className="list-disc pl-5 space-y-2 text-gray-700">
@@ -326,9 +435,9 @@ export default function RetrieveBooking() {
                       </motion.div>
 
                       <motion.div 
-                        className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-amber-400 to-amber-500 rounded-none h-full
-                          shadow-[8px_8px_0_-2.5px_#F59E0B,8px_8px_0_0_#D97706]
-                          hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#F59E0B]
+                        className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-orange-400 to-orange-500 rounded-none h-full
+                          shadow-[8px_8px_0_-2.5px_#FF8C00,8px_8px_0_0_#FFA500]
+                          hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#FF8C00]
                           transition-all duration-300 group flex flex-col"
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -336,7 +445,7 @@ export default function RetrieveBooking() {
                       >
                         <div className="flex-1">
                           <h3 className="font-semibold text-lg text-gray-800 mb-3.5 flex items-center gap-2">
-                            <FaBuilding className="text-amber-500" />
+                            <FaBuilding className="text-orange-600 text-xl" />
                             Airport Check-In
                           </h3>
                           <ul className="list-disc pl-5 space-y-2 text-gray-700">
@@ -353,21 +462,77 @@ export default function RetrieveBooking() {
               </div>
             </div>
 
-            
+            <div className="flex flex-col">
+              <div className="space-y-8 flex flex-col">
+                <div className="flex items-center gap-2">
+                  <FaPlane className="text-2xl font-bold text-orange-600" />
+                  <h2 className="text-2xl font-bold text-gray-900">Flight Itinerary</h2>
+                </div>
+                <motion.div 
+                  className="relative w-full p-4 bg-white 
+                  flex flex-col"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                >
+                  <FlightItineraryCard 
+                    itinerary={bookingData.itinerary}
+                    date={bookingData.itinerary.segments[0].departure.at}
+                    type="outbound"
+                    className="text-sm md:text-base"
+                    airports={[
+                      { iata_code: bookingData.itinerary.segments[0].departure.iataCode },
+                      { iata_code: bookingData.itinerary.segments[bookingData.itinerary.segments.length-1].arrival.iataCode }
+                    ]}
+                  />
+                  
+                </motion.div>
 
-            <FlightItineraryCard
-              itinerary={bookingData.itinerary}
-              date={bookingData.itinerary?.segments[0]?.departure.at || ''}
-              airports={[
-                { iata_code: bookingData.itinerary?.segments[0].departure.iataCode },
-                { iata_code: bookingData.itinerary?.segments[0].arrival.iataCode }
-              ]}
-              className="rounded-xl shadow"
-            />
+                {bookingData.itinerary.segments.length > 1 && (
+                  <motion.div 
+                    className="relative w-full p-4 bg-white flex flex-col"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                  >
+                    <FlightItineraryCard 
+                      itinerary={{
+                        segments: bookingData.itinerary.segments.slice(1),
+                        duration: bookingData.itinerary.duration
+                      }}
+                      date={bookingData.itinerary.segments[1].departure.at}
+                      type="return"
+                      className="text-sm md:text-base"
+                      airports={[
+                        { iata_code: bookingData.itinerary.segments[1].departure.iataCode },
+                        { iata_code: bookingData.itinerary.segments[bookingData.itinerary.segments.length-1].arrival.iataCode }
+                      ]}
+                    />
+                  </motion.div>
+                  
+                )}
+                {bookingData.itinerary?.segments[0]?.carrierName && (
+                  <a 
+                    href={`https://www.google.com/search?q=${encodeURIComponent(bookingData.itinerary.segments[0].carrierName + ' check in')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-blue-600 hover:text-blue-800 mt-4"
+                  >
+                    Go to {bookingData.itinerary.segments[0].carrierName} check-in
+                    <FaExternalLinkAlt className="ml-1 w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            </div>
 
-            
 
-            <div className="bg-white rounded-xl shadow overflow-hidden">
+
+            <div className="bg-white rounded-xl overflow-hidden">
+              <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl text-center mb-12">
+                <span className="block bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent py-1">
+                  Travel Tips for {getCityName(bookingData.itinerary.segments[0].arrival.iataCode)}
+                </span>
+              </h2>
               <div className="relative h-64 w-full bg-gray-100">
                 <Image
                   src={imageUrl}
@@ -392,9 +557,6 @@ export default function RetrieveBooking() {
                 </div>
               </div>
               <div className="p-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6 border-b pb-3">
-                  Travel Tips for {getCityName(bookingData.itinerary.segments[0].arrival.iataCode)}
-                </h3>
                 <div className="space-y-5">
                   <div className="flex items-start gap-4">
                     <div className="bg-blue-50 p-3 rounded-full text-blue-600 mt-1">
