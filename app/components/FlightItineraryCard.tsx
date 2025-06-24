@@ -347,6 +347,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                     <div className="font-semibold text-gray-900">{formatTime(seg.departure.at)}</div>
                     <div className="text-sm text-gray-700">{seg.departure.iataCode}</div>
                     <div className="text-xs text-gray-500 truncate">{getCityName(depAirport?.iata_code || 'none')}</div>
+                    
                   </div>
 
                   {/* Duration */}

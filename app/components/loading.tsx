@@ -16,7 +16,9 @@ const Player = dynamic(
 const Loading: React.FC<LoadingProps> = ({ lottieUrl, alt }) => {
   return (
     <div className="flex flex-col items-center justify-center h-screen text-amber-400 mb-5">
-      <div className="text-lg font-semibold mb-0">Loading, please wait...</div>
+      <div className="text-lg font-semibold mb-0">
+        <h1 className="text-2xl font-bold text-amber-400">Loading, please wait...</h1>
+      </div>
 
       <div className="w-[300px] sm:w-[400px] md:w-[500px]">
         <Player

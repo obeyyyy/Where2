@@ -101,6 +101,9 @@ export default function Navbar() {
               Trip Summary
             </button>
           </Link>
+          <Link href="/retrieve-booking" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
+            Retrieve Booking
+          </Link>
         </div>
       </nav>
       <style jsx>{`

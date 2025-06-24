@@ -226,31 +226,14 @@ function ConfirmationPage() {
         const orderId = searchParams.get('orderId');
         const paymentIntentId = searchParams.get('payment_intent');
         const status = (searchParams.get('status') as BookingStatus) || 'pending';
-        
-        // Try to load from localStorage first
-        const storedBooking = localStorage.getItem('lastBooking');
-        
-        if (storedBooking) {
-          try {
-            const parsedData = JSON.parse(storedBooking);
-            
-            // If URL has an orderId, verify it matches the stored one
-            if (!orderId || parsedData.order?.id === orderId || parsedData.id === orderId) {
-              await processBookingData(parsedData, status);
-              return;
-            }
-          } catch (e) {
-            console.error('Error parsing stored booking:', e);
-          }
-        }
 
-
-        // If we have an orderId in URL but no matching localStorage data
+        // First try to fetch from API if we have an orderId
         if (orderId) {
           try {
-            // Fetch order details from your API
             const response = await fetch(`/api/orders/${orderId}`);
             if (response.ok) {
+              
+              console.log('Order detailsfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
               const orderData = await response.json();
               await processBookingData(orderData, status);
               return;
@@ -258,10 +241,11 @@ function ConfirmationPage() {
           } catch (err) {
             console.error('Error fetching order details:', err);
           }
-          setError('Could not load booking details. Please check your email for confirmation.');
-        } else if (paymentIntentId) {
+        }
+        
+        // Fall back to payment intent ID if available
+        if (paymentIntentId) {
           try {
-            // Try to find booking by payment intent ID
             const response = await fetch(`/api/payments/${paymentIntentId}/order`);
             if (response.ok) {
               const orderData = await response.json();
@@ -273,6 +257,19 @@ function ConfirmationPage() {
           }
         }
         
+        // Finally fall back to localStorage if API calls fail
+        const storedBooking = localStorage.getItem('lastBooking');
+        if (storedBooking) {
+          try {
+           
+            const parsedData = JSON.parse(storedBooking);
+            await processBookingData(parsedData, status);
+            return;
+          } catch (e) {
+            console.error('Error parsing stored booking:', e);
+          }
+        }
+
         setError('No booking information found. Please check your email for confirmation or contact support.');
         setLoading(false);
       } catch (err) {
@@ -380,7 +377,7 @@ function ConfirmationPage() {
       const bookingData = {
         id: order.id,
         bookingId: order.id,
-        bookingReference: order.passengers[0].passenger_reference,
+        bookingReference: order.passengers[0].booking_reference,
         status: order.payment_status?.paid_at ? 'succeeded' : status,
         createdAt: order.created_at,
         // Use the total amount with fees for display
@@ -413,7 +410,7 @@ function ConfirmationPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
             <div className="flex">
@@ -438,7 +435,7 @@ function ConfirmationPage() {
 
   if (!booking) {
     return (
-      <div className="min-h-screen bg-[#FFFDF6] py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Booking Not Found</h1>
           <p className="text-gray-600 mb-6">We couldn't find any booking information. Please check your email for confirmation or contact support.</p>
@@ -490,7 +487,7 @@ function ConfirmationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFDF6] py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header with Animation */}
         <div className="text-center mb-8">
@@ -551,7 +548,7 @@ function ConfirmationPage() {
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-1">Booking Reference</h3>
-                <p className="font-mono text-gray-900">{booking.bookingReference}</p>
+                <p className="font-mono text-gray-900">{booking.bookingReference || 'Your booking is confirmed. We are still waiting for the airline to issue your booking reference. We will email you as soon as it is available.'}</p>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-1">Status</h3>
@@ -855,7 +852,7 @@ function ConfirmationPage() {
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Base Flight Price</span>
                 <span className="text-gray-900">
-                  {formatAmount(booking.trip?.price?.total || booking.trip?.price?.basePrice || '0', booking.currency)}
+                  {formatAmount(booking.amount || booking.trip?.price?.basePrice , booking.currency)}
                 </span>
               </div>
               
