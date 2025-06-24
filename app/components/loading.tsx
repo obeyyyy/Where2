@@ -1,9 +1,15 @@
 'use client';
 import AnimatedStepCharacter from "./AnimatedStepCharacter";
-export default function Loading() {
+
+interface LoadingProps {
+  lottieUrl: string;
+  alt: string;
+}
+
+export default function Loading({ lottieUrl, alt }: LoadingProps) {
   return (
     <div className="flex items-center justify-center h-screen">
-      <AnimatedStepCharacter lottieUrl="https://lottie.host/989cdfb3-3cc9-4dcc-b046-0b7a763fbe8f/RU2HndI7KD.json" alt="Loading" />
+      <AnimatedStepCharacter lottieUrl={lottieUrl} alt={alt} />
     </div>
   );
 }
