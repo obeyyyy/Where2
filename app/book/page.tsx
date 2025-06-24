@@ -14,6 +14,7 @@ import { FlightItineraryCard } from "@/app/components/FlightItineraryCard";
 import { computePricing, PricingBreakdown } from "@/lib/pricing";
 import PassengerForm, { PassengerInfo } from "@/app/components/PassengerForm";
 
+
 // Extend the PassengerInfo interface with additional properties
 interface BookingPassengerInfo extends PassengerInfo {
   // Personal Information
@@ -75,6 +76,31 @@ interface BookingData {
   budget: string;
 }
 
+// Reusable blank passenger template
+const defaultPassenger: BookingPassengerInfo = {
+  type: 'adult',
+  title: 'mr',
+  firstName: '',
+  lastName: '',
+  dateOfBirth: '',
+  gender: 'm',
+  email: '',
+  phone: '',
+  documentType: 'passport',
+  documentNumber: '',
+  documentIssuingCountryCode: '',
+  documentExpiryDate: '',
+  documentNationality: '',
+  address: {
+    addressLine1: '',
+    city: '',
+    countryCode: '',
+    postalCode: ''
+  },
+  specialAssistance: false,
+  mealPreferences: []
+};
+
 const BookingPage: React.FC = () => {
   const router = useRouter();
   const [step, setStep] = useState<number>(0);
@@ -101,7 +127,7 @@ const BookingPage: React.FC = () => {
 
     const basePerPassenger = parseFloat(bookingData.trip.price.total.toString());
     return computePricing({
-      baseAmount: basePerPassenger * (passengerData.length || 1),
+      baseAmount: basePerPassenger,
       passengers: passengerData.length || 1,
       currency: bookingData.trip.price.currency || bookingData.trip.price.breakdown?.currency || 'EUR',
     });
@@ -172,15 +198,26 @@ const BookingPage: React.FC = () => {
           // Force a complete reload of the booking data
           const savedData = loadSavedBookingData();
           if (savedData) {
+            const travelerCount = Number(savedData.searchParams?.travelers) || 1;
+            let passengers: BookingPassengerInfo[] = [];
+            if (savedData.passengers && savedData.passengers.length > 0) {
+              // Copy existing passengers up to travelerCount
+              passengers = savedData.passengers.slice(0, travelerCount).map((p: Partial<BookingPassengerInfo>) => ({
+                ...defaultPassenger,
+                ...p
+              }));
+            }
+            // Add additional default passengers if needed
+            while (passengers.length < travelerCount) {
+              passengers.push({ ...defaultPassenger });
+            }
+            setPassengerData(passengers);
+            
             setBookingData({
               trip: savedData.trip || {},
               searchParams: savedData.searchParams || {},
               budget: savedData.searchParams?.budget || 0
             });
-            
-            if (savedData.passengers && savedData.passengers.length > 0) {
-              setPassengerData(savedData.passengers);
-            }
             
             // Force a re-render of any components that depend on bookingData
             setFlightLoading(false);
@@ -277,27 +314,19 @@ const BookingPage: React.FC = () => {
           
           setBookingData(bookingData);
           
-          // Set passenger data or use default if none exists
+          // Build passenger array matching traveler count
+          const travelerCount = Number(savedData.searchParams?.travelers) || 1;
+          let passengers: BookingPassengerInfo[] = [];
           if (savedData.passengers && savedData.passengers.length > 0) {
-            // Ensure all passengers have required fields
-            const validPassengers = savedData.passengers.map((p: Partial<BookingPassengerInfo>) => ({
+            passengers = savedData.passengers.slice(0, travelerCount).map((p: any) => ({
               ...defaultPassenger,
-              ...p,
-              gender: (['m', 'f', 'x'].includes(p.gender || '') ? p.gender : 'm') as 'm' | 'f' | 'x',
-              type: p.type || 'adult',
-              title: p.title || 'mr',
-              documentType: p.documentType || 'passport',
-              specialAssistance: p.specialAssistance || false,
-              mealPreferences: p.mealPreferences || [],
-              address: {
-                ...defaultPassenger.address,
-                ...(p.address || {})
-              }
+              ...p
             }));
-            setPassengerData(validPassengers);
-          } else {
-            setPassengerData([defaultPassenger]);
           }
+          while (passengers.length < travelerCount) {
+            passengers.push({ ...defaultPassenger });
+          }
+          setPassengerData(passengers);
           
           // Save the initialized data
           saveBookingData();
@@ -792,7 +821,7 @@ const BookingPage: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Markup (per passenger):</span>
+                      <span className="text-gray-600">Tax (per passenger):</span>
                       <span className="font-medium">
                         {trip.price.breakdown?.currency || '€'}
                         {parseFloat(priceInfo.markupPerPassenger.toFixed(2)).toFixed(2)}
@@ -804,7 +833,7 @@ const BookingPage: React.FC = () => {
                         <span className="font-medium">
                           {trip.price.breakdown?.currency || '€'}
                           {(
-                            parseFloat(priceInfo.base.toString()) + 
+                            parseFloat(priceInfo.base.toString()) / passengerData.length + 
                             (priceInfo.servicePerPassenger ? parseFloat(priceInfo.servicePerPassenger.toString()) : 0) + 
                             (priceInfo.markupPerPassenger ? parseFloat(priceInfo.markupPerPassenger.toString()) : 0)
                           ).toFixed(2)}
@@ -823,7 +852,7 @@ const BookingPage: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1 text-right">
-                      Includes €2.00 markup + €1.00 service fee per passenger
+                      Includes €2.00 Tax + €1.00 Service fee per passenger
                     </p>
                   </div>
                 )}

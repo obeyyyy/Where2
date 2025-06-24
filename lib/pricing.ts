@@ -27,8 +27,8 @@ export function computePricing (
     baseAmount,
     passengers,
     currency = 'EUR',
-    markupPerPax = 1.00,
-    servicePerPax = 2.00,
+    markupPerPax = 2.00,
+    servicePerPax = 1.00,
   }: {
     baseAmount: number;
     passengers: number;

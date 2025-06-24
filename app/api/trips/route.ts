@@ -218,6 +218,14 @@ export async function GET(request: Request) {
     const tripType = params.get('tripType') || 'roundtrip';
     const nights = params.get('nights') || '7';
     const travelers = params.get('travelers') || '1';
+    
+    // Log the travelers count for verification
+    console.log('PASSENGER COUNT CHECK: Getting travelers from search params:', {
+      rawTravelersParam: params.get('travelers'),
+      parsedTravelersCount: travelers,
+      numericValue: Number(travelers)
+    });
+    
     const currency = params.get('currency') || 'EUR';
     const budget = params.get('budget') || '';
     const useKiwi = params.get('useKiwi') === 'true';
@@ -279,11 +287,21 @@ export async function GET(request: Request) {
       const limit = 20; // Increased limit to get more results from Duffel
       const after = params.get('after') || undefined;
       
+      // Create passengers array and log it for verification
+      const passengersArray = Array(Number(travelers)).fill({ type: 'adult' });
+      
+      console.log('PASSENGER ARRAY CHECK: Created passengers array for Duffel API:', {
+        travelers: travelers,
+        numericTravelers: Number(travelers),
+        passengersArrayLength: passengersArray.length,
+        passengersArray: passengersArray
+      });
+      
       const duffelBody = {
         data: {
           cabin_class: 'economy',
           slices,
-          passengers: Array(Number(travelers)).fill({ type: 'adult' }),
+          passengers: passengersArray,
           max_connections: 1, // Limit to direct flights
           sort: 'total_amount', // Sort by price
           limit,

@@ -380,7 +380,7 @@ function ConfirmationPage() {
       const bookingData = {
         id: order.id,
         bookingId: order.id,
-        bookingReference: order.booking_reference || order.id,
+        bookingReference: order.passengers[0].passenger_reference,
         status: order.payment_status?.paid_at ? 'succeeded' : status,
         createdAt: order.created_at,
         // Use the total amount with fees for display

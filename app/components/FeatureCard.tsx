@@ -15,9 +15,9 @@ export const FeatureCard = ({
 }) => {
   return (
     <motion.div 
-      className="relative w-full p-8 bg-white border-4 border-orange-500 rounded-none
-        shadow-[15px_15px_0_-2.5px_#fff,15px_15px_0_0_#F97316]
-        hover:shadow-[20px_20px_0_-2.5px_#fff,20px_20px_0_0_#F97316]
+      className="relative w-full p-8 bg-white border-4 border-gradient-to-r from-[#FF8C00] to-[#FFA500]  rounded-none
+        shadow-[15px_15px_0_-2.5px_#FFA500,15px_15px_0_0_#FF8C00]
+        hover:shadow-[20px_20px_0_-2.5px_#fff,20px_20px_0_0_#FFA500]
         transition-all duration-300 group"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -47,14 +47,14 @@ export const FeatureCard = ({
       </div>
       
       {/* Button */}
-      <div className="mt-8 pt-6 border-t-2 border-orange-100">
+      <div className="mt-8 pt-6 border-t-2 border-gradient-to-r from-[#FF8C00] to-[#FFA500]">
         <motion.button
           className="w-full py-3 px-6 rounded-none text-base font-bold text-orange-600
             border-2 border-orange-500 bg-white hover:bg-orange-50
             transition-all duration-200 flex items-center justify-center gap-2"
           whileHover={{ 
             scale: 1.02,
-            boxShadow: '5px 5px 0 0 #F97316'
+            boxShadow: '5px 5px 0 0 #FF8C00'
           }}
           whileTap={{ scale: 0.98 }}
         >

@@ -163,7 +163,7 @@ export default function LandingPage() {
               {/* Hero Search Section */}
               <div className="mt-8 w-full max-w-4xl mx-auto">
                 {/* Search Type Selector */}
-                <div className="flex gap-2 mb-6 p-1 bg-white/90 backdrop-blur-sm rounded-full shadow-md justify-center">
+                <div className="flex gap-2 mb-6 p-1 rounded-full justify-center">
                   {[
                     { icon: <FiBriefcase className="w-5 h-5" />, label: 'All-in-One Trip', type: 'all' },
                     { icon: <FiArrowRight className="w-5 h-5" />, label: 'Flight Only', type: 'flights' },
@@ -186,7 +186,7 @@ export default function LandingPage() {
 
                 {/* Search Forms */}
                 <motion.div 
-                  className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6"
+                  className=" rounded-2xl p-6"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
@@ -206,12 +206,12 @@ export default function LandingPage() {
                   ) : activeSearchType === 'flights' ? (
                     <div className="space-y-6">
                       {/* Trip Type Selection */}
-                      <div className="flex gap-4 p-1 bg-gray-50 rounded-lg w-fit">
+                      <div className="flex gap-4 p-1 rounded-lg w-fit">
                         {['Round Trip', 'One Way'].map((type) => (
                           <button
                             key={type}
                             className={`px-4 py-2 rounded-lg transition-all ${tripType === type 
-                              ? 'bg-white shadow text-orange-500 font-medium' 
+                              ? 'text-orange-500 font-medium' 
                               : 'text-gray-600 hover:bg-white/50'}`}
                             onClick={() => setTripType(type)}
                           >

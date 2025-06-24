@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useTripCart } from "../components/TripCartContext";
-import { FiArrowLeft, FiCalendar, FiMapPin, FiDollarSign, FiUsers } from "react-icons/fi";
+import { FiArrowLeft, FiCalendar, FiMapPin, FiDollarSign, FiUsers, FiCheckCircle } from "react-icons/fi";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FlightItineraryCard } from "../components/FlightItineraryCard";
@@ -21,6 +21,39 @@ const getAirportData = (iataCode: string) => {
   return airports.find((a: any) => a.iata === iataCode) || { iata_code: iataCode };
 };
 
+// Add new styled components
+const SummaryHeader = ({ children }: { children: React.ReactNode }) => (
+  <h1 className="text-3xl font-bold text-gray-900 mb-6">{children}</h1>
+);
+
+const SectionTitle = ({ children }: { children: React.ReactNode }) => (
+  <h2 className="text-xl font-semibold text-gray-800 mb-4">{children}</h2>
+);
+
+const PrimaryButton = ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
+  <button 
+    onClick={onClick}
+    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 shadow-md"
+  >
+    {children}
+  </button>
+);
+
+const SecondaryButton = ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
+  <button 
+    onClick={onClick}
+    className="border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-3 px-6 rounded-lg transition-colors duration-200"
+  >
+    {children}
+  </button>
+);
+
+const SuccessBadge = ({ children }: { children: React.ReactNode }) => (
+  <div className="inline-flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-full">
+    <FiCheckCircle className="text-green-500" />
+    {children}
+  </div>
+);
 
 export default function TripSummaryPage() {
   const { trip: contextTrip, setTrip, isLoading, isValidTrip } = useTripCart();
@@ -100,7 +133,7 @@ export default function TripSummaryPage() {
     }
     
     return (
-      <div className="max-w-xl mx-auto mt-16 p-8 bg-white rounded-xl shadow-lg text-center">
+      <div className="max-w-xl mx-auto mt-16 p-8 rounded-xl shadow-lg text-center">
         <div className="mb-6">
           <div className="w-20 h-20 mx-auto bg-yellow-50 rounded-full flex items-center justify-center">
             <FiCalendar className="w-10 h-10 text-[#FFA500]" />
@@ -117,7 +150,7 @@ export default function TripSummaryPage() {
         </p>
         <Link 
           href="/search" 
-          className="inline-block bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:shadow-lg transition-shadow"
+          className="inline-block text-white bg-[#FFA500] hover:bg-[#FFA500] px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-shadow"
           onClick={() => {
             // Clear any invalid trip from storage when clicking the search button
             if (typeof window !== 'undefined') {
@@ -340,79 +373,70 @@ export default function TripSummaryPage() {
           <Link href="/search" className="text-blue-600 hover:underline flex items-center">
             <FiArrowLeft className="mr-1" /> Back to Search
           </Link>
-        </div>
-      
-        {/* Flight Details */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Flight Details</h2>
-          
-          {/* Outbound Flight */}
-          {itineraries?.[0] && (
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-700">Outbound Flight</h3>
-                <span className="text-sm text-gray-500">
-                  {itineraries[0].segments?.[0]?.departure?.at ? 
-                    formatDisplayDate(itineraries[0].segments[0].departure.at) : 'N/A'}
-                </span>
-              </div>
-              
-              <FlightItineraryCard
-                itinerary={itineraries[0]}
-                type="outbound"
-                date={itineraries[0].segments?.[0]?.departure?.at || ''}
-                
-                airports={[
-                  getAirportData(itineraries[0].segments?.[0]?.departure?.iataCode || ''),
-                  getAirportData(itineraries[0].segments?.[itineraries[0].segments.length - 1]?.arrival?.iataCode || '')
-                ]}
-                className="mb-6"
-              />
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+        <SectionTitle>Flight Itinerary</SectionTitle>
+        {/* Outbound Flight */}
+        {itineraries?.[0] && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-700">Outbound Flight</h3>
+              <span className="text-sm text-gray-500">
+                {itineraries[0].segments?.[0]?.departure?.at ? 
+                  formatDisplayDate(itineraries[0].segments[0].departure.at) : 'N/A'}
+              </span>
             </div>
-          )}
-          
-          {/* Return Flight */}
-          {isRoundTrip && itineraries?.[1] && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-700">Return Flight</h3>
-                <span className="text-sm text-gray-500">
-                  {itineraries[1].segments?.[0]?.departure?.at ? 
-                    formatDisplayDate(itineraries[1].segments[0].departure.at) : 'N/A'}
-                </span>
-              </div>
+            
+            <FlightItineraryCard
+              itinerary={itineraries[0]}
+              type="outbound"
+              date={itineraries[0].segments?.[0]?.departure?.at || ''}
               
-              <FlightItineraryCard
-                itinerary={itineraries[1]}
-                type="return"
-                date={itineraries[1].segments?.[0]?.departure?.at || ''}
-               
-                airports={[
-                  getAirportData(itineraries[1].segments?.[0]?.departure?.iataCode || ''),
-                  getAirportData(itineraries[1].segments?.[itineraries[1].segments.length - 1]?.arrival?.iataCode || '')
-                ]}
-              />
+              airports={[
+                getAirportData(itineraries[0].segments?.[0]?.departure?.iataCode || ''),
+                getAirportData(itineraries[0].segments?.[itineraries[0].segments.length - 1]?.arrival?.iataCode || '')
+              ]}
+              className="mb-6"
+            />
+          </div>
+        )}
+        
+        {/* Return Flight */}
+        {isRoundTrip && itineraries?.[1] && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-700">Return Flight</h3>
+              <span className="text-sm text-gray-500">
+                {itineraries[1].segments?.[0]?.departure?.at ? 
+                  formatDisplayDate(itineraries[1].segments[0].departure.at) : 'N/A'}
+              </span>
             </div>
-          )}
-        </div>
-        
-        {/* Flight Price */}
-        <div className="bg-white shadow rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-bold text-gray-800">Flight Price</h3>
-          <p className="text-xl font-semibold text-[#FFA500]">
-            {prices.currency} {parseFloat(prices.total).toFixed(2)}
-          </p>
-          <p className="text-sm text-gray-500">Does not include taxes and fees</p>
-        </div>
-        
-        {/* Book Button */}
-        <button
-          onClick={handleBooking}
-          className="w-full bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white px-6 py-4 rounded-lg font-bold shadow-lg hover:shadow-xl transition-shadow"
-        >
+            
+            <FlightItineraryCard
+              itinerary={itineraries[1]}
+              type="return"
+              date={itineraries[1].segments?.[0]?.departure?.at || ''}
+             
+              airports={[
+                getAirportData(itineraries[1].segments?.[0]?.departure?.iataCode || ''),
+                getAirportData(itineraries[1].segments?.[itineraries[1].segments.length - 1]?.arrival?.iataCode || '')
+              ]}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-4">
+        <SecondaryButton onClick={() => router.back()}>
+          Back to Search
+        </SecondaryButton>
+        <PrimaryButton onClick={handleBooking}>
           Book This Package
-        </button>
+        </PrimaryButton>
       </div>
     </div>
+    </div>
   );
+
 }
