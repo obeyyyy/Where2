@@ -78,15 +78,14 @@ export default function RetrieveBooking() {
 
   useEffect(() => {
     const fetchImage = async () => {
-      if (bookingData?.itinerary?.segments?.[0]?.arrival?.iataCode) {
+      if (bookingData?.itinerary?.segments?.[0]?.arrival?.iataCode && imageUrl === '/images/fallback-travel.jpg') {
         try {
           const url = await getCityPhotoRef(
             bookingData.itinerary.segments[0].arrival.iataCode
           );
-          setImageUrl(url || '/images/fallback-travel.jpg');
+          if (url) setImageUrl(url);
         } catch (error) {
           console.error('Failed to load image:', error);
-          setImageUrl('/images/fallback-travel.jpg');
         }
       }
     };
