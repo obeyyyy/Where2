@@ -45,7 +45,11 @@ interface BookingData {
 }
 
 type RetrieveBookingProps = {
-  prefilledOrderId?: string;
+  searchParams?: {
+    error?: string;
+    success?: string;
+    prefilledOrderId?: string;
+  };
 };
 
 const getCityPhotoRef = async (iataCode: string) => {
@@ -167,10 +171,10 @@ const handleDownloadItinerary = async (bookingData: BookingData | null) => {
   }
 };
 
-export default function RetrieveBooking({ prefilledOrderId }: RetrieveBookingProps) {
-  const [orderId, setOrderId] = useState(prefilledOrderId || '');
+export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) {
+  const [orderId, setOrderId] = useState(searchParams?.prefilledOrderId || '');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(searchParams?.error || '');
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
   const [imageUrl, setImageUrl] = useState<string>('/images/fallback-travel.jpg');
   const router = useRouter();

@@ -4,13 +4,17 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import BookingRetrieval from '../page';
 
+interface PageProps {
+  params: {
+    offerId: string;
+  };
+}
+
 const validateOrderId = (id: string) => /^[a-zA-Z0-9_-]{8,64}$/.test(id);
 
 export default function OfferIdPage({
   params,
-}: {
-  params: { offerId: string }
-}) {
+}: PageProps) {
   const router = useRouter();
   
   useEffect(() => {
@@ -20,6 +24,6 @@ export default function OfferIdPage({
   }, [params.offerId, router]);
 
   return validateOrderId(params.offerId) ? 
-    <BookingRetrieval prefilledOrderId={params.offerId} /> :
+    <BookingRetrieval searchParams={{ prefilledOrderId: params.offerId }} /> :
     null;
 }
