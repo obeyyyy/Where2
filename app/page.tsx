@@ -2,7 +2,23 @@
 
 import React, { useState, useEffect } from 'react';
 import Footer from './components/Footer';
-import { FiGlobe, FiMapPin, FiDollarSign, FiArrowRight, FiCalendar, FiBriefcase, FiHome, FiShield, FiZap } from "react-icons/fi";
+import { 
+  FiArrowRight, 
+  FiArrowLeft, 
+  FiCalendar, 
+  FiUsers,
+  FiMapPin,
+  FiDollarSign,
+  FiGlobe,
+  FiFilter,
+  FiSearch,
+  FiRefreshCw,
+  FiCheckCircle,
+  FiBriefcase,
+  FiHome,
+  FiShield,
+  FiZap
+} from 'react-icons/fi';
 import { motion } from "framer-motion";
 import AnimatedStepCharacter from "./components/AnimatedStepCharacter";
 import TrustBadges from "./components/TrustBadges";
@@ -194,7 +210,7 @@ export default function LandingPage() {
                   {activeSearchType === 'all' ? (
                     <Link href="/search" className="block text-center py-4">
                       <motion.button
-                        className="inline-flex items-center px-8 py-4 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white text-xl font-bold rounded-full shadow-lg group"
+                        className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-[#FF8C00] to-[#FFA500] text-white shadow-lg text-xl font-bold rounded-full group"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -516,6 +532,62 @@ export default function LandingPage() {
               </motion.div>
             </div>
           </motion.div>
+
+          {/* Mobile Experience Section */}
+          <section className="py-5">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center">
+              <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl mt-5">
+                <span className="block bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent py-1">
+                  Seamless Mobile Experience
+                </span>
+              </h2>
+                <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                  Book and manage trips effortlessly from your phone
+                </p>
+              </div>
+              
+              <div className="flex flex-col lg:flex-row items-center justify-center gap-5">
+                {/* Phone Mockup Carousel */}
+                <div className="relative w-64 h-[500px] overflow-hidden">
+                  <div className="absolute inset-0 flex animate-[slide_15s_linear_infinite] w-[500%]">
+                    {[
+                      './images/mock33-left.png',
+                      './images/mock4-left.png',
+                      './images/mock3-left.png',
+                      './images/mokc5-left.png',
+                      './images/mock2-left.png'
+                    ].map((src, index) => (
+                      <div key={index} className="flex-shrink-0 w-1/5 h-full px-2">
+                        <img 
+                          src={src}
+                          alt={`Mobile screen ${index + 1}`}
+                          className="w-full h-auto rounded-xl"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Features */}
+                <div className="max-w-md">
+                  <ul className="space-y-4">
+                    {[
+                      {icon: <FiCheckCircle className="text-green-500" />, text: "Instant booking confirmations"},
+                      {icon: <FiCheckCircle className="text-green-500" />, text: "Real-time flight updates"},
+                      {icon: <FiCheckCircle className="text-green-500" />, text: "Easy itinerary management"},
+                      {icon: <FiCheckCircle className="text-green-500" />, text: "Mobile boarding passes"}
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <span className="mt-1">{item.icon}</span>
+                        <span className="text-gray-700">{item.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
 
           {/* Feature Widgets */}
           <div className="w-full px-4">

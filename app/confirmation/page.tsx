@@ -26,7 +26,8 @@ import {
   FiDroplet,
   FiDollarSign,
   FiX,
-  FiCheck
+  FiCheck,
+  FiSmartphone
 } from 'react-icons/fi';
 
 const AnimatedStepCharacter = dynamic(
@@ -902,6 +903,48 @@ function ConfirmationPage() {
           </div>
         </div>
 
+        {/* Retrieve Booking Section */}
+        <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+          <div className="bg-white p-6 rounded-2xl shadow-lg border border-orange-100">
+            <h3 className="text-xl font-bold mb-4 text-gray-800">Retrieve Your Booking</h3>
+            <p className="text-gray-600 mb-4">
+              Save your offer ID to access your booking later
+            </p>
+            
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                value={booking?.id || ''}
+                readOnly
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-100"
+              />
+              <Link 
+                href={`/retrieve-booking/${booking?.id || ''}`}
+                className="px-6 py-2 bg-gradient-to-r from-[#FF8C00] to-[#FFA500] text-white rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center"
+              >
+                View Booking
+              </Link>
+            </div>
+          </div>
+
+          {/* Phone Mockup */}
+          <div className="relative hidden lg:block">
+            
+            <div className="relative mx-auto w-64">
+              {/* Phone frame */}
+              
+                <div className="rounded-xl overflow-hidden bg-white">
+                  {/* Replace with your actual phone mockup image */}
+                  <img 
+                    src="/images/mock2-left.png" 
+                    alt="Booking on mobile"
+                    className="w-full h-auto"
+                  />
+                </div>
+            </div>
+          </div>
+        </div>
+
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
           <button
@@ -921,3 +964,5 @@ function ConfirmationPage() {
     </div>
   );
 }
+
+import Link from 'next/link';

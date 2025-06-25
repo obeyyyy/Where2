@@ -6,7 +6,7 @@ import { FlightItineraryCard } from '@/app/components/FlightItineraryCard';
 import airportsJson from 'airports-json';
 import Image from 'next/image';
 import { FaBaby, FaBuilding, FaChild, FaLaptop, FaSuitcase, FaTicketAlt } from 'react-icons/fa';
-import { FaPassport, FaSuitcaseRolling, FaPlaneDeparture, FaMapMarkedAlt, FaPlane, FaSearch, FaUserFriends, FaCreditCard, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaPassport, FaSuitcaseRolling, FaPlaneDeparture, FaMapMarkedAlt, FaPlane, FaSearch, FaUserFriends, FaCreditCard, FaExternalLinkAlt, FaFilePdf } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 interface Segment {
@@ -44,9 +44,13 @@ interface BookingData {
   createdAt: string;
 }
 
+type RetrieveBookingProps = {
+  prefilledOrderId?: string;
+};
+
 const getCityPhotoRef = async (iataCode: string) => {
   const response = await fetch(
-    `https://api.pexels.com/v1/search?query=${iataCode} city&per_page=1`,
+    `https://api.pexels.com/v1/search?query=${iataCode} vacation city&per_page=1`,
     {
       headers: {
         Authorization: process.env.NEXT_PUBLIC_PEXELS_ACCESS_KEY || '',
@@ -68,8 +72,103 @@ const getCityName = (iataCode: string) => {
   return airport?.city || iataCode;
 };
 
-export default function RetrieveBooking() {
-  const [orderId, setOrderId] = useState('');
+const validateOrderId = (id: string) => {
+  // Basic format validation - adjust pattern as needed
+  const validPattern = /^[a-zA-Z0-9_-]{8,64}$/;
+  if (!validPattern.test(id)) {
+    return 'Order ID must be 8-64 alphanumeric characters';
+  }
+  return '';
+};
+
+const handleDownloadItinerary = async (bookingData: BookingData | null) => {
+  if (!bookingData) return;
+  
+  try {
+    const html2canvas = (await import('html2canvas')).default;
+    const { jsPDF } = await import('jspdf');
+    
+    const container = document.getElementById('booking-container');
+    if (!container) return;
+    
+    // Create a clean clone with proper spacing
+    const clone = container.cloneNode(true) as HTMLElement;
+    clone.style.opacity = '1';
+    clone.style.visibility = 'visible';
+    clone.style.position = 'static';
+    clone.style.display = 'block';
+    clone.style.padding = '20px';
+    
+    // Add page-break hints between major sections
+    const sections = clone.querySelectorAll<HTMLElement>('.section-break');
+    sections.forEach(section => {
+      section.style.pageBreakAfter = 'always';
+      section.style.pageBreakInside = 'avoid';
+    });
+    
+    const tempWrapper = document.createElement('div');
+    tempWrapper.style.position = 'absolute';
+    tempWrapper.style.left = '-9999px';
+    tempWrapper.style.width = '800px';
+    tempWrapper.style.height = 'auto';
+
+    tempWrapper.innerHTML = `
+      <div style="text-align:center;margin-bottom:20px;padding-top:10px">
+        <img src="./logo.svg" style="height:50px;width:auto;margin:0 auto;display:block" />
+      </div>
+    `;
+    
+    tempWrapper.appendChild(clone);
+    document.body.appendChild(tempWrapper);
+    
+    // Generate PDF with improved quality
+    const canvas = await html2canvas(tempWrapper, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      logging: true,
+      scrollX: 0,
+      scrollY: 0
+    });
+    
+    document.body.removeChild(tempWrapper);
+    
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({
+      orientation: 'p',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    const pageWidth = pdf.internal.pageSize.getWidth() - 20;
+    const pageHeight = pdf.internal.pageSize.getHeight() - 20;
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    
+    // Split content into pages without cutting elements
+    let position = 10;
+    let remainingHeight = imgHeight;
+    
+    while (remainingHeight > 0) {
+      const sectionHeight = Math.min(remainingHeight, pageHeight);
+      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+      
+      remainingHeight -= pageHeight;
+      position -= pageHeight;
+      
+      if (remainingHeight > 0) {
+        pdf.addPage();
+      }
+    }
+    
+    pdf.save(`Where2-booking-details-${bookingData.bookingReference}.pdf`);
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+  }
+};
+
+export default function RetrieveBooking({ prefilledOrderId }: RetrieveBookingProps) {
+  const [orderId, setOrderId] = useState(prefilledOrderId || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
@@ -94,6 +193,12 @@ export default function RetrieveBooking() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationError = validateOrderId(orderId);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     if (!orderId.trim()) {
       setError('Please enter a valid order ID');
       return;
@@ -197,7 +302,7 @@ export default function RetrieveBooking() {
             </button>
           </form>
         ) : (
-          <div className="space-y-10">
+          <div id="booking-container" className="space-y-10">
             <div className="bg-white rounded-xl overflow-hidden mt-6 ">
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-4">
@@ -213,7 +318,7 @@ export default function RetrieveBooking() {
                           hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#FF8C00]
                           transition-all duration-300 group flex flex-col">
                     <div className="flex-1">
-                      <h3 className="font-bold text-xl text-gray-800">⏱️ Flight Countdown</h3>
+                      <h3 className="font-bold text-xl text-gray-800"> Flight Countdown</h3>
                       <p className="text-gray-600 text-sm">
                         Departure: {new Date(bookingData.itinerary.segments[0].departure.at).toLocaleString('en-US', {
                           weekday: 'long', 
@@ -448,7 +553,7 @@ export default function RetrieveBooking() {
                             Airport Check-In
                           </h3>
                           <ul className="list-disc pl-5 space-y-2 text-gray-700">
-                            <li>Arrive 2-3 hours before departure</li>
+                            <li>Arrive 2-3 hours early for international flights</li>
                             <li>Have passport/ID ready</li>
                             <li>Check baggage at airline counter</li>
                             <li>Security may require removing liquids/laptops</li>
@@ -467,49 +572,16 @@ export default function RetrieveBooking() {
                   <FaPlane className="text-2xl font-bold text-orange-600" />
                   <h2 className="text-2xl font-bold text-gray-900">Flight Itinerary</h2>
                 </div>
-                <motion.div 
-                  className="relative w-full p-4 bg-white 
-                  flex flex-col"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                >
+                {bookingData?.itinerary && (
                   <FlightItineraryCard 
                     itinerary={bookingData.itinerary}
+                    tripType="oneway"
+                    airports={Object.values(airportsJson)}
+                    className="mb-8"
                     date={bookingData.itinerary.segments[0].departure.at}
-                    type="outbound"
-                    className="text-sm md:text-base"
-                    airports={[
-                      { iata_code: bookingData.itinerary.segments[0].departure.iataCode },
-                      { iata_code: bookingData.itinerary.segments[bookingData.itinerary.segments.length-1].arrival.iataCode }
-                    ]}
                   />
-                  
-                </motion.div>
-
-                {bookingData.itinerary.segments.length > 1 && (
-                  <motion.div 
-                    className="relative w-full p-4 bg-white flex flex-col"
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                  >
-                    <FlightItineraryCard 
-                      itinerary={{
-                        segments: bookingData.itinerary.segments.slice(1),
-                        duration: bookingData.itinerary.duration
-                      }}
-                      date={bookingData.itinerary.segments[1].departure.at}
-                      type="return"
-                      className="text-sm md:text-base"
-                      airports={[
-                        { iata_code: bookingData.itinerary.segments[1].departure.iataCode },
-                        { iata_code: bookingData.itinerary.segments[bookingData.itinerary.segments.length-1].arrival.iataCode }
-                      ]}
-                    />
-                  </motion.div>
-                  
                 )}
+                
                 {bookingData.itinerary?.segments[0]?.carrierName && (
                   <a 
                     href={`https://www.google.com/search?q=${encodeURIComponent(bookingData.itinerary.segments[0].carrierName + ' check in')}`}
@@ -520,6 +592,15 @@ export default function RetrieveBooking() {
                     Go to {bookingData.itinerary.segments[0].carrierName} check-in
                     <FaExternalLinkAlt className="ml-1 w-3 h-3" />
                   </a>
+                )}
+                {bookingData && (
+                  <button
+                    onClick={() => handleDownloadItinerary(bookingData)}
+                    className="flex items-center justify-center gap-2 mt-6 bg-gradient-to-r from-[#FF8C00] to-[#FFA500] hover:from-[#FFA500] hover:to-[#FF8C00] text-white font-medium py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all"
+                  >
+                    <FaFilePdf className="text-xl" />
+                    Download Itinerary
+                  </button>
                 )}
               </div>
             </div>

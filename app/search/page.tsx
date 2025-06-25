@@ -7,7 +7,7 @@ import { AirportAutocomplete, AirportOption } from '../components/AirportAutocom
 import Image from 'next/image';
 import airportsJson from 'airports-json';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiArrowRight, FiArrowLeft, FiCalendar, FiUsers, FiMapPin, FiDollarSign, FiGlobe } from 'react-icons/fi';
+import { FiArrowRight, FiArrowLeft, FiCalendar, FiUsers, FiMapPin, FiDollarSign, FiGlobe, FiFilter, FiSearch, FiRefreshCw, FiClock } from 'react-icons/fi';
 import { useTripCart } from '../components/TripCartContext';
 import { useRouter } from 'next/navigation';
 
@@ -68,6 +68,33 @@ interface FlightOffer {
   destinationImage?: string;
 }
 
+type NewButtonProps = {
+  text: string;
+  className?: string;
+  onClick?: () => void;
+  children?: React.ReactNode;
+  isSelected?: boolean;
+};
+
+const NewButton = ({ text, className = '', onClick, children, isSelected = false }: NewButtonProps) => (
+  <motion.button
+    onClick={onClick}
+    className={`flex px-4 py-2 rounded-xl text-sm font-medium ${isSelected 
+      ? 'bg-gradient-to-r from-[#FF8C00] to-[#FFA500] text-white shadow-lg' 
+      : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'} ${className}`}
+    whileHover={{ scale: isSelected ? 1 : 1.03 }}
+    whileTap={{ scale: 0.97 }}
+    animate={{
+      scale: isSelected ? 1.05 : 1,
+      boxShadow: isSelected ? '0 10px 15px -3px rgba(255, 140, 0, 0.3)' : 'none'
+    }}
+    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+  >
+    {text}
+    {children}
+  </motion.button>
+);
+
 function HomePage() {
   // Get the trip cart context at component level
   const { setTrip: setTripInCart } = useTripCart();
@@ -93,7 +120,9 @@ function HomePage() {
   const [tripData, setTripData] = useState<FlightOffer[]>([]);
   // No longer need showReturnFlights state for roundtrip flights
   const [filters, setFilters] = useState({
+    maxPrice: 1000,
     maxStops: 2, // 0 for direct, 1 for max 1 stop, 2 for all
+    airlines: [] as string[],
     sortBy: 'price', // 'price' or 'duration'
     sortOrder: 'asc' // 'asc' or 'desc'
   });
@@ -121,39 +150,46 @@ function HomePage() {
     return hours * 60 + minutes;
   };
 
-  // Filter and sort flights
-  const filteredAndSortedFlights = React.useMemo(() => {
-    // Start with all outbound legs
-    let result = tripData.map(trip => ({
-      ...trip,
-      itineraries: [trip.itineraries[0]] // Only show outbound leg initially
-    }));
+  // Enhanced getFlightsForDisplay function
+  const getFlightsForDisplay = () => {
+    return tripData
+      .filter(trip => {
+        // Price filter
+        const price = parseFloat(trip.price.total);
+        if (price > filters.maxPrice) return false;
+        
+        // Stops filter
+        const segments = trip.itineraries[0].segments;
+        if (segments.length - 1 > filters.maxStops) return false;
+        
+        // Airline filter
+        if (filters.airlines.length > 0) {
+          const airlinesInTrip = new Set(segments.map(s => s.carrierCode));
+          if (!filters.airlines.some(a => airlinesInTrip.has(a))) return false;
+        }
+        
+        return true;
+      })
+      .map(trip => ({
+        ...trip,
+        itineraries: searchParams.tripType === 'roundtrip' ? trip.itineraries : [trip.itineraries[0]]
+      }))
+      .sort((a, b) => {
+        // Sorting logic
+        if (filters.sortBy === 'price') {
+          const priceA = parseFloat(a.price.total);
+          const priceB = parseFloat(b.price.total);
+          return filters.sortOrder === 'asc' ? priceA - priceB : priceB - priceA;
+        } else {
+          // Duration sorting
+          return filters.sortOrder === 'asc' 
+            ? a.itineraries[0].duration.localeCompare(b.itineraries[0].duration)
+            : b.itineraries[0].duration.localeCompare(a.itineraries[0].duration);
+        }
+      });
+  };
 
-    // Apply filters
-    result = result.filter(trip => {
-      // Filter by number of stops
-      const stops = trip.itineraries[0]?.segments?.length - 1 || 0;
-      if (filters.maxStops === 0 && stops !== 0) return false;
-      if (filters.maxStops === 1 && stops > 1) return false;
-      return true;
-    });
-
-    // Apply sorting
-    result.sort((a, b) => {
-      if (filters.sortBy === 'price') {
-        const priceA = parseFloat(a.price.total);
-        const priceB = parseFloat(b.price.total);
-        return filters.sortOrder === 'asc' ? priceA - priceB : priceB - priceA;
-      } else {
-        // Sort by duration
-        const durationA = parseDuration(a.itineraries[0]?.duration || 'PT0H0M');
-        const durationB = parseDuration(b.itineraries[0]?.duration || 'PT0H0M');
-        return filters.sortOrder === 'asc' ? durationA - durationB : durationB - durationA;
-      }
-    });
-
-    return result;
-  }, [tripData, filters]);
+  const flightsForDisplay = getFlightsForDisplay();
 
   const [error, setError] = useState<string | null>(null);
   const quickSelect = [250, 500, 750, 1000, 1500];
@@ -164,7 +200,6 @@ function HomePage() {
     { code: 'ROM', name: 'Rome' },
     { code: 'BCN', name: 'Barcelona' },
   ];
-
 
   useEffect(() => {
     const initializeFromURL = async () => {
@@ -555,7 +590,7 @@ function HomePage() {
                         style={{ paddingRight: '3rem' }}
                       />
                       <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                       </div>
@@ -576,7 +611,7 @@ function HomePage() {
                           style={{ paddingRight: '3rem' }}
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         </div>
@@ -798,7 +833,7 @@ function HomePage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <FiArrowLeft className="inline-block mr-2" /> Back
+              <FiArrowLeft className="inline-block" /> Back
             </motion.button>
           )}
           {viewState !== 'details' ? (
@@ -825,20 +860,101 @@ function HomePage() {
     );
   };
 
+  // Filter UI component (to be added to the render method)
+  const FilterPanel = () => (
+    <div className="bg-white p-6 rounded-2xl shadow-lg mb-8 mx-auto max-w-2xl border border-orange-100">
+      <h3 className="font-extrabold text-xl mb-6 text-gray-800 flex items-center justify-center gap-2">
+        <FiFilter className="text-orange-500" />
+        <span className="bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent">
+          Filter Options
+        </span>
+      </h3>
+      
+      {/* Stops Filter */}
+      <div className="mb-6 text-center">
+        <label className="block text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">Flight Stops</label>
+        <div className="flex flex-wrap justify-center gap-3">
+          {[
+            {label: 'Non-stop', value: 0},
+            {label: '1 stop max', value: 1},
+            {label: 'All flights', value: 2}
+          ].map(option => (
+            <NewButton
+              key={option.value}
+              text={option.label}
+              onClick={() => setFilters({...filters, maxStops: option.value})}
+              className={`${filters.maxStops === option.value 
+                ? 'shadow-lg' 
+                : 'hover:bg-gray-100 border border-gray-200'}`}
+              isSelected={filters.maxStops === option.value}
+            />
+          ))}
+        </div>
+      </div>
+      
+      {/* Sorting */}
+      <div className="text-center">
+        <label className="block text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">Sort By</label>
+        <div className="flex justify-center gap-6">
+          <NewButton
+            text="Price"
+            onClick={() => setFilters({
+              ...filters, 
+              sortBy: 'price',
+              sortOrder: filters.sortBy === 'price' && filters.sortOrder === 'asc' ? 'desc' : 'asc'
+            })}
+            className={`gap-1 font-medium transition-colors ${filters.sortBy === 'price' 
+              ? 'text-orange-600' 
+              : 'text-gray-600 hover:text-gray-800'}`}
+            isSelected={filters.sortBy === 'price'}
+          >
+            <FiDollarSign />
+            {filters.sortBy === 'price' && (
+              <span className={filters.sortOrder === 'asc' ? 'text-green-500' : 'text-red-500'}>
+                {filters.sortOrder === 'asc' ? '↑' : '↓'}
+              </span>
+            )}
+          </NewButton>
+          <NewButton
+            text="Duration"
+            onClick={() => setFilters({
+              ...filters, 
+              sortBy: 'duration',
+              sortOrder: filters.sortBy === 'duration' && filters.sortOrder === 'asc' ? 'desc' : 'asc'
+            })}
+            className={`gap-1 font-medium transition-colors ${filters.sortBy === 'duration' 
+              ? 'text-orange-600' 
+              : 'text-gray-600 hover:text-gray-800'}`}
+            isSelected={filters.sortBy === 'duration'}
+          >
+            <FiClock />
+            {filters.sortBy === 'duration' && (
+              <span className={filters.sortOrder === 'asc' ? 'text-green-500' : 'text-red-500'}>
+                {filters.sortOrder === 'asc' ? '↑' : '↓'}
+              </span>
+            )}
+          </NewButton>
+        </div>
+      </div>
+    </div>
+  );
 
-  // Helper: Get flights for display
-  const getFlightsForDisplay = () => {
-    return tripData.map(trip => {
-      // For roundtrip searches, keep all itineraries (both outbound and inbound)
-      // For one-way searches, only keep the outbound itinerary
-      return {
-        ...trip,
-        itineraries: searchParams.tripType === 'roundtrip' ? trip.itineraries : [trip.itineraries[0]]
-      };
-    });
-  };
-  
-  const flightsForDisplay = getFlightsForDisplay();
+  // Search Results Title (add this where you display the results)
+  const SearchResultsTitle = () => (
+    <div className="flex flex-col items-center justify-between mb-6 gap-2 text-center">
+      <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+        <FiSearch className="text-orange-500" />
+        {flightsForDisplay.length} {flightsForDisplay.length === 1 ? 'Flight' : 'Flights'} Found
+      </h2>
+      <button 
+        onClick={() => setFilters({ maxPrice: 5000, maxStops: 2, airlines: [], sortBy: 'price', sortOrder: 'asc' })}
+        className="text-sm text-orange-500 hover:underline flex items-center gap-1 transition-colors"
+      >
+        <FiRefreshCw size={14} />
+        Reset Filters
+      </button>
+    </div>
+  );
 
   // Handle flight selection
   const handleSelectOutbound = async (trip: FlightOffer) => {
@@ -957,19 +1073,24 @@ const handleContinueToBooking = async (trip?: FlightOffer) => {
   // Search results component
   function renderSearchResults() {
     return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <header className="bg-white shadow-md py-4">
-        <div className="container mx-auto px-4 flex justify-between items-center">
+    <div className="min-h-screen">
+      <header className="bg-white py-4">
+        <div className="container mx-auto px-4 flex items-center">
           <motion.button
             onClick={handleReset}
             className="text-gray-600 hover:text-[#FFA500] focus:outline-none"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <FiArrowLeft className="inline-block mr-2" /> New Search
+            <FiArrowLeft className="inline-block" /> New Search
           </motion.button>
-          <h1 className="text-xl font-semibold text-gray-800">Search Results</h1>
-          <div></div>
+          <div className="flex-grow" />
+          <h2 className="font-extrabold text-gray-900 sm:text-4xl text-center mr-20 my-4">
+            <span className="block bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent text-5xl">
+              Search Results
+            </span>
+          </h2>
+          <div className="flex-grow" />
         </div>
       </header>
       <div className="container mx-auto px-4 mt-8">
@@ -978,65 +1099,13 @@ const handleContinueToBooking = async (trip?: FlightOffer) => {
           {!selectedOutbound ? (
             <div>
               {/* Filter and Sort Controls */}
-              <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  {/* Stops Filter */}
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Stops</label>
-                    <div className="flex space-x-2">
-                      {[
-                        { value: 0, label: 'Direct' },
-                        { value: 1, label: 'Max 1 Stop' },
-                        { value: 2, label: 'All Flights' }
-                      ].map(option => (
-                        <button
-                          key={option.value}
-                          onClick={() => setFilters(prev => ({ ...prev, maxStops: option.value as 0 | 1 | 2 }))}
-                          className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                            filters.maxStops === option.value
-                              ? 'bg-[#FFA500] text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-
-                  {/* Sort By */}
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
-                    <div className="flex space-x-2">
-                      <select
-                        value={filters.sortBy}
-                        onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value as 'price' | 'duration' }))}
-                        className="w-full p-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
-                      >
-                        <option value="price">Price</option>
-                        <option value="duration">Duration</option>
-                      </select>
-                      <button
-                        onClick={() => setFilters(prev => ({
-                          ...prev,
-                          sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc'
-                        }))}
-                        className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                        title={filters.sortOrder === 'asc' ? 'Sort ascending' : 'Sort descending'}
-                      >
-                        {filters.sortOrder === 'asc' ? '↑' : '↓'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <h2 className="text-2xl font-bold mb-6 text-gray-800">Select your flight</h2>
+              <FilterPanel />
+              <SearchResultsTitle />
               {flightsForDisplay.length === 0 ? (
                 <div className="text-center py-10">
                   <p className="text-gray-500 text-lg">No flights found matching your filters.</p>
                   <button 
-                    onClick={() => setFilters({ maxStops: 2, sortBy: 'price', sortOrder: 'asc' })}
+                    onClick={() => setFilters({ maxPrice: 1000, maxStops: 2, airlines: [], sortBy: 'price', sortOrder: 'asc' })}
                     className="mt-4 text-blue-600 hover:underline mr-4"
                   >
                     Reset filters
