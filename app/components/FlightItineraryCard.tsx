@@ -261,7 +261,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
               {formatTime(firstSeg?.departure?.at)}
             </div>
             <div className="text-[10px] xs:text-xs sm:text-sm text-[#5D4037] truncate">
-              {getCityName(depAirport?.iata_code || 'none')}
+              {getCityName(firstSeg?.departure?.iataCode || 'none')}
             </div>
           </div>
 
@@ -285,7 +285,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
               {formatTime(lastSeg?.arrival?.at)}
             </div>
             <div className="text-[10px] xs:text-xs sm:text-sm text-[#5D4037] truncate">
-              {getCityName(arrAirport?.iata_code || 'none')}
+              {getCityName(lastSeg?.arrival?.iataCode || 'none')}
             </div>
           </div>
         </div>
@@ -316,7 +316,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
             return (
               <div 
                 key={`${type}-seg-${i}`}
-                className="bg-gray-50 rounded-xl p-4 border border-gray-100 shadow-sm"
+                className="bg rounded-xl p-4 border border-gray-100 shadow-sm"
               >
                 {/* Airline Header */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 pb-3 border-b border-gray-100">
@@ -346,7 +346,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                   <div className="col-span-4 pr-2">
                     <div className="font-semibold text-gray-900">{formatTime(seg.departure.at)}</div>
                     <div className="text-sm text-gray-700">{seg.departure.iataCode}</div>
-                    <div className="text-xs text-gray-500 truncate">{getCityName(depAirport?.iata_code || 'none')}</div>
+                    <div className="text-xs text-gray-500 truncate">{getCityName(seg.departure.iataCode)}</div>
                   </div>
 
                   {/* Duration */}
@@ -370,7 +370,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                   <div className="col-span-4 text-right pl-2">
                     <div className="font-semibold text-gray-900">{formatTime(seg.arrival.at)}</div>
                     <div className="text-sm text-gray-700">{seg.arrival.iataCode}</div>
-                    <div className="text-xs text-gray-500 truncate">{getCityName(arrAirport?.iata_code || 'none')}</div>
+                    <div className="text-xs text-gray-500 truncate">{getCityName(seg.arrival.iataCode)}</div>
                   </div>
                 </div>
 
@@ -379,7 +379,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                   <div className="mt-3 text-center">
                     <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                       <FaClock className="mr-1.5" />
-                      {formatLayover(layover)} at {arrAirport?.iata_code}
+                      {formatLayover(layover)} at {getCityName(seg.arrival.iataCode)} ({seg.arrival.iataCode})
                     </div>
                   </div>
                 )}

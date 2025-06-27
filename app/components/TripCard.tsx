@@ -494,7 +494,7 @@ export default function TripCard({
           </div>
           
           {/* Total Price */}
-          <div className="bg-gradient-to-r from-orange-100 to-amber-50 text-amber-700 font-bold text-lg px-3 py-2 rounded-lg whitespace-nowrap flex-shrink-0">
+          <div className="bg-gradient-to-br from-orange-500 to-amber-400 shadow-lg shadow-orange-500/30 text-white font-bold text-lg px-3 py-2 rounded-lg whitespace-nowrap flex-shrink-0">
             {price.currency} {(() => {
               if (!selectedHotel) return parseFloat(price.total).toFixed(0);
               const hotelTotal = selectedHotel.totalPrice ? parseFloat(selectedHotel.totalPrice) : 0;

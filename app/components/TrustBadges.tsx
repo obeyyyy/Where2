@@ -6,7 +6,7 @@ const TrustBadges: React.FC = () => {
   const badges = [
     {
       title: "Secure Payments",
-      description: "256-bit SSL encryption",
+      description: "Stripe Secure and PCI Compliant",
       icon: <FiShield className="text-white w-6 h-6" />,
     },
     {
@@ -15,8 +15,8 @@ const TrustBadges: React.FC = () => {
       icon: <FiDollarSign className="text-white w-6 h-6" />,
     },
     {
-      title: "Award-Winning Service",
-      description: "5-star rated by 10,000+ travelers",
+      title: "Time Saving",
+      description: "Save time with our all-in-one trip booking",
       icon: <FiAward className="text-white w-6 h-6" />,
     },
     {
@@ -27,26 +27,36 @@ const TrustBadges: React.FC = () => {
   ];
 
   return (
-    <div className="py-8 px-4 max-w-7xl mx-auto">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {badges.map((badge, index) => (
-          <motion.div
-            key={index}
-            className="bg-gradient-to-r from-[#FF8C00] to-[#FFA500] rounded-xl p-4 shadow-lg text-white"
-            whileHover={{ y: -5 }}
-            transition={{ type: "spring", stiffness: 300 }}
+    <section className="py-10 px-6 max-w-2xl h-min mx-auto">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
+        {badges.map((badge, i) => (
+          <motion.article
+            key={i}
+            className="relative isolate flex flex-col items-center text-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 shadow-lg shadow-orange-500/30 overflow-hidden p-6"
+            whileHover={{ y: -6, rotateX: 3 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
           >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-white/20 rounded-full">
-                {badge.icon}
-              </div>
-              <h3 className="font-bold text-lg">{badge.title}</h3>
+            {/* glow ring */}
+            <span className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-white/10"></span>
+
+            {/* icon */}
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+              {badge.icon}
             </div>
-            <p className="text-sm opacity-90">{badge.description}</p>
-          </motion.div>
+
+            {/* title */}
+            <h3 className="text-lg font-semibold tracking-tight text-white drop-shadow-sm">
+              {badge.title}
+            </h3>
+
+            {/* description */}
+            <p className="mt-1 text-sm text-white/90 leading-relaxed max-w-[12rem]">
+              {badge.description}
+            </p>
+          </motion.article>
         ))}
       </div>
-    </div>
+    </section>
   );
 };
 

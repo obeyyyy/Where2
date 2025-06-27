@@ -297,7 +297,7 @@ const PassengerForm: React.FC<PassengerFormProps> = ({ passenger, index, onChang
   };
 
   return (
-    <div className="mb-8 p-6 border border-gray-100 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all duration-300">
+    <div className="mb-8 p-2 rounded-2xl bg-white transition-all duration-300">
       <div 
         className="flex justify-between items-center cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}

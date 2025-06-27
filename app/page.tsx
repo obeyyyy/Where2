@@ -17,7 +17,9 @@ import {
   FiBriefcase,
   FiHome,
   FiShield,
-  FiZap
+  FiZap,
+  FiClock,
+  FiSmartphone
 } from 'react-icons/fi';
 import { motion } from "framer-motion";
 import AnimatedStepCharacter from "./components/AnimatedStepCharacter";
@@ -547,10 +549,10 @@ export default function LandingPage() {
                 </p>
               </div>
               
-              <div className="flex flex-col lg:flex-row items-center justify-center gap-5">
+              <div className="flex w-full px-4 flex-col lg:flex-row items-center justify-center gap-5">
                 {/* Phone Mockup Carousel */}
-                <div className="relative w-64 h-[500px] overflow-hidden">
-                  <div className="absolute inset-0 flex animate-[slide_15s_linear_infinite] w-[500%]">
+                <div className="relative w-72 md:w-96 h-[400px] md:h-[500px] overflow-hidden rounded-[30px] md:rounded-[50px] ">
+                  <div className="absolute inset-0 flex animate-[slide_30s_linear_infinite] w-[400%]">
                     {[
                       './images/mock33-left.png',
                       './images/mock4-left.png',
@@ -558,11 +560,11 @@ export default function LandingPage() {
                       './images/mokc5-left.png',
                       './images/mock2-left.png'
                     ].map((src, index) => (
-                      <div key={index} className="flex-shrink-0 w-1/5 h-full px-2">
+                      <div key={index} className="flex-shrink-0 w-1/4 h-full px-1 md:px-2 transition-transform duration-300 hover:scale-105">
                         <img 
                           src={src}
                           alt={`Mobile screen ${index + 1}`}
-                          className="w-full h-auto rounded-xl"
+                          className="w-full h-auto rounded-lg md:rounded-xl object-cover"
                         />
                       </div>
                     ))}
@@ -570,18 +572,23 @@ export default function LandingPage() {
                 </div>
                 
                 {/* Features */}
-                <div className="max-w-md">
-                  <ul className="space-y-4">
+                <div className="max-w-lg mb-20">
+                  <ul className="space-y-5">
                     {[
-                      {icon: <FiCheckCircle className="text-green-500" />, text: "Instant booking confirmations"},
-                      {icon: <FiCheckCircle className="text-green-500" />, text: "Real-time flight updates"},
-                      {icon: <FiCheckCircle className="text-green-500" />, text: "Easy itinerary management"},
-                      {icon: <FiCheckCircle className="text-green-500" />, text: "Mobile boarding passes"}
+                      {icon: <FiCheckCircle className="text-orange-500 text-xl" />, text: "Mobile-first booking flow – optimized for phones and tablets"},
+                      {icon: <FiClock className="text-orange-500 text-xl" />, text: "View your itinerary and passenger details at any time"},
+                      {icon: <FiCalendar className="text-orange-500 text-xl" />, text: "Secure payment and instant booking confirmation"},
+                      {icon: <FiSmartphone className="text-orange-500 text-xl" />, text: "Retrieve bookings with your reference number"},
+                      
                     ].map((item, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <span className="mt-1">{item.icon}</span>
-                        <span className="text-gray-700">{item.text}</span>
-                      </li>
+                      <motion.li 
+                        key={i} 
+                        className="flex items-start gap-4 p-3 bg-white/50 backdrop-blur-sm rounded-xl shadow-sm"
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <span className="mt-0.5">{item.icon}</span>
+                        <span className="text-gray-800 font-medium">{item.text}</span>
+                      </motion.li>
                     ))}
                   </ul>
                 </div>
@@ -621,7 +628,7 @@ export default function LandingPage() {
                   features={[
                     "PCI compliant payments",
                     "Instant booking confirmation",
-                    "Free cancellation options",
+                    "Free cancellation and refund options",
                     "24/7 customer support"
                   ]}
                   icon={FiShield}
@@ -630,7 +637,7 @@ export default function LandingPage() {
                   title="Smart Filters"
                   description="We automatically find the best combination of price and flight duration"
                   features={[
-                    "Real-time flight tracking",
+                    "Best value trips",
                     "Price/duration optimization",
                     "Layover minimization",
                     "Airline quality ratings"
@@ -641,107 +648,107 @@ export default function LandingPage() {
             </div>
           </div>
 
-{/* Testimonials Section */}
-<div className="w-full bg-gradient-to-b from-gray-50 to-white py-16">
-  <div className="max-w-7xl mx-auto px-4">
-    <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl text-center mb-12">
-      <span className="block bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent">
-        What Our Travelers Say
-      </span>
-    </h2>
-    
-    <motion.div
-      className="max-w-4xl mx-auto"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.7 }}
-    >
-      <div className="relative">
-        <motion.div
-          key={currentTestimonial}
-          className="bg-white rounded-2xl shadow-lg p-8 md:p-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.5 }}
-        >
-          {/* Quote Icon */}
-          <div className="absolute -top-4 left-8 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
-            </svg>
-          </div>
+            {/* Testimonials Section */}
+            <div className="w-full bg-gradient-to-b from-gray-50 to-white py-16">
+              <div className="max-w-7xl mx-auto px-4">
+                <h2 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl text-center mb-12">
+                  <span className="block bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent">
+                    What Our Travelers Say
+                  </span>
+                </h2>
+                
+                <motion.div
+                  className="max-w-4xl mx-auto"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.7 }}
+                >
+                  <div className="relative">
+                    <motion.div
+                      key={currentTestimonial}
+                      className="bg-white rounded-2xl shadow-lg p-8 md:p-10"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      {/* Quote Icon */}
+                      <div className="absolute -top-4 left-8 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+                        </svg>
+                      </div>
 
-          {/* Stars */}
-          <div className="flex items-center gap-1 mb-6">
-            {[...Array(5)].map((_, i) => (
-              <svg key={i} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-            ))}
-          </div>
+                      {/* Stars */}
+                      <div className="flex items-center gap-1 mb-6">
+                        {[...Array(5)].map((_, i) => (
+                          <svg key={i} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                        ))}
+                      </div>
 
-          {/* Testimonial Content */}
-          <p className="text-xl text-gray-700 leading-relaxed mb-8">"{testimonials[currentTestimonial].text}"</p>
-          
-          {/* Author Info */}
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
-              {testimonials[currentTestimonial].name[0]}
+                      {/* Testimonial Content */}
+                      <p className="text-xl text-gray-700 leading-relaxed mb-8">"{testimonials[currentTestimonial].text}"</p>
+                      
+                      {/* Author Info */}
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
+                          {testimonials[currentTestimonial].name[0]}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{testimonials[currentTestimonial].name}</h4>
+                          <p className="text-gray-500 flex items-center gap-1">
+                            <span>{testimonials[currentTestimonial].country}</span>
+                            <span className="text-orange-500">✈</span>
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    {/* Navigation Dots */}
+                    <div className="flex justify-center gap-3 mt-8">
+                      {testimonials.map((_, idx) => (
+                        <button
+                          key={idx}
+                          className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                            idx === currentTestimonial 
+                              ? 'bg-orange-500 scale-110' 
+                              : 'bg-gray-300 hover:bg-gray-400'
+                          }`}
+                          onClick={() => setCurrentTestimonial(idx)}
+                          aria-label={`Show testimonial ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-900">{testimonials[currentTestimonial].name}</h4>
-              <p className="text-gray-500 flex items-center gap-1">
-                <span>{testimonials[currentTestimonial].country}</span>
-                <span className="text-orange-500">✈</span>
-              </p>
-            </div>
-          </div>
-        </motion.div>
 
-        {/* Navigation Dots */}
-        <div className="flex justify-center gap-3 mt-8">
-          {testimonials.map((_, idx) => (
-            <button
-              key={idx}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                idx === currentTestimonial 
-                  ? 'bg-orange-500 scale-110' 
-                  : 'bg-gray-300 hover:bg-gray-400'
-              }`}
-              onClick={() => setCurrentTestimonial(idx)}
-              aria-label={`Show testimonial ${idx + 1}`}
-            />
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  </div>
-</div>
-
-{/* Call to Action */}
-<motion.div
-  className="text-center py-16"
-  initial={{ opacity: 0, scale: 0.95 }}
-  animate={{ opacity: 1, scale: 1 }}
-  transition={{ duration: 0.7, delay: 0.2 }}
->
-  <Link href="/search" legacyBehavior>
-    <a className="inline-flex items-center px-10 py-5 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white text-xl font-bold rounded-full shadow-lg hover:scale-105 transition-transform">
-      Book Your Package Now <FiArrowRight className="ml-3 w-7 h-7" />
-    </a>
-  </Link>
-</motion.div>
-          {/* Trust Badges */}
-          <TrustBadges />
-          {/* FAQ Section */}
-          <FAQSection />
-          {/* Travel Blog Section */}
-          <TravelBlogSection />
-        </motion.div>
-      </main>
-      {/* Footer */}
-      <Footer/>
-    </div>
-  );
-}
+            {/* Call to Action */}
+            <motion.div
+              className="text-center py-16"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.2 }}
+            >
+              <Link href="/search" legacyBehavior>
+                <a className="inline-flex items-center px-10 py-5 bg-gradient-to-br from-[#FFA500] to-[#FF8C00] text-white text-xl font-bold rounded-full shadow-lg hover:scale-105 transition-transform">
+                  Book Your Package Now <FiArrowRight className="ml-3 w-7 h-7" />
+                </a>
+              </Link>
+            </motion.div>
+                      {/* Trust Badges */}
+                      <TrustBadges />
+                      {/* FAQ Section */}
+                      <FAQSection />
+                      {/* Travel Blog Section */}
+                      <TravelBlogSection />
+                    </motion.div>
+                  </main>
+                  {/* Footer */}
+                  <Footer/>
+                </div>
+              );
+            }
