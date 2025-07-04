@@ -1,8 +1,11 @@
 'use client';
 
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
-import { computePricing, PricingBreakdown } from '@/lib/pricing';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import { AncillaryState } from '@/types/Ancillary';
+import { computePricing, PricingBreakdown as BasePricingBreakdown, PricingBreakdown } from '@/lib/pricing';
 import Loading from '../../loading';
 import { FiArrowLeft, FiCheckCircle, FiCreditCard, FiUser, FiCalendar, FiGlobe } from 'react-icons/fi';
 import { FlightItineraryCard } from "@/app/components/FlightItineraryCard";
@@ -57,91 +60,388 @@ function PaymentContent() {
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [clientToken, setClientToken] = useState<string | undefined>(undefined);
-  const [paymentIntentId, setPaymentIntentId] = useState<string | undefined>(undefined);
-  const [baseAmount, setBaseAmount] = useState<string>('0');
+  const [clientToken, setClientToken] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [serverAmount, setServerAmount] = useState<number | null>(null);
+  const [serverCurrency, setServerCurrency] = useState<string>('EUR');
+  const [serverBreakdown, setServerBreakdown] = useState<any>(null);
   const [amount, setAmount] = useState<string>('0');
+  const [ancillaryTotal, setAncillaryTotal] = useState<string>('0');
   const [currency, setCurrency] = useState<string>('EUR');
   const [priceInfo, setPriceInfo] = useState<PricingBreakdown | null>(null);
+
+  // Function to fetch ancillary details from Duffel API
+  const fetchAncillaryDetails = async (offerId: string) => {
+    try {
+      console.log('Fetching ancillary details for offer:', offerId);
+      
+      // First check if we have selected ancillaries in the payment payload
+      const paymentPayloadStr = sessionStorage.getItem('payment_payload');
+      const paymentPayload = paymentPayloadStr ? JSON.parse(paymentPayloadStr) : null;
+      
+      console.log('Payment payload from session storage:', paymentPayload);
+      
+      // If we have selected ancillaries from the booking page, use those instead of fetching all available ones
+      if (paymentPayload?.ancillarySelection) {
+        console.log('Using selected ancillaries from booking page:', paymentPayload.ancillarySelection);
+        
+        // Format the selected ancillary rows for display
+        const selectedAncillaryRows = paymentPayload.ancillarySelection.services?.map((service: any) => ({
+          title: service.title || service.name || 'Extra Service',
+          type: service.type || 'ancillary',
+          amount: parseFloat(service.amount || service.total_amount || '0'),
+          details: service.details || `${service.type || 'Extra'} service`,
+          passengerName: service.passengerName || `Passenger ${service.passenger_id || service.passenger_ids?.[0] || ''}`,
+          segmentInfo: service.segmentInfo || `Segment ${service.segment_id || service.segment_ids?.[0] || ''}`,
+          passenger: service.passenger_id || service.passenger_ids?.[0],
+          segment: service.segment_id || service.segment_ids?.[0]
+        })) || [];
+        
+        console.log('Formatted ancillary rows for display:', selectedAncillaryRows);
+        
+        // Calculate total from selected ancillaries only
+        const selectedAncillaryTotal = selectedAncillaryRows.reduce((sum: number, row: any) => sum + row.amount, 0);
+        
+        console.log(`Using ${selectedAncillaryRows.length} selected ancillary items with total: ${selectedAncillaryTotal}`);
+        
+        // Update price info with selected ancillary details
+        updatePriceInfoWithAncillaries(selectedAncillaryRows, selectedAncillaryTotal);
+        
+        return { ancillaryRows: selectedAncillaryRows, ancillaryTotal: selectedAncillaryTotal };
+      }
+      
+      // If we don't have selected ancillaries, check if we have a breakdown with selected flag
+      if (paymentPayload?.breakdown) {
+        // Only include ancillaries that are explicitly marked as selected
+        const selectedBreakdown = paymentPayload.breakdown.filter((item: any) => item.selected === true);
+        
+        if (selectedBreakdown.length > 0) {
+          console.log(`Using ${selectedBreakdown.length} selected items from breakdown`);
+          const selectedTotal = selectedBreakdown.reduce((sum: number, item: any) => sum + item.amount, 0);
+          
+          // Update price info with selected ancillary details
+          updatePriceInfoWithAncillaries(selectedBreakdown, selectedTotal);
+          
+          return { ancillaryRows: selectedBreakdown, ancillaryTotal: selectedTotal };
+        }
+      }
+      
+      // If we don't have any selected ancillaries from the booking page,
+      // return empty arrays to avoid including unselected ancillaries
+      console.log('No selected ancillaries found, returning empty breakdown');
+      
+      // Update price info with empty ancillary details
+      updatePriceInfoWithAncillaries([], 0);
+      
+      return { ancillaryRows: [], ancillaryTotal: 0 };
+    } catch (error) {
+      console.error('Error fetching ancillary details:', error);
+      
+      // Update price info with empty ancillary details on error
+      updatePriceInfoWithAncillaries([], 0);
+      
+      return { ancillaryRows: [], ancillaryTotal: 0 };
+    }
+  };
+  
+  // Helper function to update price info with ancillary details
+  const updatePriceInfoWithAncillaries = (ancillaryRows: any[], ancillaryTotal: number) => {
+    console.log('Updating price info with ancillary details:', { ancillaryRows, ancillaryTotal });
+    
+    // Ensure ancillary rows have all required properties for display
+    const enhancedAncillaryRows = ancillaryRows.map(row => ({
+      ...row,
+      // Ensure these fields exist for the UI
+      details: row.details || `${row.type || 'Extra'} service`,
+      passengerName: row.passengerName || row.passenger || `Passenger`,
+      segmentInfo: row.segmentInfo || row.segment || `Flight segment`
+    }));
+    
+    console.log('Enhanced ancillary rows for display:', enhancedAncillaryRows);
+    
+    setPriceInfo((prev: PricingBreakdown | null) => {
+      if (!prev) {
+        console.error('No previous price info found, cannot update');
+        return null;
+      }
+      
+      // Update existing price info with enhanced rows
+      const updated = {
+        ...prev,
+        ancillaryRows: enhancedAncillaryRows, // Use the enhanced rows instead of original rows
+        ancillaryTotal,
+        total: prev.base + prev.markupTotal + prev.serviceTotal + ancillaryTotal
+      };
+      
+      console.log('Total calculation breakdown:', {
+        flightPrice: prev.base,
+        markupTotal: prev.markupTotal,
+        serviceTotal: prev.serviceTotal,
+        ancillaryTotal,
+        calculatedTotal: prev.base + prev.markupTotal + prev.serviceTotal + ancillaryTotal
+      });
+      
+      console.log('Updated price info:', updated);
+      return updated;
+    });
+  };
+  
+  // Add debug logging for priceInfo
+  useEffect(() => {
+    if (priceInfo) {
+      console.log('Current priceInfo state:', priceInfo);
+      console.log('Ancillary rows available:', priceInfo.ancillaryRows?.length || 0);
+      
+      // Calculate total amount for payment form when priceInfo changes
+      if (bookingData?.trip?.price) {
+        const totalAmount = (
+          parseFloat(bookingData.trip.price.total || '0') + 
+          (priceInfo.markupTotal || 0) + 
+          (priceInfo.serviceTotal || 0) + 
+          (priceInfo.ancillaryTotal || 0)
+        ).toFixed(2);
+        
+        // Update the amount for payment form
+        setAmount(totalAmount);
+        console.log('Updated payment amount:', totalAmount);
+      }
+    }
+  }, [priceInfo, bookingData]);
 
   // Fetch booking data and create payment intent on mount
   useEffect(() => {
     const fetchBookingData = async () => {
       try {
         setLoading(true);
-        // Try to get booking data from sessionStorage first, then fall back to localStorage
-        let bookingDataString = sessionStorage.getItem('current_booking_data');
-        
-        if (!bookingDataString) {
-          // Try localStorage as fallback
-          bookingDataString = localStorage.getItem('current_booking_offer');
-          if (!bookingDataString) {
-            throw new Error('No booking data found. Please start a new search.');
-          }
-        }
-        
-        const data = JSON.parse(bookingDataString);
-        console.log('Loaded booking data:', data);
-        setBookingData(data);
+        // Get both payment payload and booking data
+        const [paymentPayload, bookingData] = await Promise.all([
+          sessionStorage.getItem('payment_payload'),
+          sessionStorage.getItem('current_booking_data')
+        ].map(item => item ? JSON.parse(item) : null));
+
+        // Merge data with proper fallbacks
+        const mergedData = {
+          ...(bookingData || {}),
+          ...(paymentPayload || {}),
+          passengers: paymentPayload?.passengers || bookingData?.passengers || []
+        };
+
+        setBookingData(mergedData);
         
         // Extract amount and currency with proper fallbacks
-        const isRoundtrip = data.searchParams?.tripType === 'roundtrip';
+        const isRoundtrip = mergedData.searchParams?.tripType === 'roundtrip';
         let localBaseAmount = '0';
         let localCurrency = 'EUR';
         
-        if (isRoundtrip && data.trip?.price?.total) {
+        if (isRoundtrip && mergedData.trip?.price?.total) {
           // Use the total price directly from Duffel for roundtrip
-          localBaseAmount = data.trip.price.total;
-          localCurrency = data.trip.price.currency || 'EUR';
-        } else if (isRoundtrip && data.trip?.price?.breakdown) {
+          localBaseAmount = mergedData.trip.price.total;
+          localCurrency = mergedData.trip.price.currency || 'EUR';
+        } else if (isRoundtrip && mergedData.trip?.price?.breakdown) {
           // If we have a breakdown but no total, use the outbound price as the total
           // since Duffel returns a single price for roundtrip
-          localBaseAmount = data.trip.price.breakdown.outbound || '0';
-          localCurrency = data.trip.price.breakdown.currency || 'EUR';
+          localBaseAmount = mergedData.trip.price.breakdown.outbound || '0';
+          localCurrency = mergedData.trip.price.breakdown.currency || 'EUR';
         } else {
           // For one-way, use the total amount
-          localBaseAmount = data.trip?.price?.total || 
-                     data.trip?.price?.breakdown?.basePrice || 
+          localBaseAmount = mergedData.trip?.price?.total || 
+                     mergedData.trip?.price?.breakdown?.basePrice || 
                      '0';
-          localCurrency = data.trip?.price?.currency || 
-                   data.trip?.price?.breakdown?.currency || 
+          localCurrency = mergedData.trip?.price?.currency || 
+                   mergedData.trip?.price?.breakdown?.currency || 
                    'EUR';
         }
         
-        // Compute pricing via shared utility
-        const breakdown: PricingBreakdown = computePricing({
-          baseAmount: parseFloat(localBaseAmount),
-          passengers: data.passengers?.length || 1,
-          currency: localCurrency,
-        });
-        const localAmount = breakdown.total.toString();
+        // Get ancillary amount from canonical payment payload if available
+        const ancillaryTotalCanonical = paymentPayload?.priceInfo?.ancillary || 
+          (paymentPayload?.breakdown ? paymentPayload.breakdown.reduce((s: number, b: any) => s + b.amount, 0) : 0);
+        
+        console.log('Ancillary total from canonical:', ancillaryTotalCanonical);
+        
+        // If we have a canonical total from the booking page, use that directly
+        // This ensures we use the exact same total that was calculated in the booking page
+        let finalTotal = 0;
+        let localAmount = '';
+        let breakdown: BasePricingBreakdown;
+        
+        if (paymentPayload?.priceInfo?.total) {
+          // Use the pre-calculated total that includes ancillaries
+          console.log('Using canonical total price:', paymentPayload.priceInfo.total);
+          finalTotal = parseFloat(paymentPayload.priceInfo.total);
+          localAmount = finalTotal.toString();
+          
+          // Create a breakdown for display purposes
+          breakdown = computePricing({
+            baseAmount: parseFloat(localBaseAmount),
+            passengers: mergedData.passengers?.length || 1,
+            currency: localCurrency,
+            ancillaryTotal: ancillaryTotalCanonical,
+          });
+          // Override the total with our canonical value
+          breakdown.total = finalTotal;
+        } else {
+          // Fall back to computing the price if we don't have a canonical total
+          breakdown = computePricing({
+            baseAmount: parseFloat(localBaseAmount),
+            passengers: mergedData.passengers?.length || 1,
+            currency: localCurrency,
+            ancillaryTotal: ancillaryTotalCanonical,
+          });
+          finalTotal = parseFloat(breakdown.total.toFixed(2));
+          localAmount = finalTotal.toString();
+          console.log('Computed total price:', finalTotal);
+        }
 
         // Save breakdown for display & downstream components
-        setPriceInfo(breakdown);
+        // Make sure to include ancillaryRows from the payload if available
+        // Following Duffel's guide for adding extra bags
+        let ancillaryRows = [];
+        
+        // First try to get ancillary data from the payload services
+        if (paymentPayload?.ancillarySelection?.services && 
+            Array.isArray(paymentPayload.ancillarySelection.services) && 
+            paymentPayload.ancillarySelection.services.length > 0) {
+          
+          console.log('Using ancillary services from payload:', paymentPayload.ancillarySelection.services.length);
+          
+          ancillaryRows = paymentPayload.ancillarySelection.services.map((service: any) => ({
+            title: service.title || service.type || 'Extra Service',
+            type: service.type || 'ancillary',
+            amount: parseFloat(service.amount || service.total_amount || '0'),
+            currency: service.currency || localCurrency,
+            passengerId: service.passengerId || '',
+            passengerName: service.passengerName || '',
+            details: service.details || `${service.type || 'Extra service'}`
+          }));
+        } 
+        // If no services in payload, try to get from ancillaryBreakdown
+        else if (paymentPayload?.ancillaryBreakdown) {
+          try {
+            const parsedBreakdown = typeof paymentPayload.ancillaryBreakdown === 'string' 
+              ? JSON.parse(paymentPayload.ancillaryBreakdown) 
+              : paymentPayload.ancillaryBreakdown;
+              
+            if (Array.isArray(parsedBreakdown)) {
+              console.log('Using ancillary breakdown from payload:', parsedBreakdown.length);
+              ancillaryRows = parsedBreakdown;
+            }
+          } catch (e) {
+            console.error('Error parsing ancillary breakdown:', e);
+          }
+        }
+        
+        console.log('Setting price info with ancillary rows:', ancillaryRows);
+        setPriceInfo({ 
+          ...breakdown, 
+          ancillaryTotal: ancillaryTotalCanonical, 
+          total: finalTotal,
+          ancillaryRows: ancillaryRows.length > 0 ? ancillaryRows : (paymentPayload?.priceInfo?.ancillaryRows || [])
+        });
+        if (paymentPayload?.breakdown) {
+          // Only include selected ancillaries in the breakdown and total
+          const selectedAncillaries = paymentPayload.breakdown.filter((b: any) => b.selected !== false);
+          
+          // Use ancillary prices directly from the Duffel component (markup already applied via ANCILLARY_MARKUP)
+          const ancillaryTotal = selectedAncillaries.reduce(
+            (sum: number, service: any) => sum + parseFloat(service.amount || service.total_amount || '0'), 
+            0
+          );
+          
+          console.log('Selected ancillaries:', selectedAncillaries);
+          console.log('Ancillary total:', ancillaryTotal);
+          
+          setPriceInfo((prev: PricingBreakdown | null) => {
+            if (!prev) return null;
+            
+            const updatedTotal = prev.base + prev.markupTotal + prev.serviceTotal + ancillaryTotal;
+            console.log('Updated total calculation:', {
+              base: prev.base,
+              markupTotal: prev.markupTotal,
+              serviceTotal: prev.serviceTotal,
+              ancillaryTotal: ancillaryTotal,
+              calculatedTotal: updatedTotal
+            });
+            
+            return {
+              ...prev,
+              ancillaryRows: selectedAncillaries,
+              ancillaryTotal: ancillaryTotal,
+              total: updatedTotal
+            };
+          });
+        }
         
         // Update state variables
-        setBaseAmount(localBaseAmount);
         setCurrency(localCurrency);
         setAmount(localAmount);
         
         console.log('Creating payment intent with:', { 
           amount: localAmount, 
           currency: localCurrency,
-          paymentIntentId: data.paymentIntentId || undefined
+          paymentIntentId: mergedData.paymentIntentId || undefined,
+          hasAncillaries: !!mergedData.ancillarySelection
         });
         
-        // Create payment intent
+        // Create payment intent with server-side calculation
+        // Ensure we're using the same pricing logic as in the booking page
+        const passengerCount = mergedData.passengers?.length || bookingData?.passengers?.length || 1;
+        
+        // IMPORTANT: Extract the FLIGHT BASE PRICE ONLY (excluding ancillaries)
+        // This is the price from Duffel API before any ancillaries are added
+        const flightBasePrice = parseFloat(bookingData?.trip?.price?.total || '0');
+        const ancillaryTotal = priceInfo?.ancillaryTotal || 0;
+        
+        console.log('Payment calculation - separated components:', {
+          flightBasePrice,
+          ancillaryTotal,
+          passengerCount
+        });
+        
+        // Use computePricing directly to ensure consistent pricing logic
+        // but with flight price only (no ancillaries)
+        const pricingResult = computePricing({
+          baseAmount: flightBasePrice,
+          passengers: passengerCount,
+          // DO NOT include ancillary total in computePricing
+          // It will be added separately by the server
+          ancillaryTotal: 0
+        });
+        
+        // Calculate flight price with markup (excluding ancillaries)
+        const flightPriceWithMarkup = pricingResult.total.toFixed(2);
+        console.log('Payment intent calculation using computePricing:', {
+          flightBasePrice,
+          passengers: passengerCount,
+          markupTotal: pricingResult.markupTotal,
+          serviceTotal: pricingResult.serviceTotal,
+          ancillaryTotal,
+          calculatedTotal: flightPriceWithMarkup
+        });
+        
         const response = await fetch('/api/create-payment-intent', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            amount: localAmount,
+            // Use the flight price with markup (excluding ancillaries)
+            // The server will add ancillaries separately
+            amount: flightPriceWithMarkup,
             currency: localCurrency,
-            paymentIntentId: data.paymentIntentId || undefined
+            paymentIntentId: mergedData.paymentIntentId || undefined,
+            offerId: bookingData.trip.id || bookingData.trip.offerId,
+            // Include pricing breakdown from computePricing for the API
+            metadata: {
+              passengerCount,
+              baseFlightPrice: flightBasePrice,
+              markupTotal: pricingResult.markupTotal,
+              serviceTotal: pricingResult.serviceTotal,
+              ancillaryTotal
+            },
+            ancillarySelection: mergedData.ancillarySelection
           }),
         });
+
         
         const result = await response.json();
         
@@ -159,11 +459,24 @@ function PaymentContent() {
           } : undefined
         };
         
+        // Store server-calculated amount and breakdown if available
+        if (result.amount) {
+          console.log('Using server-calculated amount:', result.amount);
+          setServerAmount(result.amount);
+          setServerCurrency(result.currency || localCurrency);
+          
+          if (result.breakdown) {
+            console.log('Server provided price breakdown:', result.breakdown);
+            setServerBreakdown(result.breakdown);
+          }
+        }
+        
         console.log('Payment intent response:', {
           status: response.status,
           ok: response.ok,
           result: safeResult,
-          hasClientToken: !!(result.clientToken || result.client_token || result.data?.clientToken || result.data?.client_token)
+          hasClientToken: !!(result.clientToken || result.client_token || result.data?.clientToken || result.data?.client_token),
+          serverAmount: result.amount
         });
         
         if (!response.ok) {
@@ -319,18 +632,6 @@ function PaymentContent() {
     fetchBookingData();
   }, []);
   
-  interface PaymentMethod {
-    type: string;
-    id?: string;
-    card?: {
-      number: string;
-      expiry_month: string;
-      expiry_year: string;
-      cvc: string;
-      name: string;
-    };
-  }
-
   // Format date for display
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -706,13 +1007,15 @@ function PaymentContent() {
             offerId: bookingData.trip.id || bookingData.trip.offer_id,
             paymentIntentId: paymentIntentResult.paymentIntentId || paymentIntentResult.id,
             paymentMethod: paymentMethod,
-            // Get the amount from the first offer in the trip's offer array, or from the trip itself
-            amount: bookingData.trip.offers?.[0]?.total_amount || 
-                   bookingData.trip.price?.total || 
-                   bookingData.trip.total_amount || 
-                   bookingData.trip.amount || 
-                   0,
-            currency: bookingData.trip.price?.currency || bookingData.trip.total_currency || 'EUR',
+            // Use server-calculated amount if available, otherwise fall back to client-side calculation
+            amount: serverAmount !== null ? serverAmount : (
+                bookingData.trip.offers?.[0]?.total_amount || 
+                bookingData.trip.price?.total || 
+                bookingData.trip.total_amount || 
+                bookingData.trip.amount || 
+                0
+            ),
+            currency: serverCurrency || bookingData.trip.price?.currency || bookingData.trip.total_currency || 'EUR',
             passengers: bookingData.passengers,
             metadata: {
               ...(bookingData.metadata || {}),
@@ -836,6 +1139,188 @@ function PaymentContent() {
       }
       
       setBookingData(parsedData);
+      
+      // Initialize priceInfo with data from booking data
+      const passengers = parsedData.passengers?.length || 1;
+      const baseAmount = parseFloat(parsedData.trip?.price?.base || '0');
+      const totalAmount = parseFloat(parsedData.trip?.price?.total || '0');
+      const markupPerPassenger = parseFloat(parsedData.trip?.price?.breakdown?.markup || '1');
+      const servicePerPassenger = parseFloat(parsedData.trip?.price?.breakdown?.serviceFee || '2');
+      
+      // Debug log all potential ancillary data sources
+      console.log('Checking ancillary data sources:', {
+        hasAncillaryBreakdown: !!parsedData.ancillaryBreakdown,
+        ancillaryBreakdownType: typeof parsedData.ancillaryBreakdown,
+        hasAncillarySelection: !!parsedData.ancillarySelection,
+        ancillarySelectionType: typeof parsedData.ancillarySelection,
+        hasAncillaryPayment: !!parsedData.ancillaryPayment,
+        tripPriceBreakdown: parsedData.trip?.price?.breakdown
+      });
+      
+      // Get ancillary information from booking data
+      const ancillaryTotal = parseFloat(parsedData.trip?.price?.breakdown?.ancillaryTotal || '0');
+      console.log('Found ancillary total in booking data:', ancillaryTotal);
+      
+      // Create ancillary rows from the breakdown if available
+      let ancillaryRows: any[] = [];
+      
+      // Try multiple sources for ancillary data, in order of preference
+      
+      // 1. First try ancillaryBreakdown if it exists
+      if (parsedData.ancillaryBreakdown) {
+        try {
+          // Handle both string and object formats
+          const breakdown = typeof parsedData.ancillaryBreakdown === 'string' 
+            ? JSON.parse(parsedData.ancillaryBreakdown)
+            : parsedData.ancillaryBreakdown;
+            
+          console.log('Parsed ancillary breakdown:', breakdown);
+          
+          if (Array.isArray(breakdown) && breakdown.length > 0) {
+            ancillaryRows = breakdown.map((item: any) => ({
+              type: item.type || 'ancillary',
+              title: item.title || item.name || item.type?.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase()) || 'Extra',
+              amount: parseFloat(item.amount || item.price || '0'),
+              selected: true,
+              passenger: item.passenger_id ? 
+                parsedData.passengers?.find((p: any) => p.id === item.passenger_id)?.firstName || 'Passenger' : 
+                'All Passengers',
+              segment: item.segment_id ? 
+                `for ${item.segment_id.includes('outbound') ? 'Outbound' : 'Return'} Flight` : 
+                '',
+              details: item.description || item.details || '',
+              originalItem: item
+            }));
+          }
+        } catch (e) {
+          console.error('Error parsing ancillary breakdown:', e);
+        }
+      }
+      
+      // 2. Then try ancillarySelection if breakdown parsing failed or returned no items
+      if (ancillaryRows.length === 0 && parsedData.ancillarySelection) {
+        try {
+          // Handle both string and object formats
+          const selection = typeof parsedData.ancillarySelection === 'string'
+            ? JSON.parse(parsedData.ancillarySelection)
+            : parsedData.ancillarySelection;
+            
+          console.log('Using ancillary selection:', selection);
+          
+          if (selection.services && Array.isArray(selection.services)) {
+            ancillaryRows = selection.services.map((service: any) => {
+              // Extract detailed information from the service
+              const serviceType = service.type || 'Extra';
+              const serviceTitle = service.title || service.name || service.type || 'Selected Extra';
+              const serviceAmount = parseFloat(service.amount || service.total_amount || '0');
+              
+              // Extract passenger information if available
+              const passengerName = service.passenger_id ? 
+                parsedData.passengers?.find((p: any) => p.id === service.passenger_id)?.firstName || 'Passenger' : 
+                'All Passengers';
+              
+              // Extract segment information if available
+              const segmentInfo = service.segment_id ? 
+                `for ${service.segment_id.includes('outbound') ? 'Outbound' : 'Return'} Flight` : 
+                '';
+              
+              // Extract detailed information based on service type
+              let details = '';
+              if (serviceType === 'bags') {
+                details = `${service.quantity || 1}x ${service.weight || ''} ${service.unit || 'kg'} bag`;
+              } else if (serviceType === 'seats') {
+                details = `Seat ${service.seat_designation || ''} ${service.cabin_class || 'Economy'}`;
+              } else {
+                details = service.description || '';
+              }
+              
+              return {
+                type: serviceType,
+                title: serviceTitle,
+                amount: serviceAmount,
+                selected: true,
+                passenger: passengerName,
+                segment: segmentInfo,
+                details: details,
+                originalService: service
+              };
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing ancillary selection:', e);
+        }
+      }
+      
+      // 3. Finally try to extract from payment payload if available
+      if (ancillaryRows.length === 0 && parsedData.paymentPayload) {
+        try {
+          const payload = typeof parsedData.paymentPayload === 'string'
+            ? JSON.parse(parsedData.paymentPayload)
+            : parsedData.paymentPayload;
+            
+          console.log('Checking payment payload for ancillary data:', payload);
+          
+          if (payload.ancillaryPayment) {
+            // Create a generic entry based on the ancillary payment
+            ancillaryRows = [{
+              type: 'ancillary',
+              title: 'Selected Extras',
+              amount: parseFloat(payload.ancillaryPayment.amount || '0'),
+              selected: true,
+              passenger: 'All Passengers',
+              segment: '',
+              details: 'Additional services selected during booking',
+              originalPayload: payload.ancillaryPayment
+            }];
+          }
+        } catch (e) {
+          console.error('Error parsing payment payload:', e);
+        }
+      }
+      
+      // If we still have no ancillary rows but we know there's an ancillary total,
+      // create a generic entry
+      if (ancillaryRows.length === 0 && ancillaryTotal > 0) {
+        ancillaryRows = [{
+          type: 'ancillary',
+          title: 'Selected Extras',
+          amount: ancillaryTotal,
+          selected: true,
+          passenger: 'All Passengers',
+          segment: '',
+          details: 'Additional services selected during booking'
+        }];
+      }
+      
+      // Log the final ancillary rows
+      console.log(`Found ${ancillaryRows.length} ancillary items:`, ancillaryRows);
+      
+      // Create initial priceInfo
+      const initialPriceInfo: PricingBreakdown = {
+        passengers,
+        base: baseAmount,
+        markupPerPassenger,
+        servicePerPassenger,
+        markupTotal: markupPerPassenger * passengers,
+        serviceTotal: servicePerPassenger * passengers,
+        total: totalAmount,
+        currency: parsedData.trip?.price?.currency || 'EUR',
+        ancillaryTotal: ancillaryTotal,
+        ancillaryRows: ancillaryRows
+      };
+      
+      console.log('Setting initial priceInfo:', initialPriceInfo);
+      setPriceInfo(initialPriceInfo);
+      
+      // Fetch ancillary details if we have an offer ID
+      if (parsedData.trip?.offerId || parsedData.trip?.id) {
+        const offerId = parsedData.trip?.offerId || parsedData.trip?.id;
+        console.log('Fetching ancillary details for offer ID:', offerId);
+        fetchAncillaryDetails(offerId);
+      } else {
+        console.warn('No offer ID found in booking data, cannot fetch ancillary details');
+      }
+      
       setLoading(false);
     } catch (err) {
       console.error('Error loading booking data:', err);
@@ -844,7 +1329,7 @@ function PaymentContent() {
     }
   }, [router]);
     // Fallback for amount and currency if not provided
-    const displayAmount = priceInfo?.total || parseFloat(amount || bookingData?.trip?.price?.total || '0').toFixed(2);
+    const displayAmount = priceInfo?.total.toFixed(2) || parseFloat(amount || bookingData?.trip?.price?.total || '0').toFixed(2);
     const displayCurrency = currency || bookingData?.trip?.price?.currency || '€';
 
   if (loading) {
@@ -909,7 +1394,7 @@ function PaymentContent() {
               <div className="border-t border-orange-200 pt-7 mt-7">
                 <h3 className="text-xl font-semibold text-[#5D4037] mb-5">Passenger Details</h3>
                 <div className="space-y-5">
-                  {bookingData.passengers.map((passenger, index) => (
+                  {bookingData?.passengers?.map((passenger, index) => (
                     <div key={index} className="bg-amber-50 p-5 rounded-xl shadow-sm border border-amber-200">
                       <div className="font-bold text-gray-900 text-lg mb-2">
                         {passenger.title} {passenger.firstName} {passenger.lastName}
@@ -991,8 +1476,8 @@ function PaymentContent() {
             </div>
 
             {/* Price Summary Card */}
-            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-                <h2 className="text-2xl font-bold  mb-6 text-[#5D4037]">Price Details</h2>
+            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 mt-4">
+                <h2 className="text-2xl font-bold text-[#5D4037]">Price Details</h2>
                 <div className="w-full space-y-4 text-lg">
                     {/* Flight Price */}
                     <div className="flex justify-between items-center pb-2 border-b border-gray-100">
@@ -1017,34 +1502,95 @@ function PaymentContent() {
                     {/* Markup Fee */}
                     <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                         <span className="text-gray-600">
-                            Markup Fee ({bookingData?.trip?.price?.breakdown?.totalPassengers} × {displayCurrency}
-                            {parseFloat(bookingData?.trip?.price?.breakdown?.markup || '1.00').toFixed(2)})
+                            Markup Fee ({priceInfo?.passengers || bookingData?.passengers?.length || 1} × {displayCurrency}
+                            {(priceInfo?.markupPerPassenger || 1).toFixed(2)})
                         </span>
                         <span className="font-semibold text-gray-800">
                             {displayCurrency}
-                            {((bookingData?.trip?.price?.breakdown?.markup || 1) * bookingData?.trip?.price?.breakdown?.totalPassengers).toFixed(2)}
+                            {(priceInfo?.markupTotal || (bookingData?.passengers?.length || 1)).toFixed(2)}
                         </span>
                     </div>
 
                     {/* Service Fee */}
                     <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                         <span className="text-gray-600">
-                            Service Fee ({bookingData?.trip?.price?.breakdown?.totalPassengers} × {displayCurrency}
-                            {parseFloat(bookingData?.trip?.price?.breakdown?.serviceFee || '2.00').toFixed(2)})
+                            Service Fee ({priceInfo?.passengers || bookingData?.passengers?.length || 1} × {displayCurrency}
+                            {(priceInfo?.servicePerPassenger || 2).toFixed(2)})
                         </span>
                         <span className="font-semibold text-gray-800">
                             {displayCurrency}
-                            {(parseFloat(bookingData?.trip?.price?.breakdown?.serviceFee || '2.00') * bookingData?.trip?.price?.breakdown?.totalPassengers).toFixed(2)}
+                            {(priceInfo?.serviceTotal || ((bookingData?.passengers?.length || 1) * 2)).toFixed(2)}
                         </span>
                     </div>
+                    
+                    {/* Ancillary Options */}
+                    {priceInfo?.ancillaryRows && priceInfo.ancillaryRows.length > 0 && (
+                      <div className="mt-3 mb-3">
+                        <div className="text-gray-700 font-medium mb-2">Selected Extras:</div>
+                        {priceInfo.ancillaryRows.map((item: any, index: number) => (
+                          <div key={index} className="flex flex-col py-2 border-b border-gray-100 last:border-b-0">
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-700 font-medium flex items-center">
+                                <span className="w-2 h-2 rounded-full bg-orange-400 mr-2"></span>
+                                {item.title || item.type || 'Extra'}
+                              </span>
+                              <span className="font-semibold text-gray-800">
+                                {displayCurrency} {item.amount.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            {/* Show detailed information */}
+                            <div className="ml-4 text-sm text-gray-500">
+                              {item.details && (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-orange-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                                    </svg>
+                                  </span>
+                                  <span>{item.details}</span>
+                                </div>
+                              )}
+                              
+                              {/* Show passenger information */}
+                              {(item.passengerName || item.passenger) && (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-blue-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                    </svg>
+                                  </span>
+                                  <span>{item.passengerName || item.passenger}</span>
+                                </div>
+                              )}
+                              
+                              {/* Show segment information */}
+                              {(item.segmentInfo || item.segment) && (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-green-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                    </svg>
+                                  </span>
+                                  <span>{item.segmentInfo || item.segment}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Total Summary */}
                     <div className="pt-4 flex justify-between font-bold text-xl">
                         <span>Total Amount</span>
-                        <span className="text-[#FFB800]">{displayCurrency} {displayAmount}</span>
+                        <span className="text-[#FFB800]">
+                            {displayCurrency} {
+                                serverAmount?.toFixed(2)
+                            }
+                        </span>
                     </div>
                 </div>
-
                 <div className="text-sm text-gray-500 mt-4 text-right">
                     Includes all taxes and fees
                 </div>
@@ -1090,8 +1636,13 @@ function PaymentContent() {
                 loading={false}
                 clientToken={clientToken}
                 error={null}
-                amount={priceInfo?.total || parseFloat(amount || bookingData?.trip?.price?.total || '0')}
-                currency={bookingData.trip.price?.currency || 'EUR'}
+                onPaymentError={(error: any) => {
+                  console.error('Payment error:', error);
+                  const errorMessage = typeof error === 'string' ? error : (error && error.message) || 'Unknown error';
+                  setError(`Payment failed: ${errorMessage}`);
+                }}
+                amount={serverAmount !== null ? serverAmount : parseFloat(amount || '0')}
+                currency={serverCurrency || bookingData.trip?.price?.currency || 'EUR'}
                 onPaymentSuccess={async (paymentIntentId, paymentResult) => {
                   console.log('Payment successful, paymentIntentId:', paymentIntentId);
                   console.log('Payment result:', paymentResult);
@@ -1114,22 +1665,37 @@ function PaymentContent() {
                         'Content-Type': 'application/json',
                       },
                       body: JSON.stringify({
-                        paymentIntentId,
-                        paymentMethod: 'card',
-                        amount: bookingData.trip.price?.total || 0,
-                        currency: bookingData.trip.price?.currency || 'EUR',
-                        offerId: bookingData.trip.id,
-                        // Include all offer IDs for roundtrip bookings
-                        offerIds: bookingData.trip.returnOfferId 
-                          ? [bookingData.trip.id, bookingData.trip.returnOfferId]
-                          : [bookingData.trip.id],
-                        passengers: bookingData.passengers,
-                        metadata: {
-                          ...(bookingData.metadata || {}),
-                          source: 'web-booking',
-                          tripType: bookingData.searchParams.tripType,
+                        offerId: bookingData.trip.id || bookingData.trip.offer_id,
+                        paymentIntentId: paymentIntentId,
+                        paymentMethod: paymentResult?.paymentMethod || {
+                          type: 'card',
+                          ...paymentResult
                         },
-                        isConfirming: true,
+                        amount: serverAmount !== null ? serverAmount : (
+                          parseFloat(bookingData?.trip?.price?.total || '0') + 
+                          (priceInfo?.markupTotal || 0) + 
+                          (priceInfo?.serviceTotal || 0) + 
+                          (priceInfo?.ancillaryTotal || 0)
+                        ),
+                        currency: serverCurrency || bookingData?.trip?.price?.currency || 'EUR',
+                        passengers: bookingData.passengers.map(p => ({
+                          id: p.id,
+                          title: p.title,
+                          firstName: p.firstName,
+                          lastName: p.lastName,
+                          email: p.email,
+                          phone: p.phone,
+                          dateOfBirth: p.dateOfBirth,
+                          gender: p.gender,
+                          documentNumber: p.documentNumber,
+                          documentIssuingCountryCode: p.documentIssuingCountryCode,
+                          documentExpiryDate: p.documentExpiryDate,
+                          documentNationality: p.documentNationality
+                        })),
+                        metadata: {
+                          ...bookingData.metadata,
+                          source: 'web-payment'
+                        }
                       }),
                     });
 
@@ -1173,6 +1739,36 @@ function PaymentContent() {
 
                     // Prepare complete booking data for confirmation page
                     const bookingReference = result.bookingReference || result.order?.booking_reference || `BOOK-${Date.now()}`;
+                    
+                    // Format ancillary data for confirmation page
+                    const ancillaryBreakdownArray = priceInfo?.ancillaryRows && priceInfo.ancillaryRows.length > 0 
+                      ? priceInfo.ancillaryRows.map((item: any) => {
+                          // Determine the type based on the item's type or title
+                          let type = item.type || 'extra';
+                          if (item.title?.toLowerCase().includes('bag')) type = 'bags';
+                          else if (item.title?.toLowerCase().includes('seat')) type = 'seats';
+                          else if (item.title?.toLowerCase().includes('cancel')) type = 'cancel_for_any_reason';
+                          
+                          // Format the title for display
+                          const title = item.title || (type ? type.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase()) : 'Extra');
+                          
+                          // Create details string
+                          let details = item.details || '';
+                          if (item.segmentInfo && !details.includes(item.segmentInfo)) {
+                            details = details ? `${details} • ${item.segmentInfo}` : item.segmentInfo;
+                          }
+                          
+                          return {
+                            type,
+                            title,
+                            details,
+                            amount: parseFloat(item.amount || 0),
+                            passenger: item.passengerId || '',
+                            segmentInfo: item.segmentInfo || ''
+                          };
+                        })
+                      : [];
+                    
                     const completeBookingData = {
                       ...bookingData,
                       payment: {
@@ -1181,7 +1777,6 @@ function PaymentContent() {
                         currency: result.order?.total_currency || bookingData.trip.price?.currency || 'EUR',
                         paymentMethod: paymentResult?.paymentMethod || 'card',
                         lastFour: paymentResult?.lastFour || '••••',
-                        brand: paymentResult?.brand || 'card',
                         timestamp: new Date().toISOString(),
                         paymentIntentId: paymentIntentId,
                       },
@@ -1189,6 +1784,9 @@ function PaymentContent() {
                       bookingReference: bookingReference,
                       status: result.order?.status || 'confirmed',
                       createdAt: new Date().toISOString(),
+                      // Add ancillary data
+                      ancillaryBreakdown: JSON.stringify(ancillaryBreakdownArray),
+                      ancillaryAmount: priceInfo?.ancillaryTotal || 0,
                       order: {
                         ...(result.order || {}),
                         booking_reference: bookingReference,
@@ -1217,7 +1815,7 @@ function PaymentContent() {
                       bookingId: completeBookingData.bookingId,
                       ref: completeBookingData.bookingReference,
                       status: 'succeeded',
-                      paymentStatus: 'paid',
+                      paymentStatus: completeBookingData.payment.status,
                       amount: completeBookingData.payment.amount.toString(),
                       currency: completeBookingData.payment.currency,
                     }).toString();
@@ -1255,11 +1853,8 @@ function PaymentContent() {
                     }
                   }
                 }}
-                onPaymentError={(errorMessage) => {
-                  console.error('Payment error:', errorMessage);
-                  setError(errorMessage);
-                }}
-                paymentIntentId={paymentIntentId}
+                // onPaymentError is already defined above
+                paymentIntentId={paymentIntentId || ''}
               />
               </div>
               ) : (

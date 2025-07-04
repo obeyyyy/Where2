@@ -4,6 +4,7 @@ import { TripCartProvider } from "./components/TripCartContext";
 import Navbar from "./components/Navbar";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
+
 export const metadata: Metadata = {
   title: "Where2 travels",
   description: "Where2 travels and trips",
@@ -27,9 +28,11 @@ export default function RootLayout({
         {/* TripCartProvider gives cart context to the whole app */}
         
         <TripCartProvider>
-          <Navbar />
-          <SpeedInsights />
-          {children}
+          
+            <Navbar />
+            <SpeedInsights />
+            {children}
+          
         </TripCartProvider>
         
       </body>

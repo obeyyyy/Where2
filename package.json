@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@duffel/api": "^4.12.2",
-    "@duffel/components": "^3.8.5",
+    "@duffel/components": "^3.9.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@headlessui/react": "^2.2.4",

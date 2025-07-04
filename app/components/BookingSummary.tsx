@@ -12,14 +12,25 @@ interface AirportInfo {
   name: string;
 }
 
+interface AncillaryItem {
+  title?: string;
+  type?: string;
+  details?: string;
+  amount?: number;
+  quantity?: number;
+  selected?: boolean;
+}
+
 interface BookingSummaryProps {
   offerId: string;
   passengerData: PassengerInfo[];
   originAirport: AirportInfo;
   destinationAirport: AirportInfo;
+  ancillaryItems?: AncillaryItem[];
+  currency?: string;
 }
 
-const BookingSummary: React.FC<BookingSummaryProps> = ({ offerId, passengerData, originAirport, destinationAirport }) => {
+const BookingSummary: React.FC<BookingSummaryProps> = ({ offerId, passengerData, originAirport, destinationAirport, ancillaryItems = [], currency = 'EUR' }) => {
   return (
     <div className="mb-6">
       <div className="mb-4 p-4 border rounded-xl bg-gray-50">
@@ -46,6 +57,28 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ offerId, passengerData,
           </li>
         ))}
       </ul>
+      
+      {/* Ancillary Options */}
+      {ancillaryItems && ancillaryItems.length > 0 && (
+        <div className="mt-4">
+          <div className="mb-2 font-semibold text-gray-700">Selected Ancillary Options:</div>
+          <ul className="space-y-2">
+            {ancillaryItems.map((item, idx) => (
+              <li key={idx} className="p-3 border rounded-xl bg-white shadow-sm">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="font-medium">{item.title || item.type || 'Extra Service'}</div>
+                    <div className="text-sm text-gray-600">{item.details || (item.quantity ? `Quantity: ${item.quantity}` : '')}</div>
+                  </div>
+                  <div className="text-sm font-semibold">
+                    {typeof item.amount === 'number' ? `${currency} ${item.amount.toFixed(2)}` : ''}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

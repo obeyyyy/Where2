@@ -27,7 +27,8 @@ import {
   FiDollarSign,
   FiX,
   FiCheck,
-  FiSmartphone
+  FiSmartphone,
+  FiPackage
 } from 'react-icons/fi';
 
 const AnimatedStepCharacter = dynamic(
@@ -157,12 +158,25 @@ interface BookingData {
   totalAmount?: string | number;
   amount?: string | number;
   currency?: string;
-  payment?: PaymentInfo;
-  passengers?: PassengerInfo[];
-  segments?: Segment[];
+  payment?: {
+    status: string;
+    amount: any;
+    currency: any;
+    paymentMethod: any;
+    lastFour?: string;
+    paymentIntentId?: string;
+    timestamp?: string;
+  };
+  passengers?: any[];
+  segments?: any[];
+  slices?: any[];
   order?: any;
   trip?: any;
   metadata?: Record<string, any>;
+  // Ancillary related properties
+  ancillarySelection?: Record<string, any>;
+  ancillaryBreakdown?: string; // JSON string of ancillary items
+  ancillaryAmount?: number; // Total amount for all ancillaries
 }
 
 const formatCurrency = (amount?: number | string, currency: string = 'EUR') => {
@@ -219,6 +233,44 @@ function ConfirmationPage() {
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bookingReference, setBookingReference] = useState<string | null>(null);
+  const [fetchingReference, setFetchingReference] = useState(false);
+
+  // Function to fetch booking reference using order ID
+  const fetchBookingReference = async (orderId: string) => {
+    if (!orderId || fetchingReference) return;
+    
+    try {
+      setFetchingReference(true);
+      const response = await fetch(`/api/orders/${orderId}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.bookingReference) {
+          setBookingReference(data.bookingReference);
+          // Update the booking object with the reference
+          setBooking(prevBooking => {
+            if (!prevBooking) return null;
+            return {
+              ...prevBooking,
+              bookingReference: data.bookingReference
+            };
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching booking reference:', err);
+    } finally {
+      setFetchingReference(false);
+    }
+  };
+
+  // Effect to fetch booking reference if needed
+  useEffect(() => {
+    if (booking?.id && !booking.bookingReference && !bookingReference) {
+      fetchBookingReference(booking.id);
+    }
+  }, [booking]);
 
   useEffect(() => {
     const loadBookingData = async () => {
@@ -521,14 +573,16 @@ function ConfirmationPage() {
             </h1>
             <div className="space-y-2">
               <div className="space-y-2">
-                <p className="text-gray-600 text-base sm:text-lg">
-                  Order #: <span className="font-mono font-bold text-gray-900">{booking.bookingId || booking.id}</span>
-                </p>
-                {booking.bookingReference && booking.bookingReference !== (booking.bookingId || booking.id) && (
-                  <p className="text-sm text-gray-500">
-                    Booking Ref: {booking.bookingReference}
+                {/* Display booking reference prominently if available */}
+                {booking.bookingReference && (
+                  <p className="text-gray-600 text-base sm:text-lg mb-2">
+                    <span className="font-semibold">Booking Reference:</span> <span className="font-mono font-bold text-gray-900 bg-yellow-100 px-2 py-1 rounded">{booking.bookingReference}</span>
+                    <span className="ml-2 text-sm text-gray-500">(Use this to retrieve your booking)</span>
                   </p>
                 )}
+                <p className="text-gray-600 text-base sm:text-lg">
+                  Order #: <span className="font-mono font-medium text-gray-700">{booking.bookingId || booking.id}</span>
+                </p>
                 {booking.status === 'succeeded' && booking.payment?.paymentIntentId && (
                   <p className="text-xs text-gray-500 font-mono">
                     Payment ID: {booking.payment.paymentIntentId}
@@ -580,6 +634,85 @@ function ConfirmationPage() {
               </div>
             </div>
           </div>
+          
+          {/* Ancillary Details */}
+          {booking.ancillarySelection && Object.keys(booking.ancillarySelection).length > 0 && (
+            <div className="border-t border-gray-200 p-6">
+              <h3 className="text-md font-medium text-gray-900 mb-4">Selected Extras</h3>
+              <div className="space-y-2">
+                {booking.ancillaryBreakdown ? (
+                  // If we have a detailed breakdown, show it
+                  JSON.parse(booking.ancillaryBreakdown).map((item: any, index: number) => {
+                    // Determine icon based on ancillary type
+                    let icon = <span className="w-2 h-2 rounded-full bg-orange-400 mr-2"></span>;
+                    if (item.type === 'bags' || item.type === 'bag') {
+                      icon = <FiBriefcase className="text-orange-500 mr-2" />;
+                    } else if (item.type === 'seats' || item.type === 'seat') {
+                      icon = <FiMapPin className="text-orange-500 mr-2" />;
+                    } else if (item.type === 'cancel_for_any_reason' || item.type === 'cancel') {
+                      icon = <FiCheckCircle className="text-orange-500 mr-2" />;
+                    }
+                    
+                    return (
+                      <div key={`ancillary-${index}`} className="flex flex-col py-2 border-b border-gray-100 last:border-b-0">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-700 font-medium flex items-center">
+                            {icon}
+                            {item.title || item.type?.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase()) || 'Extra'}
+                          </span>
+                          <span className="font-semibold text-gray-800">
+                            {formatAmount(item.amount, booking.currency)}
+                          </span>
+                        </div>
+                        {item.details && (
+                          <div className="ml-6 text-sm text-gray-500 mt-1">
+                            {item.details}
+                            {item.passenger && (
+                              <span className="ml-1">
+                                • Passenger: {booking.passengers?.find((p: any) => p.id === item.passenger)?.given_name || 'N/A'}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  // If we don't have a detailed breakdown, show what we have
+                  Object.entries(booking.ancillarySelection || {}).map(([key, value]: [string, any], index: number) => {
+                    // Determine icon based on key name
+                    let icon = <span className="w-2 h-2 rounded-full bg-orange-400 mr-2"></span>;
+                    if (key.includes('bag')) {
+                      icon = <FiBriefcase className="text-orange-500 mr-2" />;
+                    } else if (key.includes('seat')) {
+                      icon = <FiMapPin className="text-orange-500 mr-2" />;
+                    } else if (key.includes('cancel')) {
+                      icon = <FiX className="text-orange-500 mr-2" />;
+                    }
+                    
+                    return (
+                      <div key={`ancillary-${index}`} className="flex justify-between items-center py-1 border-b border-gray-100 last:border-b-0">
+                        <span className="text-gray-600 flex items-center">
+                          {icon}
+                          {key.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase())}
+                        </span>
+                        <span className="font-semibold text-gray-800">
+                          {typeof value === 'object' && value.amount ? formatAmount(value.amount, booking.currency) : 'Selected'}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+                
+                {booking.ancillaryAmount && (
+                  <div className="flex justify-between items-center pt-2 font-medium">
+                    <span>Total Extras</span>
+                    <span>{formatAmount(booking.ancillaryAmount, booking.currency)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           
           {/* Payment Details */}
           {booking.payment && (
@@ -872,6 +1005,137 @@ function ConfirmationPage() {
                   {formatAmount((booking.passengers?.length || 1) * 1, booking.currency)}
                 </span>
               </div>
+              
+              {/* Debug Ancillary Data */}
+              <div className="hidden">
+                {(() => {
+                  console.log('Booking data for ancillaries:', {
+                    hasAncillaryBreakdown: !!booking.ancillaryBreakdown,
+                    ancillaryBreakdownType: typeof booking.ancillaryBreakdown,
+                    hasAncillarySelection: !!booking.ancillarySelection,
+                    ancillarySelectionType: typeof booking.ancillarySelection,
+                    rawAncillaryBreakdown: booking.ancillaryBreakdown,
+                    rawAncillarySelection: booking.ancillarySelection
+                  });
+                  return null;
+                })()}
+              </div>
+              
+              {/* Ancillary Services */}
+              {(booking.ancillaryBreakdown || booking.ancillarySelection || booking.order?.ancillaries) ? (
+                <>
+                  <div className="border-t border-gray-200 my-4"></div>
+                  <div className="mb-2">
+                    <span className="text-gray-600 font-medium">Selected Extras</span>
+                  </div>
+                  
+                  {/* Parse and display ancillary breakdown */}
+                  {(() => {
+                    let ancillaryItems = [];
+                    
+                    // First try to parse ancillaryBreakdown if it exists
+                    if (booking.ancillaryBreakdown) {
+                      try {
+                        // Handle both string and object formats
+                        const breakdown = typeof booking.ancillaryBreakdown === 'string' 
+                          ? JSON.parse(booking.ancillaryBreakdown)
+                          : booking.ancillaryBreakdown;
+                          
+                        console.log('Parsed ancillary breakdown:', breakdown);
+                        
+                        if (Array.isArray(breakdown) && breakdown.length > 0) {
+                          ancillaryItems = breakdown;
+                        }
+                      } catch (e) {
+                        console.error('Error parsing ancillary breakdown:', e);
+                      }
+                    }
+                    // Then try ancillarySelection if breakdown parsing failed
+                    else if (booking.ancillarySelection) {
+                      try {
+                        // Handle both string and object formats
+                        const selection = typeof booking.ancillarySelection === 'string'
+                          ? JSON.parse(booking.ancillarySelection)
+                          : booking.ancillarySelection;
+                          
+                        console.log('Using ancillary selection:', selection);
+                        
+                        if (selection.services && Array.isArray(selection.services)) {
+                          ancillaryItems = selection.services.map((service: any) => ({
+                            title: service.title || service.name || 'Extra Service',
+                            type: service.type || 'ancillary',
+                            amount: parseFloat(service.amount || service.total_amount || '0'),
+                            passenger: service.passenger_id || service.passenger_ids?.[0],
+                            details: service.description || ''
+                          }));
+                        }
+                      } catch (e) {
+                        console.error('Error parsing ancillary selection:', e);
+                      }
+                    }
+                    // Finally try order.ancillaries if available
+                    else if (booking.order?.ancillaries) {
+                      try {
+                        console.log('Using order.ancillaries:', booking.order.ancillaries);
+                        
+                        // Handle both array and object formats
+                        const ancillaries = Array.isArray(booking.order.ancillaries)
+                          ? booking.order.ancillaries
+                          : [booking.order.ancillaries];
+                          
+                        ancillaryItems = ancillaries.map((item: any) => ({
+                          title: item.title || item.name || item.type || 'Extra Service',
+                          type: item.type || 'ancillary',
+                          amount: parseFloat(item.amount || item.price || '0'),
+                          passenger: item.passenger_id || item.passenger,
+                          details: item.description || ''
+                        }));
+                      } catch (e) {
+                        console.error('Error parsing order.ancillaries:', e);
+                      }
+                    }
+                    
+                    // If we have items to display, render them
+                    if (ancillaryItems.length > 0) {
+                      return ancillaryItems.map((item: any, index: number) => {
+                        // Determine icon based on ancillary type
+                        let IconComponent = FiPackage;
+                        if (item.type === 'bags' || item.type === 'bag' || (item.title && item.title.toLowerCase().includes('bag'))) {
+                          IconComponent = FiBriefcase;
+                        } else if (item.type === 'seats' || item.type === 'seat' || (item.title && item.title.toLowerCase().includes('seat'))) {
+                          IconComponent = FiMapPin;
+                        } else if (item.type === 'cancel_for_any_reason' || item.type === 'cancel' || (item.title && item.title.toLowerCase().includes('cancel'))) {
+                          IconComponent = FiCheckCircle;
+                        }
+                        
+                        return (
+                          <div key={`ancillary-${index}`} className="flex justify-between items-center py-2">
+                            <span className="text-gray-600 flex items-center">
+                              <IconComponent className="text-orange-500 mr-2" />
+                              {item.title || item.type?.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase()) || 'Extra'}
+                              {item.passenger && booking.passengers && (
+                                <span className="ml-1 text-xs text-gray-500">
+                                  • {booking.passengers.find((p: any) => p.id === item.passenger)?.given_name || 'Passenger'}
+                                </span>
+                              )}
+                            </span>
+                            <span className="font-semibold text-gray-800">
+                              {formatAmount(item.amount, booking.currency || 'EUR')}
+                            </span>
+                          </div>
+                        );
+                      });
+                    }
+                    
+                    // If no items found but we know there are ancillaries, show a generic message
+                    return (
+                      <div className="py-2 text-gray-600">
+                        Selected extras included in total price
+                      </div>
+                    );
+                  })()}
+                </>
+              ) : null}
               
               {/* Divider */}
               <div className="border-t border-gray-200 my-4"></div>

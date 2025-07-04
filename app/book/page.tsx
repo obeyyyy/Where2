@@ -13,11 +13,14 @@ const countriesData = require('world-countries/countries.json');
 import { FlightItineraryCard } from "@/app/components/FlightItineraryCard";
 import { computePricing, PricingBreakdown } from "@/lib/pricing";
 import PassengerForm, { PassengerInfo } from "@/app/components/PassengerForm";
+import DuffelAncillariesComponent from "@/app/components/DuffelAncillariesComponent";
+import { AncillaryState } from "@/types/Ancillary";
 
 
 // Extend the PassengerInfo interface with additional properties
 interface BookingPassengerInfo extends PassengerInfo {
   // Personal Information
+  id?: string; // Added for Duffel ancillaries component
   type: 'adult' | 'child' | 'infant_without_seat' | 'infant_with_seat';
   title: string;
   firstName: string;
@@ -111,6 +114,8 @@ const BookingPage: React.FC = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [ancillaryState, setAncillaryState] = useState<AncillaryState>({ rows: [], total: 0, currency: 'EUR' });
+  const [showAncillaries, setShowAncillaries] = useState<boolean>(false);
 
   // Memoize price calculations
   const priceInfo = useMemo(() => {
@@ -123,15 +128,30 @@ const BookingPage: React.FC = () => {
       serviceTotal: 0,
       total: 0,
       currency: 'EUR',
+      ancillaryTotal: 0,
+      ancillaryRows: [],
     };
 
     const basePerPassenger = parseFloat(bookingData.trip.price.total.toString());
-    return computePricing({
+    const result = computePricing({
       baseAmount: basePerPassenger,
       passengers: passengerData.length || 1,
       currency: bookingData.trip.price.currency || bookingData.trip.price.breakdown?.currency || 'EUR',
+      ancillaryTotal: ancillaryState.total,
     });
-  }, [bookingData?.trip, passengerData.length]); // Only recalculate when these change
+    
+    // Add ancillary rows to price info
+    result.ancillaryRows = ancillaryState.rows;
+    
+    console.log('🔍 DEBUG - Price calculation with ancillaries:', {
+      baseAmount: basePerPassenger,
+      passengers: passengerData.length || 1,
+      ancillaryTotal: ancillaryState.total,
+      result
+    });
+    
+    return result;
+  }, [bookingData?.trip, passengerData.length, ancillaryState]);  // Track the entire ancillaryState object // Recalculate when ancillaries change
 
   // Get list of all countries from world-countries package
   const countries = useMemo(() => {
@@ -316,16 +336,32 @@ const BookingPage: React.FC = () => {
           
           // Build passenger array matching traveler count
           const travelerCount = Number(savedData.searchParams?.travelers) || 1;
+          console.log('🔍 DEBUG - Creating passenger forms for', travelerCount, 'travelers');
+          
+          // Always create the exact number of passengers based on traveler count
           let passengers: BookingPassengerInfo[] = [];
+          
+          // If we have existing passenger data, use it up to the traveler count
           if (savedData.passengers && savedData.passengers.length > 0) {
-            passengers = savedData.passengers.slice(0, travelerCount).map((p: any) => ({
+            passengers = savedData.passengers.slice(0, travelerCount).map((p: any, index: number) => ({
               ...defaultPassenger,
-              ...p
+              ...p,
+              // Ensure each passenger has a unique, stable ID
+              id: p.id || `passenger_${index + 1}`
             }));
           }
+          
+          // Add additional default passengers if needed to match traveler count
           while (passengers.length < travelerCount) {
-            passengers.push({ ...defaultPassenger });
+            const index = passengers.length;
+            passengers.push({ 
+              ...defaultPassenger,
+              id: `passenger_${index + 1}` // Ensure each passenger has a unique, stable ID
+            });
           }
+          
+          console.log('🔍 DEBUG - Created', passengers.length, 'passenger forms');
+          console.log('🔍 DEBUG - Passenger IDs:', passengers.map(p => p.id));
           setPassengerData(passengers);
           
           // Save the initialized data
@@ -343,6 +379,57 @@ const BookingPage: React.FC = () => {
 
     initializeBooking();
   }, []);
+
+  // Monitor ancillary state changes and force UI updates
+  useEffect(() => {
+    console.log('🔍 DEBUG - Ancillary state changed:', {
+      rowCount: ancillaryState.rows.length,
+      total: ancillaryState.total,
+      currency: ancillaryState.currency
+    });
+    
+    // Force a re-render by setting a temporary state
+    if (ancillaryState.rows.length > 0) {
+      setShowAncillaries(true);
+      
+      // Force re-render of the booking summary
+      const forceUpdate = setTimeout(() => {
+        console.log('🔍 DEBUG - Forcing booking summary update');
+        // This will trigger a re-render without changing any actual state
+        setAncillaryState(prevState => ({
+          ...prevState,
+          rows: [...prevState.rows]
+        }));
+      }, 50);
+      
+      return () => clearTimeout(forceUpdate);
+    }
+  }, [ancillaryState.rows.length, ancillaryState.total]);
+
+  // Validate passenger data before submission
+  const validatePassengerData = (passengers: BookingPassengerInfo[]): string | null => {
+    if (passengers.length === 0) {
+      return 'Please add at least one passenger.';
+    }
+    
+    for (let i = 0; i < passengers.length; i++) {
+      const p = passengers[i];
+      if (!p.firstName || !p.lastName) {
+        return `Please enter first and last name for passenger ${i + 1}.`;
+      }
+      if (!p.dateOfBirth) {
+        return `Please enter date of birth for passenger ${i + 1}.`;
+      }
+      if (!p.email) {
+        return `Please enter email for passenger ${i + 1}.`;
+      }
+      if (!p.phone) {
+        return `Please enter phone number for passenger ${i + 1}.`;
+      }
+    }
+    
+    return null; // No validation errors
+  };
 
   // Handle passenger info changes
   const handlePassengerChange = (index: number, field: keyof BookingPassengerInfo, value: any) => {
@@ -561,14 +648,66 @@ const BookingPage: React.FC = () => {
         }
       }
 
+      // Validate passenger data
+      const validationError = validatePassengerData(passengerData);
+      if (validationError) {
+        setError(validationError);
+        setSubmitting(false);
+        return;
+      }
+
       // Save booking data to session storage
       saveBookingData();
       
-      // Navigate to payment page with booking data
-      router.push(`/book/payment?bookingData=${encodeURIComponent(JSON.stringify(bookingData))}`);
-    } catch (err: any) {
-      setError(err.message || 'Failed to complete booking. Please try again.');
-    } finally {
+      // Save ancillary state to session storage for payment page
+      // Following Duffel's guide for adding extra bags
+      if (ancillaryState.rows.length > 0) {
+        // Calculate pricing breakdown for display in payment page
+        const priceInfo = computePricing({
+          baseAmount: parseFloat(bookingData?.trip?.price?.total || '0'),
+          passengers: passengerData.length,
+          currency: bookingData?.trip?.price?.currency || 'EUR',
+          ancillaryTotal: ancillaryState.total
+        });
+        
+        const paymentPayload = {
+          ancillarySelection: {
+            services: ancillaryState.rows.map(row => ({
+              id: row.id,
+              title: row.title,
+              details: row.details,
+              amount: row.amount,
+              currency: row.currency,
+              passenger_id: row.passengerId,
+              passengerId: row.passengerId,
+              passengerName: row.passengerName,
+              segment_ids: row.segmentIds,
+              segmentIds: row.segmentIds,
+              type: row.type || 'baggage',
+              quantity: row.quantity || 1
+            })),
+            total: ancillaryState.total,
+            currency: ancillaryState.currency
+          },
+          // Include a detailed ancillary breakdown as JSON string
+          ancillaryBreakdown: JSON.stringify(ancillaryState.rows),
+          // Include pricing information for payment page
+          priceInfo: {
+            ...priceInfo,
+            ancillaryTotal: ancillaryState.total,
+            total: priceInfo.total
+          }
+        };
+        
+        sessionStorage.setItem('payment_payload', JSON.stringify(paymentPayload));
+        console.log('Saved ancillary selection to payment_payload:', paymentPayload);
+      }
+
+      // Navigate to payment page
+      router.push('/book/payment');
+    } catch (error) {
+      console.error('Error submitting booking:', error);
+      setError('An error occurred while processing your booking. Please try again.');
       setSubmitting(false);
     }
   };
@@ -753,6 +892,102 @@ const BookingPage: React.FC = () => {
                 </div>
               )}
 
+              {/* Ancillaries Section */}
+              {bookingData?.trip?.id && (
+                <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">Additional Services</h2>
+                  <p className="text-gray-600 mb-4">Customize your journey with extra services like baggage, seat selection, and more.</p>
+                  
+                  {passengerData.length > 0 ? (
+                    <>
+                      <div className="mb-4 p-2 bg-blue-50 rounded">
+                        <p className="text-sm text-blue-700">Debug: {passengerData.length} passenger(s)</p>
+                      </div>
+                      <DuffelAncillariesComponent
+                        offerId={bookingData.trip.id}
+                        passengers={passengerData.map((p, index) => {
+                          // Ensure consistent passenger IDs that match the offer
+                          // Use index-based IDs that are stable and predictable
+                          const passengerId = p.id || `passenger_${index + 1}`;
+                          
+                          console.log(`🔍 DEBUG - Mapping passenger ${index}:`, {
+                            id: passengerId,
+                            name: `${p.firstName} ${p.lastName}`,
+                            type: p.type
+                          });
+                          
+                          // Store the ID back in the passenger data for consistency
+                          if (!p.id) {
+                            // Update the passenger data with the generated ID
+                            setTimeout(() => {
+                              setPassengerData(prevData => {
+                                const newData = [...prevData];
+                                newData[index] = { ...newData[index], id: passengerId };
+                                return newData;
+                              });
+                            }, 0);
+                          }
+                          
+                          return {
+                            id: passengerId,
+                            given_name: p.firstName,
+                            family_name: p.lastName,
+                            gender: p.gender === 'm' ? 'M' : p.gender === 'f' ? 'F' : 'X',
+                            title: p.title,
+                            born_on: p.dateOfBirth,
+                            email: p.email,
+                            phone_number: p.phone
+                          };
+                        })}
+                        onAncillariesSelected={(state: AncillaryState) => {
+                        console.log('🔍 DEBUG - BookingPage received ancillaries:', state);
+                        console.log('🔍 DEBUG - Ancillary rows count:', state.rows.length);
+                        console.log('🔍 DEBUG - Ancillary total:', state.total);
+                        console.log('🔍 DEBUG - Previous ancillary state:', ancillaryState);
+                        
+                        // Following Duffel's guide for adding extra bags
+                        // Process the ancillary state to ensure we have all necessary information
+                        const processedRows = state.rows.map(row => {
+                          // Ensure each row has the required properties for bag services
+                          if (row.type === 'baggage') {
+                            return {
+                              ...row,
+                              // Ensure baggage details are properly formatted
+                              details: row.details || `${row.title || 'Checked bag'} (${row.quantity || 1}x)`,
+                              // Ensure we have passenger association
+                              passengerId: row.passengerId || '',
+                              // Ensure we have proper pricing
+                              amount: row.amount || 0,
+                              currency: row.currency || 'EUR'
+                            };
+                          }
+                          return row;
+                        });
+                        
+                        // Force update with new state object
+                        setAncillaryState({
+                          ...state,
+                          rows: processedRows, // Use processed rows
+                          total: Number(state.total) // Ensure it's a number
+                        });
+                        
+                        // Log after state update
+                        setTimeout(() => {
+                          console.log('🔍 DEBUG - Updated ancillary state after timeout');
+                          console.log('🔍 DEBUG - Processed ancillary rows:', processedRows);
+                        }, 100);
+                      }}
+                    />
+                    </>
+
+                  ) : (
+                    <div className="text-center p-4 border border-gray-200 rounded-lg">
+                      <p>Please fill in passenger information first to view available ancillaries.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {/* Passenger Information */}
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-6">Passenger Information</h2>
@@ -840,6 +1075,36 @@ const BookingPage: React.FC = () => {
                         </span>
                       </div>
                     </div>
+                    
+                    {/* Ancillaries */}
+                    <div className="pt-2 border-t border-gray-100 mt-2">
+                      <span className="text-gray-700 font-medium">Additional Services:</span>
+                    </div>
+                    
+                    {ancillaryState.rows.length > 0 ? (
+                      <>
+                        {ancillaryState.rows.map((row, index) => (
+                          <div key={`ancillary-${index}`} className={`flex justify-between py-1 ${index === 0 ? 'animate-pulse-once' : ''}`}>
+                            <div className="flex-1 pr-4 truncate">
+                              <span className="text-gray-600">{row.title}{row.passengerName ? ` - ${row.passengerName}` : ''}:</span>
+                            </div>
+                            <span className="font-medium">
+                              {typeof row.amount === 'number' ? `${row.amount.toFixed(2)} ${row.currency}` : 'Price unavailable'}
+                            </span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between mt-2 pt-1 border-t border-dashed border-gray-100">
+                          <span className="text-gray-700 font-medium">Ancillaries Total:</span>
+                          <span className="font-medium text-green-600">
+                            {typeof ancillaryState.total === 'number' ? `${ancillaryState.total.toFixed(2)} ${ancillaryState.currency}` : '0.00 EUR'}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-sm text-gray-500 py-1">
+                        No additional services selected
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -847,12 +1112,20 @@ const BookingPage: React.FC = () => {
                   <div className="border-t border-gray-200 pt-4 mt-4">
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total for {passengerData.length} {passengerData.length === 1 ? 'passenger' : 'passengers'}:</span>
-                      <span className="text-orange-500">
-                        €{priceInfo.total.toFixed(2)}
+                      <span className={`${ancillaryState.rows.length > 0 ? 'animate-pulse-once' : ''} text-orange-500`}>
+                        €{typeof priceInfo.total === 'number' ? priceInfo.total.toFixed(2) : '0.00'}
+                        {ancillaryState.rows.length > 0 && (
+                          <span className="text-xs ml-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                            +Ancillaries
+                          </span>
+                        )}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1 text-right">
                       Includes €2.00 Tax + €1.00 Service fee per passenger
+                      {ancillaryState.total > 0 && typeof ancillaryState.total === 'number' && (
+                        <span className="ml-1">+ €{ancillaryState.total.toFixed(2)} in ancillary services</span>
+                      )}
                     </p>
                   </div>
                 )}

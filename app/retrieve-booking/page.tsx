@@ -5,8 +5,14 @@ import { useRouter } from 'next/navigation';
 import { FlightItineraryCard } from '@/app/components/FlightItineraryCard';
 import airportsJson from 'airports-json';
 import Image from 'next/image';
-import { FaBaby, FaBuilding, FaChild, FaLaptop, FaSuitcase, FaTicketAlt } from 'react-icons/fa';
-import { FaPassport, FaSuitcaseRolling, FaPlaneDeparture, FaMapMarkedAlt, FaPlane, FaSearch, FaUserFriends, FaCreditCard, FaExternalLinkAlt, FaFilePdf } from 'react-icons/fa';
+import { 
+  FaBaby, FaBuilding, FaChild, FaLaptop, FaSuitcase, FaTicketAlt,
+  FaPassport, FaPlane, FaPlaneDeparture, FaPlaneArrival, FaSuitcaseRolling,
+  FaCouch, FaUser, FaUsers, FaCalendarAlt, FaInfoCircle, FaExclamationTriangle,
+  FaShieldAlt, FaSearch, FaUserFriends, FaCreditCard, FaExternalLinkAlt,
+  FaFilePdf, FaMapMarkedAlt
+} from 'react-icons/fa';
+import { FiBriefcase, FiMapPin, FiCheckCircle, FiX } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 
 interface Segment {
@@ -20,10 +26,52 @@ interface Segment {
   seats: string;
 }
 
+// Helper function to format currency amounts
+const formatAmount = (amount: number | string | undefined, currency: string = 'EUR') => {
+  if (amount === undefined) return `${currency} 0.00`;
+  
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2
+  }).format(numAmount);
+};
+
 interface BookingData {
+  id: string;
+  offerId?: string;
+  bookingReference?: string;
+  status: 'confirmed' | 'pending' | 'cancelled';
+  totalAmount?: number;
+  paymentStatus?: string;
+  createdAt?: string;
+  currency?: string;
+  // Payment information
+  payment?: {
+    amount: string;
+    currency: string;
+  };
+  // Ancillary related properties
+  ancillarySelection?: Record<string, any>;
+  ancillaryBreakdown?: string; // JSON string of ancillary items
+  ancillaryAmount?: number; // Total amount for all ancillaries
   itinerary: {
     segments: Segment[];
     duration: string;
+    origin: {
+      city: string;
+      code: string;
+    };
+    destination: {
+      city: string;
+      code: string;
+    };
+    departureDate: string;
+    departureTime: string;
+    arrivalDate: string;
+    arrivalTime: string;
   };
   passengers: {
     type: string;
@@ -34,14 +82,15 @@ interface BookingData {
     given_name: string;
     family_name: string;
   }[];
-  payment: {
-    amount: string;
+  price: {
+    total: string;
     currency: string;
   };
-  bookingReference: string;
-  orderId: string;
-  cabinClass: string;
-  createdAt: string;
+  airline: {
+    name: string;
+    logo: string;
+  };
+  slices?: any[];
 }
 
 type RetrieveBookingProps = {
@@ -172,7 +221,7 @@ const handleDownloadItinerary = async (bookingData: BookingData | null) => {
 };
 
 export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) {
-  const [orderId, setOrderId] = useState(searchParams?.prefilledOrderId || '');
+  const [bookingIdentifier, setBookingIdentifier] = useState(searchParams?.prefilledOrderId || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(searchParams?.error || '');
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
@@ -197,14 +246,9 @@ export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validationError = validateOrderId(orderId);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    if (!orderId.trim()) {
-      setError('Please enter a valid order ID');
+    
+    if (!bookingIdentifier.trim()) {
+      setError('Please enter a valid booking reference or order ID');
       return;
     }
 
@@ -212,16 +256,25 @@ export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) 
     setError('');
 
     try {
-      const response = await fetch(`/api/orders/${orderId}`);
+      // First try as a booking reference
+      let response = await fetch(`/api/booking-reference/${bookingIdentifier}`);
+      
+      // If not found as booking reference, try as order ID
       if (!response.ok) {
-        throw new Error('Booking not found');
+        response = await fetch(`/api/orders/${bookingIdentifier}`);
+        if (!response.ok) {
+          throw new Error('Booking not found');
+        }
       }
 
       const data = await response.json();
+      console.log('Retrieved booking data:', data);
       
       if (!data?.itinerary?.segments) {
         throw new Error('Invalid booking data format');
       }
+
+      // Booking data retrieved successfully
 
       setBookingData({
         ...data,
@@ -271,17 +324,18 @@ export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) 
         {!bookingData ? (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="orderId" className="block text-sm font-semibold text-gray-700 mb-1">
+              <label htmlFor="bookingIdentifier" className="block text-sm font-semibold text-gray-700 mb-1">
                 Booking Reference
               </label>
               <div className="relative">
                 <input
-                  id="orderId"
+                  id="bookingIdentifier"
                   type="text"
-                  value={orderId}
-                  onChange={(e) => setOrderId(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g. W2B-123456"
+                  value={bookingIdentifier}
+                  onChange={(e) => setBookingIdentifier(e.target.value)}
+                  placeholder="Enter your booking reference or order ID"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-700"
+                  required
                 />
                 {loading && (
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3">
@@ -467,11 +521,112 @@ export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) 
                             </p>
                             <p className="flex justify-between py-2 border-b border-gray-100">
                               <span className="font-medium text-gray-700">Baggage Allowance:</span>
-                              <span className="text-gray-900">{bookingData.itinerary?.segments[0]?.baggage || 'N/A'}</span>
+                              <span className="text-gray-900">
+                                {(() => {
+                                  // Debug output removed for production
+                                  
+                                  // Try to extract baggage info from different sources
+                                  if (bookingData.ancillaryBreakdown) {
+                                    try {
+                                      // Handle both array and string formats
+                                      const breakdown = Array.isArray(bookingData.ancillaryBreakdown) 
+                                        ? bookingData.ancillaryBreakdown 
+                                        : typeof bookingData.ancillaryBreakdown === 'string'
+                                          ? JSON.parse(bookingData.ancillaryBreakdown)
+                                          : [];
+                                      
+                                      // Look for bag items
+                                      const bagItems = Array.isArray(breakdown) 
+                                        ? breakdown.filter((item) => 
+                                            item.type === 'bags' || 
+                                            item.type === 'bag' || 
+                                            (item.title && item.title.toLowerCase().includes('bag')))
+                                        : [];
+                                      
+                                      if (bagItems.length > 0) {
+                                        return bagItems.map((item) => {
+                                          const passengerInfo = item.passengerName ? ` for ${item.passengerName}` : '';
+                                          const priceInfo = item.amount ? ` (${formatAmount(item.amount, item.currency || 'EUR')})` : '';
+                                          return `${item.title || 'Checked Bag'}${passengerInfo}${priceInfo}`;
+                                        }).join(', ');
+                                      }
+                                    } catch (e) {
+                                      console.error('Error processing ancillary breakdown:', e);
+                                    }
+                                  }
+                                  
+                                  // Check if we have any baggage info in the segment data with quantity > 0
+                                  const segment = bookingData.itinerary?.segments[0];
+                                  if (segment && (segment as any).baggages && Array.isArray((segment as any).baggages)) {
+                                    const bagsWithQuantity = (segment as any).baggages.filter((bag: any) => bag.quantity > 0);
+                                    if (bagsWithQuantity.length > 0) {
+                                      return bagsWithQuantity.map((bag: any) => 
+                                        `${bag.type || 'Checked bag'} (${bag.quantity})`
+                                      ).join(', ');
+                                    }
+                                  }
+                                  
+                                  // If no baggage with quantity > 0 found, check if total payment suggests baggage was included
+                                  if (bookingData.payment?.amount && parseFloat(bookingData.payment.amount) > 150) {
+                                    // Higher price suggests baggage was likely included
+                                    return 'Baggage included in fare';
+                                  }
+                                  
+                                  return 'No purchased baggage';
+                                })()}
+                              </span>
                             </p>
                             <p className="flex justify-between py-2">
                               <span className="font-medium text-gray-700">Seat Assignment:</span>
-                              <span className="text-gray-900">{bookingData.itinerary?.segments[0]?.seats || 'N/A'}</span>
+                              <span className="text-gray-900">
+                                {(() => {
+                                  // Try to extract seat info from different sources
+                                  if (bookingData.ancillaryBreakdown) {
+                                    try {
+                                      // Handle both array and string formats
+                                      const breakdown = Array.isArray(bookingData.ancillaryBreakdown) 
+                                        ? bookingData.ancillaryBreakdown 
+                                        : typeof bookingData.ancillaryBreakdown === 'string'
+                                          ? JSON.parse(bookingData.ancillaryBreakdown)
+                                          : [];
+                                      
+                                      // Look for seat items
+                                      const seatItems = Array.isArray(breakdown) 
+                                        ? breakdown.filter((item) => 
+                                            item.type === 'seats' || 
+                                            item.type === 'seat' || 
+                                            (item.title && item.title.toLowerCase().includes('seat')))
+                                        : [];
+                                      
+                                      if (seatItems.length > 0) {
+                                        return seatItems.map((item) => {
+                                          const passengerInfo = item.passengerName ? ` for ${item.passengerName}` : '';
+                                          const priceInfo = item.amount ? ` (${formatAmount(item.amount, item.currency || 'EUR')})` : '';
+                                          return `${item.title || 'Seat Selection'}${passengerInfo}${priceInfo}`;
+                                        }).join(', ');
+                                      }
+                                    } catch (e) {
+                                      console.error('Error processing ancillary breakdown:', e);
+                                    }
+                                  }
+                                  
+                                  // Check if we have any seat info in the segment data
+                                  const segment = bookingData.itinerary?.segments[0];
+                                  if (segment && segment.seats && Array.isArray(segment.seats) && segment.seats.length > 0) {
+                                    return segment.seats.join(', ');
+                                  }
+                                  
+                                  // Check if any passengers have seat assignments
+                                  if (segment && (segment as any).passengers) {
+                                    const passengerSeats = ((segment as any).passengers || []).map((p: any) => p.seat).filter(Boolean);
+                                    if (passengerSeats.length > 0) {
+                                      return passengerSeats.join(', ');
+                                    }
+                                  }
+                                  
+                                  return 'No seat assignment';
+                                })()}
+                              </span>
                             </p>
                           </div>
                         </div>
@@ -504,12 +659,81 @@ export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) 
                             Baggage Allowance
                           </h3>
                           <div className="space-y-3">
-                            <p className="text-gray-700">
-                              <span className="font-medium">Cabin Baggage:</span>
-                            </p>
-                            <p className="text-gray-700">
-                              <span className="font-medium">Checked Baggage:</span> Varies by airline
-                            </p>
+                            {/* Display baggage information from ancillary data if available */}
+                            {bookingData?.ancillarySelection || bookingData?.ancillaryBreakdown ? (
+                              <>
+                                {/* Parse and display baggage information */}
+                                {(() => {
+                                  // Try to extract baggage info from different sources
+                                  let baggageInfo = { cabin: 'Included', checked: 'None' };
+                                  
+                                  // First check if we have a detailed breakdown from API
+                                  if (bookingData.ancillaryBreakdown) {
+                                    try {
+                                      // Handle both array and string formats
+                                      const breakdown = Array.isArray(bookingData.ancillaryBreakdown) 
+                                        ? bookingData.ancillaryBreakdown 
+                                        : typeof bookingData.ancillaryBreakdown === 'string'
+                                          ? JSON.parse(bookingData.ancillaryBreakdown)
+                                          : [];
+                                          
+                                      console.log('Ancillary breakdown:', breakdown);
+                                      
+                                      const bagItems = breakdown.filter((item: any) => 
+                                        item.type === 'bags' || item.type === 'bag' || 
+                                        (item.title && item.title.toLowerCase().includes('bag'))
+                                      );
+                                      
+                                      if (bagItems.length > 0) {
+                                        // Extract checked bag info
+                                        baggageInfo.checked = bagItems.map((item: any) => {
+                                          const passengerInfo = item.passengerName ? ` for ${item.passengerName}` : '';
+                                          return `${item.title || 'Checked Bag'}${passengerInfo} (${formatAmount(item.amount, item.currency || 'EUR')})`;
+                                        }).join(', ');
+                                      }
+                                    } catch (e) {
+                                      console.error('Error processing ancillary breakdown:', e);
+                                    }
+                                  }
+                                  // Then check ancillary selection
+                                  else if (bookingData.ancillarySelection) {
+                                    const selection = bookingData.ancillarySelection;
+                                    if (selection.services) {
+                                      const bagServices = selection.services.filter((s: any) => 
+                                        s.type === 'bags' || s.type === 'bag' || 
+                                        (s.title && s.title.toLowerCase().includes('bag'))
+                                      );
+                                      
+                                      if (bagServices.length > 0) {
+                                        baggageInfo.checked = bagServices.map((s: any) => 
+                                          `${s.title || 'Checked Bag'} (${formatAmount(s.amount || s.total_amount, bookingData.currency || 'EUR')})`
+                                        ).join(', ');
+                                      }
+                                    }
+                                  }
+                                  
+                                  return (
+                                    <>
+                                      <p className="text-gray-700">
+                                        <span className="font-medium">Cabin Baggage:</span> {baggageInfo.cabin}
+                                      </p>
+                                      <p className="text-gray-700">
+                                        <span className="font-medium">Checked Baggage:</span> {baggageInfo.checked}
+                                      </p>
+                                    </>
+                                  );
+                                })()}
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-gray-700">
+                                  <span className="font-medium">Cabin Baggage:</span> Included
+                                </p>
+                                <p className="text-gray-700">
+                                  <span className="font-medium">Checked Baggage:</span> None
+                                </p>
+                              </>
+                            )}
                             <p className="text-gray-500 text-sm mt-2">
                               * Verify exact limits with your airline
                             </p>
@@ -542,6 +766,98 @@ export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) 
                         </div>
                       </motion.div>
 
+                      {/* Add Ancillary Details Section */}
+                      {bookingData.ancillarySelection && Object.keys(bookingData.ancillarySelection).length > 0 && (
+                        <motion.div 
+                          className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-orange-400 to-orange-500 rounded-none h-full
+                            shadow-[8px_8px_0_-2.5px_#FF8C00,8px_8px_0_0_#FFA500]
+                            hover:shadow-[12px_12px_0_-2.5px_#fff,12px_12px_0_0_#FF8C00]
+                            transition-all duration-300 group flex flex-col"
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                        >
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg text-gray-800 mb-3.5 flex items-center gap-2">
+                              <FaSuitcase className="text-orange-600 text-xl" />
+                              Selected Extras
+                            </h3>
+                            <div className="space-y-2">
+                              {bookingData.ancillaryBreakdown ? (
+                                // If we have a detailed breakdown, show it
+                                JSON.parse(bookingData.ancillaryBreakdown).map((item: any, index: number) => {
+                                  // Determine icon based on ancillary type
+                                  let icon = <span className="w-2 h-2 rounded-full bg-orange-400 mr-2"></span>;
+                                  if (item.type === 'bags' || item.type === 'bag') {
+                                    icon = <FiBriefcase className="text-orange-500 mr-2" />;
+                                  } else if (item.type === 'seats' || item.type === 'seat') {
+                                    icon = <FiMapPin className="text-orange-500 mr-2" />;
+                                  } else if (item.type === 'cancel_for_any_reason' || item.type === 'cancel') {
+                                    icon = <FiCheckCircle className="text-orange-500 mr-2" />;
+                                  }
+                                  
+                                  return (
+                                    <div key={`ancillary-${index}`} className="flex flex-col py-2 border-b border-gray-100 last:border-b-0">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-700 font-medium flex items-center">
+                                          {icon}
+                                          {item.title || item.type?.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase()) || 'Extra'}
+                                        </span>
+                                        <span className="font-semibold text-gray-800">
+                                          {formatAmount(item.amount, bookingData.currency || 'EUR')}
+                                        </span>
+                                      </div>
+                                      {item.details && (
+                                        <div className="ml-6 text-sm text-gray-500 mt-1">
+                                          {item.details}
+                                          {item.passenger && (
+                                            <span className="ml-1">
+                                              • Passenger: {bookingData.passengers?.find((p: any) => p.id === item.passenger)?.given_name || 'N/A'}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                // If we don't have a detailed breakdown, show what we have
+                                Object.entries(bookingData.ancillarySelection || {}).map(([key, value]: [string, any], index: number) => {
+                                  // Determine icon based on key name
+                                  let icon = <span className="w-2 h-2 rounded-full bg-orange-400 mr-2"></span>;
+                                  if (key.includes('bag')) {
+                                    icon = <FiBriefcase className="text-orange-500 mr-2" />;
+                                  } else if (key.includes('seat')) {
+                                    icon = <FiMapPin className="text-orange-500 mr-2" />;
+                                  } else if (key.includes('cancel')) {
+                                    icon = <FiX className="text-orange-500 mr-2" />;
+                                  }
+                                  
+                                  return (
+                                    <div key={`ancillary-${index}`} className="flex justify-between items-center py-1 border-b border-gray-100 last:border-b-0">
+                                      <span className="text-gray-600 flex items-center">
+                                        {icon}
+                                        {key.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase())}
+                                      </span>
+                                      <span className="font-semibold text-gray-800">
+                                        {typeof value === 'object' && value.amount ? formatAmount(value.amount, bookingData.currency || 'EUR') : 'Selected'}
+                                      </span>
+                                    </div>
+                                  );
+                                })
+                              )}
+                              
+                              {bookingData.ancillaryAmount && (
+                                <div className="flex justify-between items-center pt-2 font-medium">
+                                  <span>Total Extras</span>
+                                  <span>{formatAmount(bookingData.ancillaryAmount, bookingData.currency || 'EUR')}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                      
                       <motion.div 
                         className="relative w-full p-6 bg-white border-4 border-gradient-to-r from-orange-400 to-orange-500 rounded-none h-full
                           shadow-[8px_8px_0_-2.5px_#FF8C00,8px_8px_0_0_#FFA500]
@@ -563,6 +879,59 @@ export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) 
                             <li>Security may require removing liquids/laptops</li>
                           </ul>
                         </div>
+                        
+                        {/* Additional Services Section */}
+                        {(() => {
+                          if (bookingData.ancillaryBreakdown) {
+                            try {
+                              // Handle both array and string formats
+                              const breakdown = Array.isArray(bookingData.ancillaryBreakdown) 
+                                ? bookingData.ancillaryBreakdown 
+                                : typeof bookingData.ancillaryBreakdown === 'string'
+                                  ? JSON.parse(bookingData.ancillaryBreakdown)
+                                  : [];
+                              
+                              // Look for other services (not bags or seats)
+                              const otherServices = Array.isArray(breakdown) 
+                                ? breakdown.filter((item) => 
+                                    item.type !== 'bags' && 
+                                    item.type !== 'seats' && 
+                                    item.type !== 'bag' && 
+                                    item.type !== 'seat')
+                                : [];
+                              
+                              if (otherServices.length > 0) {
+                                return (
+                                  <div className="mt-6">
+                                    <h3 className="font-semibold text-lg text-gray-800 mb-3.5 flex items-center gap-2">
+                                      <FaShieldAlt className="text-orange-600 text-xl" />
+                                      Additional Services
+                                    </h3>
+                                    <div className="space-y-2">
+                                      {otherServices.map((service, idx) => (
+                                        <div key={idx} className="flex justify-between items-center p-2 bg-orange-50 rounded-md">
+                                          <div>
+                                            <p className="font-medium">{service.title}</p>
+                                            {service.details && <p className="text-sm text-gray-600">{service.details}</p>}
+                                            {service.passengerName && <p className="text-sm text-gray-600">For: {service.passengerName}</p>}
+                                          </div>
+                                          {service.amount && (
+                                            <div className="font-medium">
+                                              {formatAmount(service.amount, service.currency || 'EUR')}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            } catch (e) {
+                              console.error('Error processing additional services:', e);
+                            }
+                          }
+                          return null;
+                        })()}
                       </motion.div>
                     </div>
                   </div>

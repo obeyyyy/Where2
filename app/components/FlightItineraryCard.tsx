@@ -186,7 +186,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
   }
   
   const flightTypeColor = type === 'outbound' ? 'blue' : 'green';
-
+  const flightTypeIcon = type === 'outbound' ? 'rotate-45' : 'rotate-[225deg]';
   const getCityName = (iataCode: string): string => {
     if (!iataCode) return '';
     const code = iataCode.toUpperCase();
@@ -219,7 +219,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-2">
               <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                <FaPlane className={`text-white text-xs sm:text-sm ${type === 'outbound' ? 'rotate-45' : 'rotate-[225deg]'}`} />
+                <FaPlane className={`text-white text-xs sm:text-sm ${flightTypeIcon}`} />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -353,7 +353,7 @@ export const FlightItineraryCard: React.FC<FlightItineraryCardProps> = ({
                   <div className="col-span-4 flex flex-col items-center">
                     <div className="relative w-full">
                       <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                        <MdAirplanemodeActive className={`text-${flightTypeColor}-500 -rotate-90 text-lg`} />
+                        <MdAirplanemodeActive className={`text-${flightTypeColor}-500 ${flightTypeIcon} text-lg`} />
                       </div>
                       <div className="w-full flex items-center px-2">
                         <div className="flex-1 h-0.5 bg-gray-500"></div>
