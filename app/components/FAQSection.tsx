@@ -1,27 +1,27 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Plane, Clock, Shield, DollarSign } from "lucide-react";
+import { ChevronDown, ChevronUp, Plane, Clock, Shield, DollarSign, CheckCircle2 } from "lucide-react";
 
 const faqs = [
   {
-    icon: <Plane className="w-6 h-6" />,
+    icon: <Plane className="w-7 h-7" />,
     question: "How do you provide real-time flight data?",
-    answer: "We partner with Duffel, a leading flight API provider, to access live inventory from hundreds of airlines worldwide. This ensures you get accurate prices, schedules, and availability directly from the source.",
+    answer: "We partner with Duffel, the world’s leading flight API, to bring you up-to-the-minute flight info from hundreds of airlines worldwide — so you always get accurate prices, schedules, and availability.",
   },
   {
-    icon: <Clock className="w-6 h-6" />,
-    question: "How quickly are flight bookings confirmed?",
-    answer: "Thanks to our integration with Duffel's API, flight bookings are confirmed instantly. You'll receive immediate confirmation and e-tickets directly from the airlines.",
+    icon: <Clock className="w-7 h-7" />,
+    question: "How fast are flight bookings confirmed?",
+    answer: "Instantly! Once you book, Duffel’s powerful API confirms your flight immediately and sends you your e-ticket right away — no waiting, no stress.",
   },
   {
-    icon: <Shield className="w-6 h-6" />,
-    question: "What happens if my flight is changed or cancelled?",
-    answer: "Our Duffel integration provides real-time updates about any schedule changes or cancellations. You'll be automatically notified and can manage your booking directly through our platform.",
+    icon: <Shield className="w-7 h-7" />,
+    question: "What if my flight changes or gets cancelled?",
+    answer: "Don’t worry! We track your booking in real time and instantly notify you of any changes or cancellations. Manage everything easily, all in one place.",
   },
   {
-    icon: <DollarSign className="w-6 h-6" />,
-    question: "Do you offer the best flight prices?",
-    answer: "Yes! Through Duffel, we access the same rates available directly from airlines, ensuring competitive pricing. Plus, our smart filtering helps you find the best value flights for your budget.",
+    icon: <DollarSign className="w-7 h-7" />,
+    question: "Are these the best flight prices available?",
+    answer: "Yes! We access airline rates directly via Duffel, so you get competitive pricing every time. Our smart filters also help you find flights that perfectly match your budget and preferences.",
   },
 ];
 
@@ -33,50 +33,73 @@ const FAQSection: React.FC = () => {
   };
 
   return (
-    <section className="w-full bg-gradient-to-b from-white to-gray-50 py-20">
-      <div className="max-w-4xl mx-auto px-4">
-        <h2 className="text-4xl font-bold mb-4 text-center bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent">
-          Frequently Asked Questions
+    <section className="w-full bg-gradient-to-b from-white to-orange-50 py-24">
+      <div className="max-w-3xl mx-auto px-6">
+        <h2 className="text-4xl font-extrabold mb-8 text-center bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent select-none drop-shadow-md">
+          Got Questions? We’ve Got Answers!
         </h2>
-        <p className="text-gray-600 text-center mb-12 max-w-2xl mx-auto">
-          Learn more about our flight booking system powered by Duffel API
+        <p className="text-center text-lg text-orange-700 mb-16 font-medium tracking-wide">
+          Your dream vacation is just a few clicks away. Here’s everything you need to know to book with confidence.
         </p>
-        <div className="space-y-4">
+
+        <div className="space-y-6">
           {faqs.map((faq, idx) => (
-            <motion.div 
+            <motion.div
               key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
+              initial={false} // no initial animation on load
+              whileHover={{ boxShadow: "0 8px 24px rgba(255, 165, 0, 0.25)" }}
+              transition={{ type: "spring", stiffness: 150, damping: 20 }}
+              className="bg-white rounded-3xl border border-orange-200 cursor-pointer"
             >
               <button
-                className={`w-full flex items-center p-6 text-left focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50 ${activeIndex === idx ? 'bg-orange-50/50' : ''}`}
                 onClick={() => toggleAccordion(idx)}
                 aria-expanded={activeIndex === idx}
                 aria-controls={`faq-content-${idx}`}
+                className={`flex items-center w-full px-8 py-5 rounded-3xl focus:outline-none focus-visible:ring-4 focus-visible:ring-orange-300 focus-visible:ring-opacity-60
+                  ${
+                    activeIndex === idx
+                      ? "bg-orange-100 text-orange-900 font-semibold"
+                      : "text-orange-700 hover:bg-orange-50"
+                  }
+                `}
               >
-                <div className="mr-4 text-orange-500">{faq.icon}</div>
-                <h3 className="flex-1 text-lg font-semibold text-gray-900">{faq.question}</h3>
-                <div className="ml-4">
+                <motion.div
+                  className="mr-6 flex items-center justify-center rounded-full bg-orange-200 text-orange-600 p-3 shadow-sm"
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  {faq.icon}
+                </motion.div>
+                <h3 className="flex-1 text-xl leading-tight">{faq.question}</h3>
+                <motion.div
+                  className="ml-6"
+                  animate={{ rotate: activeIndex === idx ? 180 : 0 }}
+                  transition={{ type: "spring", stiffness: 250, damping: 20 }}
+                >
                   {activeIndex === idx ? (
-                    <ChevronUp className="w-5 h-5 text-orange-500" />
+                    <ChevronUp className="w-6 h-6 text-orange-600" />
                   ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-400" />
+                    <ChevronDown className="w-6 h-6 text-orange-400" />
                   )}
-                </div>
+                </motion.div>
               </button>
-              <AnimatePresence>
+
+              <AnimatePresence initial={false}>
                 {activeIndex === idx && (
                   <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
+                    key="content"
                     id={`faq-content-${idx}`}
-                    className="px-6 pb-6"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.35, ease: "easeInOut" }}
+                    className="px-12 pb-8 text-orange-800 text-lg leading-relaxed select-text"
                   >
-                    <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
+                    <div className="flex items-center mb-3 space-x-2">
+                      <CheckCircle2 className="w-5 h-5 text-orange-500" />
+                      <span className="font-semibold">Trusted & Reliable</span>
+                    </div>
+                    <p>{faq.answer}</p>
                   </motion.div>
                 )}
               </AnimatePresence>

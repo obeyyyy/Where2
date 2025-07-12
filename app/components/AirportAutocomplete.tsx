@@ -84,19 +84,19 @@ export const AirportAutocomplete: React.FC<Props> = ({ value, onChange, label = 
                 {params.InputProps.startAdornment}
               </>
             ),
-            className: 'pl-2 rounded-lg border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent',
+            className: 'pl-2 rounded-lg border-white/100 bg-white/100 focus:ring-2 focus:ring-amber-500 focus:border-transparent text-black',
           }}
           sx={{
             '& .MuiOutlinedInput-root': {
               '& fieldset': {
-                borderColor: '#E5E7EB',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
                 borderRadius: '0.5rem',
               },
               '&:hover fieldset': {
-                borderColor: '#F97316',
+                borderColor: 'rgba(255, 255, 255, 0.3)',
               },
               '&.Mui-focused fieldset': {
-                borderColor: '#F97316',
+                borderColor: '#F59E0B',
                 borderWidth: '2px',
               },
             },
@@ -115,14 +115,20 @@ export const AirportAutocomplete: React.FC<Props> = ({ value, onChange, label = 
         },
       }}
       sx={{
+        '& .MuiInputBase-input': {
+          color: 'black',
+        },
         '& .MuiAutocomplete-listbox': {
+          backgroundColor: 'rgba(30, 30, 60, 0.95)',
           '& .MuiAutocomplete-option': {
             padding: '8px 16px',
             '&[aria-selected="true"]': {
-              backgroundColor: '#FFF7ED',
+              backgroundColor: 'rgba(245, 158, 11, 0.2)',
+              color: 'black',
             },
             '&.Mui-focused': {
-              backgroundColor: '#FFEDD5',
+              backgroundColor: 'rgba(245, 158, 11, 0.3)',
+              color: 'black',
             },
           },
         },
