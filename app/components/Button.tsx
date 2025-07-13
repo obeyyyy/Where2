@@ -16,7 +16,7 @@ export default function Where2Button({
       >
         {icon && (
           <img
-            src="./images/logo.svg"
+            src="./images/Logo.svg"
             className="h-10 w-[20vh]"
             alt="Where2 logo"
           />
