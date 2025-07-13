@@ -558,7 +558,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, x: item.direction === "left" ? -50 : 50 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
+                transition={{ duration: 0.9, ease: [0.33, 0, 0.67, 1] }}
               >
                 <div className="relative flex-shrink-0">
                   <div
@@ -607,7 +607,7 @@ export default function LandingPage() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
+              transition={{ duration: 0.9, ease: [0.33, 0, 0.67, 1] }}
             >
               
 
@@ -739,7 +739,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.4, delay: idx * 0.1, ease: "easeOut" }}
+                transition={{ duration: 0.9, delay: idx * 0.1, ease: [0.33, 0, 0.67, 1] }}
               >
                 <div className="flex items-start gap-4 mb-6">
                   <div className={`w-12 h-12 ${feature.color} rounded-xl flex items-center justify-center shadow-md`}>
@@ -786,7 +786,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
+            transition={{ duration: 0.9, ease: [0.33, 0, 0.67, 1] }}
           >
             <h2 className="text-5xl md:text-6xl font-extrabold text-white mb-5 ">
               Ready for Your Next Adventure?
@@ -804,7 +804,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+            transition={{ duration: 0.9, delay: 0.1, ease: [0.33, 0, 0.67, 1] }}
           >
             <TrustBadges />
           </motion.div>
