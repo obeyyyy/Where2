@@ -1598,8 +1598,8 @@ function PaymentContent() {
           </div>
 
           {/* Right side - Payment Form */}
-          <div className="lg:w-120 lg:sticky lg:top-4">
-            <div className="rounded-2xl shadow-xl bg-white border border-amber-100 p-8">
+          <div className="lg:w-[40%] lg:sticky lg:top-4 w-full">
+            <div className="rounded-2xl shadow-xl bg-white border border-amber-100 p-4">
               <h2 className="text-2xl font-bold text-[#5D4037]">Payment Information</h2>
              
                 <AnimatedStepCharacter 
@@ -1630,7 +1630,7 @@ function PaymentContent() {
                   </button>
                 </div>
               ) : clientToken ? (
-                <div className=" w-full">
+                <div className=" w-full lg:w-full">
                 <PaymentForm 
                 onSubmit={handlePaymentSubmit} 
                 loading={false}
