@@ -555,10 +555,10 @@ export default function LandingPage() {
               <motion.div
                 key={item.step}
                 className={`flex flex-col ${item.direction === "right" ? "lg:flex-row-reverse" : "lg:flex-row"} items-center gap-12 lg:gap-20`}
-                initial={{ opacity: 0, x: item.direction === "left" ? -100 : 100 }}
+                initial={{ opacity: 0, x: item.direction === "left" ? -50 : 50 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.8 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
               >
                 <div className="relative flex-shrink-0">
                   <div
@@ -607,7 +607,7 @@ export default function LandingPage() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.8 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
             >
               
 
@@ -641,7 +641,6 @@ export default function LandingPage() {
                   <motion.div
                     key={i}
                     className="flex flex-col lg:grid lg:grid-cols-2 items-center gap-6 border border-2 border-black p-4 sm:p-6 bg-orange-50 backdrop-blur-sm rounded-2xl shadow-lg w-full"
-                    whileHover={{ scale: 1.01, y: -1 }}
                     transition={{ duration: 0.2 }}
                   >
                     <div className="flex flex-col justify-center space-y-3 w-full">
@@ -736,11 +735,11 @@ export default function LandingPage() {
             ].map((feature, idx) => (
               <motion.div
                 key={idx}
-                className="bg-white/10 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/10 transition-all duration-300 hover:shadow-3xl hover:-translate-y-1"
-                initial={{ opacity: 0, y: 30 }}
+                className="bg-white/10 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/10"
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.6, delay: idx * 0.2 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.4, delay: idx * 0.1, ease: "easeOut" }}
               >
                 <div className="flex items-start gap-4 mb-6">
                   <div className={`w-12 h-12 ${feature.color} rounded-xl flex items-center justify-center shadow-md`}>
@@ -784,10 +783,10 @@ export default function LandingPage() {
 
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.8 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
           >
             <h2 className="text-5xl md:text-6xl font-extrabold text-white mb-5 ">
               Ready for Your Next Adventure?
@@ -802,10 +801,10 @@ export default function LandingPage() {
           {/* Trust Badges */}
           <motion.div
             className="mt-8 w-full"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
           >
             <TrustBadges />
           </motion.div>
