@@ -123,7 +123,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       
-      <body className="min-h-screen w-full bg-bg text-text antialiased">
+      <body className="min-h-screen w-full bg-bg text-text antialiased font-sans">
         <TripCartProvider>
           <Navbar />
           

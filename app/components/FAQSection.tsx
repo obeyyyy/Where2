@@ -33,7 +33,7 @@ const FAQSection: React.FC = () => {
   };
 
   return (
-    <section className="w-full bg-gradient-to-b from-white to-orange-50 py-24">
+    <section className="w-full py-24">
       <div className="max-w-3xl mx-auto px-6">
         <h2 className="text-4xl font-extrabold mb-8 text-center bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent select-none drop-shadow-md">
           Got Questions? We’ve Got Answers!

@@ -38,6 +38,7 @@ import { AirportAutocomplete, type AirportOption } from './components/AirportAut
 import Testimonials from './components/Testimonials';
 import Button from './components/Button';
 import Where2Button from './components/Button';
+import { title } from 'process';
 
 // AnimatedWord component for hero title
 function AnimatedWord({ words, colors, interval = 2000 }: { words: string[]; colors: string[]; interval?: number }) {
@@ -166,7 +167,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-white to-gray-50 flex flex-col mb-8 overflow-hidden">
+    <div className="w-full min-h-screen bg-gradient-to-b from-orange-100/50 to-orange-50 flex flex-col mb-8 overflow-hidden">
   
       {/* Hero Section */}
       <section className="section-lg p-4 m-0 relative overflow-hidden sm:p-8 p-4"> {/* Enhanced hero section */}
@@ -235,18 +236,18 @@ export default function LandingPage() {
                 </div>
   
                 {/* Hero Search Section */}
-                <div className="mt-0 w-full max-w-4xl mx-auto">
+                <div className="mt-0 w-full max-w-4xl mx-auto px-4 sm:px-6">
                   {/* Search Type Selector - Enhanced */}
-                  <div className="flex gap-3 mb-8 p-2 rounded-full justify-center bg-black/20 backdrop-blur-lg border border-white/10 shadow-2xl">
+                  <div className="flex flex gap-2 sm:gap-3 mb-8 p-3 rounded-full justify-center bg-black/20 backdrop-blur-lg border border-white/10 shadow-2xl mx-2 sm:mx-4">
                     {[
-                      { icon: <FiBriefcase className="w-5 h-5" />, label: 'All-in-One Trip', type: 'all' },
-                      { icon: <FiArrowRight className="w-5 h-5" />, label: 'Flight Only', type: 'flights' },
-                      { icon: <FiHome className="w-5 h-5" />, label: 'Hotel Only', type: 'hotels' }
+                      { icon: <FiBriefcase className="w-5 h-5" />, label: 'TRIP', type: 'all' },
+                      { icon: <FiArrowRight className="w-5 h-5" />, label: 'FLIGHT', type: 'flights' },
+                      { icon: <FiHome className="w-5 h-5" />, label: 'HOTEL', type: 'hotels' }
                     ].map((item) => (
                       <motion.button
                         key={item.type}
                         onClick={() => setActiveSearchType(item.type)}
-                        className={`flex items-center px-5 py-3 rounded-full transition-all ${activeSearchType === item.type
+                        className={`flex items-center px-3 sm:px-5 py-2 sm:py-3 rounded-full transition-all ${activeSearchType === item.type
                           ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg ring-2 ring-white/20'
                           : 'text-white/90 bg-white/10 hover:bg-white/20'}`}
                         whileHover={{ scale: 1.05 }}
@@ -272,7 +273,7 @@ export default function LandingPage() {
                           href="/search"
                           icon={true}
                         />
-                        <p className="mt-20 p-4 text-white font-medium tracking-wide backdrop-blur-sm bg-black/10 inline-block rounded-full px-8 shadow-lg">Find the best flight & hotel combinations</p>
+                        <p className="mt-10 p-4 text-white font-medium tracking-wide backdrop-blur-sm bg-black/10 inline-block rounded-full px-8 shadow-lg">Find the best flight & hotel combinations</p>
                       </Link>
                     ) : activeSearchType === 'flights' ? (
                       <div className="space-y-6">
@@ -465,8 +466,6 @@ export default function LandingPage() {
                   </motion.div>
                 </div>
               </div>
-              
-  
             </div>
           </motion.div>
         </div>
@@ -475,7 +474,7 @@ export default function LandingPage() {
   
       
         {/* How It Works Section */}
-        <section className="py-32 bg-gradient-to-b from-white to-gray-50/50">
+        <section className="py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             className="text-center mb-20"
@@ -559,7 +558,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, x: item.direction === "left" ? -100 : 100 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.8, delay: index * 0.1 }}
+                transition={{ duration: 0.8 }}
               >
                 <div className="relative flex-shrink-0">
                   <div
@@ -588,86 +587,76 @@ export default function LandingPage() {
       </section>
       
       {/* Mobile Experience Section */}
-      <section className="section-lg bg-gradient-to-br from-orange-50/30 to-white">
-        <div className="container-base">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.8 }}
-            >
-              <h2 className="text-5xl md:text-6xl font-black text-gray-900 mb-6">
+      
+      <section className="w-full py-16 md:py-24 overflow-hidden">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-10 md:gap-16 items-center">
+          <div className="text-center md:text-left">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-gray-900 mb-4 md:mb-6">
                 Seamless{" "}
                 <span className="bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
                   Mobile
                 </span>
-                <br />
-                Experience
+                <br className="hidden sm:block" />
+                <span className="sm:ml-2">Experience</span>
               </h2>
-              <p className="text-xl text-gray-600 mb-12 leading-relaxed">
+              <p className="text-lg sm:text-xl text-gray-600 mb-0 leading-relaxed max-w-3xl mx-auto md:mx-0">
                 Book and manage trips effortlessly from your phone with our award-winning mobile experience.
               </p>
+          </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8 }}
+            >
+              
 
               <div className="space-y-6">
                 {[
                   {
                     icon: <FiCheckCircle className="text-orange-500 text-2xl" />,
-                    text: "Mobile-first booking flow optimized for phones and tablets",
+                    title:"Trip Search",
+                    text: "Mobile-friendly booking flow optimized for phones and tablets so you can book your trip from as easy as your phone",
+                    img:"./images/phone1.png"
                   },
                   {
                     icon: <FiClock className="text-orange-500 text-2xl" />,
-                    text: "View your itinerary and passenger details anytime, anywhere",
+                    title:"Trip Management",
+                    text: "View your itinerary and passenger details anytime, anywhere so you can manage your trip from as easy as your phone",
+                    img:"./images/phone1.png"
                   },
                   {
                     icon: <FiCalendar className="text-orange-500 text-2xl" />,
-                    text: "Secure payment processing with instant booking confirmation",
+                    title:"Booking Confirmation",
+                    text: "Secure payment processing with instant booking confirmation so you can book and pay for your trip from as easy as your phone",
+                    img:"./images/phone1.png"
                   },
                   {
                     icon: <FiSmartphone className="text-orange-500 text-2xl" />,
-                    text: "Retrieve bookings instantly with your reference number",
+                    title:"Booking Retrieval",
+                    text: "Retrieve bookings instantly with your reference number so you can access your trip details from as easy as your phone",
+                    img:"./images/phone1.png"
                   },
                 ].map((item, i) => (
                   <motion.div
                     key={i}
-                    className="flex items-start gap-4 p-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20"
-                    whileHover={{ scale: 1.02, y: -2 }}
+                    className="flex flex-col lg:grid lg:grid-cols-2 items-center gap-6 border border-2 border-black p-4 sm:p-6 bg-orange-50 backdrop-blur-sm rounded-2xl shadow-lg w-full"
+                    whileHover={{ scale: 1.01, y: -1 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <span className="mt-1 flex-shrink-0">{item.icon}</span>
-                    <span className="text-gray-800 font-medium text-lg">{item.text}</span>
+                    <div className="flex flex-col justify-center space-y-3 w-full">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-3 sm:mb-4">
+                        <span className="flex-shrink-0 text-2xl sm:text-3xl">{item.icon}</span>
+                        <h3 className="font-extrabold text-3xl sm:text-4xl md:text-5xl lg:text-6xl bg-gradient-to-r from-orange-500 to-orange-700 bg-clip-text text-transparent tracking-tight">{item.title}</h3>
+                      </div>
+                      <span className="text-gray-800 font-medium text-base sm:text-lg">{item.text}</span>
+                    </div>
+                   
+                    <div className="flex items-center justify-center mt-4 lg:mt-0 h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[60vh] rounded-2xl overflow-hidden">
+                      <img src={item.img} alt="phone_mockup" className='border border-2 border-gray-800 rounded-2xl w-auto h-[30vh] sm:h-[35vh] md:h-[40vh] lg:h-[50vh] ' />
+                    </div>
                   </motion.div>
                 ))}
-              </div>
-            </motion.div>
-
-            <motion.div
-              className="relative"
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.8 }}
-            >
-              <div className="relative w-80 h-[600px] mx-auto overflow-hidden">
-                <div className="w-full h-full bg-white rounded-[2.5rem] overflow-hidden">
-                  <div className="animate-[slide_30s_linear_infinite] flex w-[500%] h-full">
-                    {[
-                      "./images/mock33-left.png",
-                      "./images/mock4-left.png",
-                      "./images/mock3-left.png",
-                      "./images/mokc5-left.png",
-                      "./images/mock2-left.png",
-                    ].map((src, index) => (
-                      <div key={index} className="flex-shrink-0 w-1/5 h-full">
-                        <img
-                          src={src || "/placeholder.svg"}
-                          alt={`Mobile screen ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             </motion.div>
           </div>
@@ -826,7 +815,7 @@ export default function LandingPage() {
       <FAQSection />
       
       {/* Travel Blog Section */}
-      <section className="bg-gradient-to-b from-white to-orange-50">
+      <section className="">
         <div className="container-base">
           <TravelBlogSection />
         </div>

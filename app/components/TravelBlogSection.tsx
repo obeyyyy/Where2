@@ -60,7 +60,7 @@ const TravelBlogSection: React.FC = () => {
   if (isLoading) {
     return (
       <section className="max-w-5xl mx-auto py-12 px-4">
-        <h2 className="text-3xl font-bold mb-8 text-center bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent">
+        <h2 className="text-3xl font-bold mb-8 text-center">
           From Our Travel Blog
         </h2>
         <div className="grid md:grid-cols-3 gap-8">
