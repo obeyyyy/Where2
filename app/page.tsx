@@ -172,9 +172,15 @@ export default function LandingPage() {
       <section className="section-lg p-4 m-0 relative overflow-hidden sm:p-8 p-4"> {/* Enhanced hero section */}
         {/* Video with overlay gradient */}
         <div className="absolute inset-0 z-0 sm:p-4 p-0">
-          <video autoPlay loop muted className="absolute inset-0 w-full h-full object-cover">
-            <source src="/images/hero-vid.mp4" type="video/mp4" />
-          </video>
+        <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+      >
+        <source src="/images/hero-vid.mp4" type="video/mp4" />
+      </video>
           
         </div>
   
