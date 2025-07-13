@@ -59,12 +59,12 @@ function AnimatedWord({ words, colors, interval = 2000 }: { words: string[]; col
 
   return (
     <span
-      className={`transition-all duration-300 ease-in-out inline-block px-2 py-2 rounded font-bold`}
+      className={`transition-all duration-300 ease-in-out inline-block px-2 py-2 rounded-2xl font-bold`}
       style={{
         color: colors[index],
         opacity: fade ? 1 : 0,
         transform: fade ? 'translateY(0)' : 'translateY(20px)',
-        background: 'linear-gradient(to right, #fff7e6, #fffbe6)',
+        background: 'linear-gradient(to right, rgba(245, 228, 198, 0.74), rgba(248, 236, 201, 0.56))',
       }}
     >
       {words[index]}
