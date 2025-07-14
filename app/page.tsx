@@ -272,6 +272,7 @@ export default function LandingPage() {
                           text="Plan Your Perfect Trip"
                           href="/search"
                           icon={true}
+                          noLink={true} /* Add noLink prop to prevent nested Links */
                         />
                         <p className="mt-10 p-4 text-white font-medium tracking-wide backdrop-blur-sm bg-black/10 inline-block rounded-full px-8 shadow-lg">Find the best flight & hotel combinations</p>
                       </Link>
@@ -558,7 +559,8 @@ export default function LandingPage() {
                 initial={{ opacity: 0, x: item.direction === "left" ? -50 : 50 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.9, ease: [0.33, 0, 0.67, 1] }}
+                transition={{ duration: 0.1, ease:"easeOut" }}
+              
               >
                 <div className="relative flex-shrink-0">
                   <div

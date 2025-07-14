@@ -311,68 +311,63 @@ export default function TripSummaryPage() {
   };
     // Determine if this is a roundtrip booking robustly
     const isRoundTrip = (searchParams.tripType === 'roundtrip' || itineraries?.length > 1);
-    const paymentConfirmed = trip?.paymentStatus === 'succeeded' || trip?.paymentConfirmed || trip?.confirmed;
-    const paymentStatusText = paymentConfirmed ? 'Payment Confirmed' : 'Awaiting Payment';
-    const paymentStatusColor = paymentConfirmed ? 'text-green-600' : 'text-yellow-600';
 
     return (
     <div className="max-w-4xl mx-auto py-12 px-4">
-      {/* Payment Confirmation Section */}
-      <div className="mb-8">
-        <div className={`flex items-center gap-3 text-lg font-semibold ${paymentStatusColor}`}>
-          {paymentConfirmed ? (
-            <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-          ) : (
-            <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" /><circle cx="12" cy="12" r="10" /></svg>
-          )}
-          <span>{paymentStatusText}{isRoundTrip && paymentConfirmed && ' for Both Flights'}</span>
-        </div>
-        <div className="mt-2 text-gray-700">
-          {isRoundTrip && paymentConfirmed && (
-            <span>
-              You have successfully paid for <b>both outbound and return flights</b>.<br/>
-              <span className="font-medium">Total Paid:</span> {prices.total} {prices.currency}
-              <span className="block text-sm text-gray-500 mt-1">(Outbound: {prices.outbound} {prices.currency}{prices.returnRaw > 0 ? `, Return: ${prices.return} ${prices.currency}` : ''})</span>
-            </span>
-          )}
-          {!isRoundTrip && paymentConfirmed && (
-            <span>You have successfully paid for your flight.<br/>
-              <span className="font-medium">Total Paid:</span> {prices.total} {prices.currency}
-            </span>
-          )}
-        </div>
-      </div>
-      <div>
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
+      {/* Header Card */}
+      <div className="bg-white rounded-xl shadow-md p-6 mb-8 border-l-4 border-[#FFA500]">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Trip Summary</h1>
-            <div className="flex items-center text-gray-600 text-sm gap-4">
-              <div className="flex items-center">
-                <FiMapPin className="mr-1" />
-                <span>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-3 flex items-center">
+              <span className="bg-[#FFA500] text-white p-1 rounded-md mr-2">
+                <FiMapPin className="w-5 h-5" />
+              </span>
+              Trip Summary
+            </h1>
+            
+            <div className="flex flex-col sm:flex-row flex-wrap text-gray-600 text-sm sm:text-base gap-3 sm:gap-5">
+              <div className="flex items-center bg-gray-50 px-3 py-2 rounded-lg">
+                <FiMapPin className="mr-2 text-[#FFA500]" />
+                <span className="font-medium">
                   {firstSegment?.departure?.iataCode || 'N/A'}
-                  {' → '}
+                  <span className="mx-1 text-gray-400">→</span>
                   {lastSegment?.arrival?.iataCode || 'N/A'}
-                  {isRoundTrip && returnSegment && ` → ${firstSegment?.departure?.iataCode || 'N/A'}`}
+                  {isRoundTrip && returnSegment && (
+                    <>
+                      <span className="mx-1 text-gray-400">→</span>
+                      {firstSegment?.departure?.iataCode || 'N/A'}
+                    </>
+                  )}
                 </span>
               </div>
-              <div className="flex items-center">
-                <FiCalendar className="mr-1" />
-                <span>
+              
+              <div className="flex items-center bg-gray-50 px-3 py-2 rounded-lg">
+                <FiCalendar className="mr-2 text-[#FFA500]" />
+                <span className="font-medium">
                   {firstSegment?.departure?.at ? formatDisplayDate(firstSegment.departure.at) : 'N/A'}
-                  {isRoundTrip && returnSegment?.departure?.at && ` - ${formatDisplayDate(returnSegment.departure.at)}`}
+                  {isRoundTrip && returnSegment?.departure?.at && (
+                    <>
+                      <span className="mx-1 text-gray-400">-</span>
+                      {formatDisplayDate(returnSegment.departure.at)}
+                    </>
+                  )}
                 </span>
               </div>
-              <div className="flex items-center">
-                <FiUsers className="mr-1" />
-                <span>{searchParams?.travelers || 1} Traveler{(searchParams?.travelers || 1) > 1 ? 's' : ''}</span>
+              
+              <div className="flex items-center bg-gray-50 px-3 py-2 rounded-lg">
+                <FiUsers className="mr-2 text-[#FFA500]" />
+                <span className="font-medium">{searchParams.travelers || 1} Traveler{(Number(searchParams.travelers || 1) > 1 ? 's' : '')}</span>
               </div>
             </div>
           </div>
-          <Link href="/search" className="text-blue-600 hover:underline flex items-center">
-            <FiArrowLeft className="mr-1" /> Back to Search
+          
+          <Link 
+            href="/search" 
+            className="text-[#FFA500] hover:text-[#FF8C00] border border-[#FFA500] hover:border-[#FF8C00] px-4 py-2 rounded-lg transition-colors duration-200 flex items-center font-medium"
+          >
+            <FiArrowLeft className="mr-2" /> Back to Search
           </Link>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
@@ -435,7 +430,6 @@ export default function TripSummaryPage() {
           Book This Package
         </PrimaryButton>
       </div>
-    </div>
     </div>
   );
 

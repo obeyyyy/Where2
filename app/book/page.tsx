@@ -446,6 +446,24 @@ const BookingPage: React.FC = () => {
           }
         };
       } else {
+        // Update the current passenger's field
+        updatedPassengers[index] = {
+          ...updatedPassengers[index],
+          [field]: value
+        };
+        
+        // If this is the main passenger (index 0) and the field is email or phone,
+        // propagate the value to all other passengers
+        if (index === 0 && (field === 'email' || field === 'phone')) {
+          // Update all other passengers with the same contact information
+          for (let i = 1; i < updatedPassengers.length; i++) {
+            updatedPassengers[i] = {
+              ...updatedPassengers[i],
+              [field]: value
+            };
+          }
+        }
+        
         // For backward compatibility, map old field names to new ones
         const fieldMap: Record<string, keyof BookingPassengerInfo> = {
           passportNumber: 'documentNumber',
@@ -905,7 +923,10 @@ const BookingPage: React.FC = () => {
                       </div>
                       <DuffelAncillariesComponent
                         offerId={bookingData.trip.id}
-                        passengers={passengerData.map((p, index) => {
+                        passengers={Array.from({ length: passengerData.length }, (_, index) => {
+                          // Get the passenger data for this index
+                          const p = passengerData[index];
+                          
                           // Ensure consistent passenger IDs that match the offer
                           // Use index-based IDs that are stable and predictable
                           const passengerId = p.id || `passenger_${index + 1}`;
@@ -928,6 +949,8 @@ const BookingPage: React.FC = () => {
                             }, 0);
                           }
                           
+                          // Create a completely new object for each passenger
+                          // This ensures each passenger is a unique object reference
                           return {
                             id: passengerId,
                             given_name: p.firstName,

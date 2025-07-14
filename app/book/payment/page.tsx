@@ -1339,6 +1339,11 @@ function PaymentContent() {
           <div className="text-center">
             
             <h2 className="text-2xl font-semibold text-gray-700 mb-2">Loading your booking details...</h2>
+            <AnimatedStepCharacter 
+                lottieUrl="https://lottie.host/92968f7f-75f4-4cd0-b275-407a53597ee1/ZGXiKMiv7g.json"
+                alt="Booking Confirmed"
+                className="w-60 h-60 mx-auto mb-0"
+              />
             <p className="text-gray-500">Please wait a moment.</p>
           </div>
         </div>

@@ -546,11 +546,11 @@ function ConfirmationPage() {
         <div className="text-center mb-8">
           <div className="mx-auto w-[250px] h-[250px] mb-4">
             {booking.status === 'succeeded' || booking.status === 'confirmed' ? (
-              <div className="w-full h-full">
+              <div className="w-full h-full rounded-full">
                 <AnimatedStepCharacter 
                   lottieUrl="https://lottie.host/42f2651e-8c16-434e-b639-1cb75fcf19a3/r95IiVu0pY.json"
                   alt="Booking Confirmed"
-                  className="w-full h-full"
+                  className="w-full h-full rounded-2xl"
                 />
               </div>
             ) : booking.status === 'pending' ? (

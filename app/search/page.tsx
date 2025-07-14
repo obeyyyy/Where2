@@ -370,10 +370,22 @@ function HomePage() {
     setViewState('initial');
   };
 
-  if (isLoading) return( <div className="flex justify-center items-center h-screen">
-    <Loading lottieUrl="https://lottie.host/7c52d644-a961-4de0-9957-d4cfb75f1241/1b5IX1mZ0f.json" alt="Loading" />
-  </div>
-  );
+  if (isLoading) {
+    // Show different loading messages based on view state
+    const loadingMessage = viewState === 'searching' 
+      ? 'Searching for the best Trips...' 
+      : 'Loading your travel options...';
+      
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loading 
+          lottieUrl="https://lottie.host/7c52d644-a961-4de0-9957-d4cfb75f1241/1b5IX1mZ0f.json" 
+          alt="Loading" 
+          message={loadingMessage} 
+        />
+      </div>
+    );
+  }
 
   const handleInputChange = (field: keyof SearchParams, value: unknown) => {
     setSearchParams(prev => ({
@@ -862,78 +874,80 @@ function HomePage() {
 
   // Filter UI component (to be added to the render method)
   const FilterPanel = () => (
-    <div className="bg-white p-6 rounded-2xl shadow-lg mb-8 mx-auto max-w-2xl border border-orange-100">
-      <h3 className="font-extrabold text-xl mb-6 text-gray-800 flex items-center justify-center gap-2">
+    <div className="bg-white p-6 rounded-2xl shadow-lg mb-8 mx-auto w-full md:w-11/12 lg:w-10/12 border border-orange-100">
+      <h3 className="font-extrabold text-xl mb-8 text-gray-800 flex items-center justify-center gap-2">
         <FiFilter className="text-orange-500" />
         <span className="bg-gradient-to-r from-[#FF8C00] to-[#FFA500] bg-clip-text text-transparent">
           Filter Options
         </span>
       </h3>
       
-      {/* Stops Filter */}
-      <div className="mb-6 text-center">
-        <label className="block text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">Flight Stops</label>
-        <div className="flex flex-wrap justify-center gap-3">
-          {[
-            {label: 'Non-stop', value: 0},
-            {label: '1 stop max', value: 1},
-            {label: 'All flights', value: 2}
-          ].map(option => (
-            <NewButton
-              key={option.value}
-              text={option.label}
-              onClick={() => setFilters({...filters, maxStops: option.value})}
-              className={`${filters.maxStops === option.value 
-                ? 'shadow-lg' 
-                : 'hover:bg-gray-100 border border-gray-200'}`}
-              isSelected={filters.maxStops === option.value}
-            />
-          ))}
+      <div className="flex w-full">
+        {/* Stops Filter */}
+        <div className="w-full">
+          <label className="block text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wider text-center">Flight Stops</label>
+          <div className="flex flex-wrap justify-center gap-3 w-full">
+            {[
+              {label: 'Non-stop', value: 0},
+              {label: '1 stop max', value: 1},
+              {label: 'All flights', value: 2}
+            ].map(option => (
+              <NewButton
+                key={option.value}
+                text={option.label}
+                onClick={() => setFilters({...filters, maxStops: option.value})}
+                className={`${filters.maxStops === option.value 
+                  ? 'shadow-lg' 
+                  : 'hover:bg-gray-100 border border-gray-200'}`}
+                isSelected={filters.maxStops === option.value}
+              />
+            ))}
+          </div>
         </div>
-      </div>
-      
-      {/* Sorting */}
-      <div className="text-center">
-        <label className="block text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">Sort By</label>
-        <div className="flex justify-center gap-6">
-          <NewButton
-            text="Price"
-            onClick={() => setFilters({
-              ...filters, 
-              sortBy: 'price',
-              sortOrder: filters.sortBy === 'price' && filters.sortOrder === 'asc' ? 'desc' : 'asc'
-            })}
-            className={`gap-1 font-medium transition-colors ${filters.sortBy === 'price' 
-              ? 'text-orange-600' 
-              : 'text-gray-600 hover:text-gray-800'}`}
-            isSelected={filters.sortBy === 'price'}
-          >
-            <FiDollarSign />
-            {filters.sortBy === 'price' && (
-              <span className={filters.sortOrder === 'asc' ? 'text-green-500' : 'text-red-500'}>
-                {filters.sortOrder === 'asc' ? '↑' : '↓'}
-              </span>
-            )}
-          </NewButton>
-          <NewButton
-            text="Duration"
-            onClick={() => setFilters({
-              ...filters, 
-              sortBy: 'duration',
-              sortOrder: filters.sortBy === 'duration' && filters.sortOrder === 'asc' ? 'desc' : 'asc'
-            })}
-            className={`gap-1 font-medium transition-colors ${filters.sortBy === 'duration' 
-              ? 'text-orange-600' 
-              : 'text-gray-600 hover:text-gray-800'}`}
-            isSelected={filters.sortBy === 'duration'}
-          >
-            <FiClock />
-            {filters.sortBy === 'duration' && (
-              <span className={filters.sortOrder === 'asc' ? 'text-green-500' : 'text-red-500'}>
-                {filters.sortOrder === 'asc' ? '↑' : '↓'}
-              </span>
-            )}
-          </NewButton>
+        
+        {/* Sorting */}
+        <div className="w-full">
+          <label className="block text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wider text-center">Sort By</label>
+          <div className="flex flex-wrap justify-center gap-4 w-full">
+            <NewButton
+              text="Price"
+              onClick={() => setFilters({
+                ...filters, 
+                sortBy: 'price',
+                sortOrder: filters.sortBy === 'price' && filters.sortOrder === 'asc' ? 'desc' : 'asc'
+              })}
+              className={`gap-1 font-medium transition-colors ${filters.sortBy === 'price' 
+                ? 'text-orange-600' 
+                : 'text-gray-600 hover:text-gray-800'}`}
+              isSelected={filters.sortBy === 'price'}
+            >
+              <FiDollarSign />
+              {filters.sortBy === 'price' && (
+                <span className={filters.sortOrder === 'asc' ? 'text-green-500' : 'text-red-500'}>
+                  {filters.sortOrder === 'asc' ? '↑' : '↓'}
+                </span>
+              )}
+            </NewButton>
+            <NewButton
+              text="Duration"
+              onClick={() => setFilters({
+                ...filters, 
+                sortBy: 'duration',
+                sortOrder: filters.sortBy === 'duration' && filters.sortOrder === 'asc' ? 'desc' : 'asc'
+              })}
+              className={`gap-1 font-medium transition-colors ${filters.sortBy === 'duration' 
+                ? 'text-orange-600' 
+                : 'text-gray-600 hover:text-gray-800'}`}
+              isSelected={filters.sortBy === 'duration'}
+            >
+              <FiClock />
+              {filters.sortBy === 'duration' && (
+                <span className={filters.sortOrder === 'asc' ? 'text-green-500' : 'text-red-500'}>
+                  {filters.sortOrder === 'asc' ? '↑' : '↓'}
+                </span>
+              )}
+            </NewButton>
+          </div>
         </div>
       </div>
     </div>
@@ -941,7 +955,7 @@ function HomePage() {
 
   // Search Results Title (add this where you display the results)
   const SearchResultsTitle = () => (
-    <div className="flex flex-col items-center justify-between mb-6 gap-2 text-center">
+    <div className="flex items-center justify-between mb-6 gap-2 text-center">
       <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
         <FiSearch className="text-orange-500" />
         {flightsForDisplay.length} {flightsForDisplay.length === 1 ? 'Flight' : 'Flights'} Found

@@ -85,8 +85,8 @@ const PassengerForm: React.FC<PassengerFormProps> = ({ passenger, index, onChang
   const validateFields = () => {
     const newErrors: FieldError[] = [];
     
-    // Required fields validation
-    const requiredFields: Array<{field: keyof PassengerInfo; label: string}> = [
+    // Required fields validation - base fields required for all passengers
+    const baseRequiredFields: Array<{field: keyof PassengerInfo; label: string}> = [
       { field: 'title', label: 'Title' },
       { field: 'firstName', label: 'First Name' },
       { field: 'lastName', label: 'Last Name' },
@@ -97,9 +97,19 @@ const PassengerForm: React.FC<PassengerFormProps> = ({ passenger, index, onChang
       { field: 'documentIssuingCountryCode', label: 'Document Issuing Country' },
       { field: 'documentExpiryDate', label: 'Document Expiry Date' },
       { field: 'documentNationality', label: 'Nationality' },
+    ];
+    
+    // Contact fields only required for main passenger (index 0)
+    const mainPassengerFields: Array<{field: keyof PassengerInfo; label: string}> = [
       { field: 'email', label: 'Email' },
       { field: 'phone', label: 'Phone' }
     ];
+    
+    // Combine required fields based on passenger index
+    const requiredFields = [...baseRequiredFields];
+    if (index === 0) {
+      requiredFields.push(...mainPassengerFields);
+    }
 
     requiredFields.forEach(({ field, label }) => {
       if (!passenger[field]) {
