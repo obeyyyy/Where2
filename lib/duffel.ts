@@ -566,7 +566,7 @@ export async function createOrder(
     
     // IMPORTANT: Duffel API requires the payment amount to match the offer's base price exactly
     // Prepare the order request
-    const orderRequest = {
+    const orderRequest: any = {
       data: {
         type: 'instant',
         selected_offers: [offerId], // Use the verified offer ID
@@ -590,6 +590,46 @@ export async function createOrder(
         }
       }
     };
+    
+    // Add selected ancillaries to the order request if available
+    const ancillarySelection = metadata?.ancillarySelection || metadata?.ancillaries;
+    if (ancillarySelection && ancillarySelection.services && Array.isArray(ancillarySelection.services) && ancillarySelection.services.length > 0) {
+      console.log('Adding selected ancillaries to order request:', {
+        count: ancillarySelection.services.length,
+        total: ancillarySelection.total || 'unknown'
+      });
+      
+      // Format ancillary services for Duffel API
+      const services = ancillarySelection.services.map((service: any) => {
+        // Ensure we have all required fields for Duffel API
+        if (!service.id || !service.passenger_id || !service.segment_ids) {
+          console.warn('Skipping ancillary service with missing required fields:', service);
+          return null;
+        }
+        
+        return {
+          id: service.id,
+          passenger_id: service.passenger_id || service.passengerId,
+          segment_ids: service.segment_ids || service.segmentIds,
+          quantity: service.quantity || 1
+        };
+      }).filter(Boolean); // Remove any null entries
+      
+      if (services.length > 0) {
+        // Add services to the order request
+        orderRequest.data.services = services;
+        
+        console.log('Added services to order request:', {
+          count: services.length,
+          services: services.map((s: any) => ({
+            id: s.id,
+            passenger_id: s.passenger_id,
+            segment_count: s.segment_ids?.length || 0,
+            quantity: s.quantity
+          }))
+        });
+      }
+    }
     
     console.log('Sending order creation request to Duffel API:', JSON.stringify({
       ...orderRequest,

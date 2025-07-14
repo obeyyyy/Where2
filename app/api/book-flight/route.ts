@@ -176,6 +176,19 @@ async function handlePaymentConfirmation({
 
     // If payment is successful, create the order
     console.log('Creating order for offer:', offerId);
+    
+    // Extract ancillary data from metadata if available
+    const ancillaryData = metadata?.ancillarySelection || metadata?.ancillaries;
+    
+    // Log ancillary data for debugging
+    if (ancillaryData) {
+      console.log('Including ancillary data in order creation:', {
+        hasServices: !!ancillaryData.services,
+        serviceCount: ancillaryData.services?.length || 0,
+        total: ancillaryData.total
+      });
+    }
+    
     const orderResponse = await createOrder(
       [offerId],
       passengers,
