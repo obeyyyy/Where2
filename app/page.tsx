@@ -558,20 +558,17 @@ export default function LandingPage() {
                   viewport={{ once: true, amount: 0.3 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                 >
-                  <motion.div
-                    className="bg-white rounded-3xl border border-orange-200 overflow-hidden h-full flex flex-col shadow-lg hover:shadow-2xl transition-all duration-300"
-                    whileHover={{ y: -8, boxShadow: "0 20px 40px rgba(255, 122, 0, 0.15)" }}
+                  <div
+                    className="bg-white rounded-3xl border border-orange-200 overflow-hidden h-full flex flex-col shadow-lg"
                   >
                     {/* Card Header with Step Number */}
                     <div className="relative bg-gradient-to-r from-orange-100 to-orange-200 p-6 flex justify-between items-center">
                       <h3 className="text-xl font-bold text-orange-800">Step {item.step}</h3>
-                      <motion.div
+                      <div
                         className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-full flex items-center justify-center text-white text-xl font-black shadow-md`}
-                        whileHover={{ scale: 1.1, rotate: 10 }}
-                        transition={{ type: "spring", stiffness: 300 }}
                       >
                         {item.step}
-                      </motion.div>
+                      </div>
                     </div>
                     
                     {/* Animation Container */}
@@ -595,7 +592,7 @@ export default function LandingPage() {
                         {[...Array(6)].map((_, i) => (
                           <div
                             key={i}
-                            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                            className={`w-2 h-2 rounded-full ${
                               i < item.step ? 'bg-orange-500' : 'bg-orange-200'
                             }`}
                           />
@@ -603,7 +600,7 @@ export default function LandingPage() {
                         <span className="ml-2 text-xs text-orange-600 font-medium">{item.step}/6</span>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 </motion.div>
               ))}
             </div>

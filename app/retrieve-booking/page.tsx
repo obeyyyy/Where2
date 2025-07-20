@@ -955,19 +955,23 @@ export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) 
                   <>
                     {/* Determine if this is a round trip */}
                     {(() => {
+                      // Improved logic to detect round trip by checking if the first and last segments form a return journey
+                      const firstSegment = bookingData.itinerary.segments[0];
+                      const lastSegment = bookingData.itinerary.segments[bookingData.itinerary.segments.length - 1];
+                      
                       const isRoundTrip = bookingData.itinerary.segments.length > 1 && 
-                        bookingData.itinerary.segments[0].departure.iataCode === 
-                          bookingData.itinerary.segments[bookingData.itinerary.segments.length - 1].arrival.iataCode && 
-                        bookingData.itinerary.segments[0].arrival.iataCode === 
-                          bookingData.itinerary.segments[bookingData.itinerary.segments.length - 1].departure.iataCode;
+                        firstSegment.departure.iataCode === lastSegment.arrival.iataCode && 
+                        firstSegment.arrival.iataCode === lastSegment.departure.iataCode;
                       
                       // Find the index where return flight starts (if it's a round trip)
+                      // This looks for the first segment that departs from the arrival city of the first segment
                       const returnSegmentIndex = isRoundTrip ? 
                         bookingData.itinerary.segments.findIndex((segment, index) => 
-                          index > 0 && segment.departure.iataCode === bookingData.itinerary.segments[0].arrival.iataCode
+                          index > 0 && segment.departure.iataCode === firstSegment.arrival.iataCode
                         ) : -1;
                       
                       // Create separate itineraries for outbound and return flights
+                      // For outbound, only include segments up to the return segment index
                       const outboundItinerary = {
                         ...bookingData.itinerary,
                         segments: isRoundTrip && returnSegmentIndex !== -1 ? 
@@ -976,6 +980,7 @@ export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) 
                       };
                       
                       // Only create return itinerary if this is a round trip
+                      // For return, only include segments starting from the return segment index
                       const returnItinerary = isRoundTrip && returnSegmentIndex !== -1 ? {
                         ...bookingData.itinerary,
                         segments: bookingData.itinerary.segments.slice(returnSegmentIndex)
