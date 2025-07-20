@@ -7,7 +7,7 @@ import { Elements } from '@stripe/react-stripe-js';
 import { AncillaryState } from '@/types/Ancillary';
 import { computePricing, PricingBreakdown as BasePricingBreakdown, PricingBreakdown } from '@/lib/pricing';
 import Loading from '../../loading';
-import { FiArrowLeft, FiCheckCircle, FiCreditCard, FiUser, FiCalendar, FiGlobe } from 'react-icons/fi';
+import { FiArrowLeft, FiCheckCircle, FiCreditCard, FiUser, FiCalendar, FiGlobe, FiLock, FiShield, FiFileText } from 'react-icons/fi';
 import { FlightItineraryCard } from "@/app/components/FlightItineraryCard";
 import PaymentForm from '@/app/components/PaymentForm';
 import AnimatedStepCharacter from '@/app/components/AnimatedStepCharacter';
@@ -117,7 +117,13 @@ function PaymentContent() {
         
         if (selectedBreakdown.length > 0) {
           console.log(`Using ${selectedBreakdown.length} selected items from breakdown`);
-          const selectedTotal = selectedBreakdown.reduce((sum: number, item: any) => sum + item.amount, 0);
+          const selectedTotal = selectedBreakdown.reduce(
+            (sum: number, service: any) => sum + parseFloat(service.amount || service.total_amount || '0'), 
+            0
+          );
+          
+          console.log('Selected ancillaries:', selectedBreakdown);
+          console.log('Ancillary total:', selectedTotal);
           
           // Update price info with selected ancillary details
           updatePriceInfoWithAncillaries(selectedBreakdown, selectedTotal);
@@ -1481,13 +1487,13 @@ function PaymentContent() {
             </div>
 
             {/* Price Summary Card */}
-            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 mt-4">
-                <h2 className="text-2xl font-bold text-[#5D4037]">Price Details</h2>
+            <div className="bg-white rounded-3xl shadow-sm p-8 border border-orange-200 mt-4">
+                <h2 className="text-2xl font-bold text-orange-900 bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent">Price Details</h2>
                 <div className="w-full space-y-4 text-lg">
                     {/* Flight Price */}
-                    <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                        <span className="text-gray-600">Flight Price</span>
-                        <span className="font-semibold text-gray-800">
+                    <div className="flex justify-between items-center pb-2 border-b border-orange-100">
+                        <span className="text-orange-700">Flight Price</span>
+                        <span className="font-semibold text-orange-900">
                             {bookingData?.trip?.price?.currency || '€'}
                             {parseFloat(bookingData?.trip?.price?.total || '0').toFixed(2)}
                         </span>
@@ -1495,9 +1501,9 @@ function PaymentContent() {
 
                     {/* Hotel Price if available */}
                     {parseFloat(bookingData?.trip?.price?.breakdown?.hotel || '0') > 0 && (
-                        <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                            <span className="text-gray-600">Hotel Price</span>
-                            <span className="font-semibold text-gray-800">
+                        <div className="flex justify-between items-center pb-2 border-b border-orange-100">
+                            <span className="text-orange-700">Hotel Price</span>
+                            <span className="font-semibold text-orange-900">
                                 {bookingData?.trip?.price?.breakdown?.currency || '€'}
                                 {parseFloat(bookingData?.trip?.price?.breakdown?.hotel).toFixed(2)}
                             </span>
@@ -1505,24 +1511,24 @@ function PaymentContent() {
                     )}
 
                     {/* Markup Fee */}
-                    <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                        <span className="text-gray-600">
+                    <div className="flex justify-between items-center pb-2 border-b border-orange-100">
+                        <span className="text-orange-700">
                             Markup Fee ({priceInfo?.passengers || bookingData?.passengers?.length || 1} × {displayCurrency}
                             {(priceInfo?.markupPerPassenger || 1).toFixed(2)})
                         </span>
-                        <span className="font-semibold text-gray-800">
+                        <span className="font-semibold text-orange-900">
                             {displayCurrency}
                             {(priceInfo?.markupTotal || (bookingData?.passengers?.length || 1)).toFixed(2)}
                         </span>
                     </div>
 
                     {/* Service Fee */}
-                    <div className="flex justify-between items-center pb-2 border-b border-gray-100">
-                        <span className="text-gray-600">
+                    <div className="flex justify-between items-center pb-2 border-b border-orange-100">
+                        <span className="text-orange-700">
                             Service Fee ({priceInfo?.passengers || bookingData?.passengers?.length || 1} × {displayCurrency}
                             {(priceInfo?.servicePerPassenger || 2).toFixed(2)})
                         </span>
-                        <span className="font-semibold text-gray-800">
+                        <span className="font-semibold text-orange-900">
                             {displayCurrency}
                             {(priceInfo?.serviceTotal || ((bookingData?.passengers?.length || 1) * 2)).toFixed(2)}
                         </span>
@@ -1531,21 +1537,21 @@ function PaymentContent() {
                     {/* Ancillary Options */}
                     {priceInfo?.ancillaryRows && priceInfo.ancillaryRows.length > 0 && (
                       <div className="mt-3 mb-3">
-                        <div className="text-gray-700 font-medium mb-2">Selected Extras:</div>
+                        <div className="text-orange-800 font-medium mb-2">Selected Extras:</div>
                         {priceInfo.ancillaryRows.map((item: any, index: number) => (
-                          <div key={index} className="flex flex-col py-2 border-b border-gray-100 last:border-b-0">
+                          <div key={index} className="flex flex-col py-2 border-b border-orange-100 last:border-b-0">
                             <div className="flex justify-between items-center">
-                              <span className="text-gray-700 font-medium flex items-center">
+                              <span className="text-orange-800 font-medium flex items-center">
                                 <span className="w-2 h-2 rounded-full bg-orange-400 mr-2"></span>
                                 {item.title || item.type || 'Extra'}
                               </span>
-                              <span className="font-semibold text-gray-800">
+                              <span className="font-semibold text-orange-900">
                                 {displayCurrency} {item.amount.toFixed(2)}
                               </span>
                             </div>
                             
                             {/* Show detailed information */}
-                            <div className="ml-4 text-sm text-gray-500">
+                            <div className="ml-4 text-sm text-orange-600">
                               {item.details && (
                                 <div className="flex items-center gap-1">
                                   <span className="text-orange-500">
@@ -1560,7 +1566,7 @@ function PaymentContent() {
                               {/* Show passenger information */}
                               {(item.passengerName || item.passenger) && (
                                 <div className="flex items-center gap-1">
-                                  <span className="text-blue-500">
+                                  <span className="text-orange-500">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                                       <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                                     </svg>
@@ -1572,7 +1578,7 @@ function PaymentContent() {
                               {/* Show segment information */}
                               {(item.segmentInfo || item.segment) && (
                                 <div className="flex items-center gap-1">
-                                  <span className="text-green-500">
+                                  <span className="text-orange-500">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                                       <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                                     </svg>
@@ -1588,15 +1594,18 @@ function PaymentContent() {
 
                     {/* Total Summary */}
                     <div className="pt-4 flex justify-between font-bold text-xl">
-                        <span>Total Amount</span>
-                        <span className="text-[#FFB800]">
+                        <span className="text-orange-900">Total Amount</span>
+                        <span className="bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent">
                             {displayCurrency} {
                                 serverAmount?.toFixed(2)
                             }
                         </span>
                     </div>
                 </div>
-                <div className="text-sm text-gray-500 mt-4 text-right">
+                <div className="text-sm text-orange-600 mt-4 text-right flex items-center justify-end">
+                    <svg className="w-4 h-4 mr-1 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
                     Includes all taxes and fees
                 </div>
             </div>
@@ -1604,15 +1613,7 @@ function PaymentContent() {
 
           {/* Right side - Payment Form */}
           <div className="lg:w-[40%] lg:sticky lg:top-4 w-full">
-            <div className="rounded-2xl shadow-xl bg-white border border-amber-100 p-4">
-              <h2 className="text-2xl font-bold text-[#5D4037]">Payment Information</h2>
-             
-                <AnimatedStepCharacter 
-                lottieUrl="https://lottie.host/95c3d083-31e6-486d-bebd-375c3b7e8b13/UOk0JnYYHG.json"
-                alt="Booking Confirmed"
-                className="w-60 h-60 mx-auto mb-0"
-              />
-              
+            
               {loading ? (
                 <div className="text-center bg-gray-50 rounded-xl">
                   {/* Lottie Animation for payment form loading */}
@@ -1868,25 +1869,29 @@ function PaymentContent() {
                   <p className="text-base">Please refresh the page or try again later. If the problem persists, contact support.</p>
                 </div>
               )}
-            </div>
-
-            {/* Security and Policy Information */}
-            <div className="mt-8 p-6 bg-gray-50 rounded-xl shadow-inner text-sm text-gray-600 border border-gray-100">
+              {/* Security and Policy Information */}
+          <div className="mt-8 p-6 bg-orange-50 rounded-3xl shadow-sm text-sm text-orange-700 border border-orange-200">
               <p className="flex items-start mb-3">
-                <FiCheckCircle className="text-green-600 mr-3 mt-1 flex-shrink-0 text-xl" />
-                <span className="font-medium text-gray-700">Your payment is secure and encrypted with industry-standard protocols.</span>
+                <FiLock className="text-orange-500 mr-3 mt-1 flex-shrink-0 text-xl" />
+                <span className="font-medium text-orange-800">Your payment is secure and encrypted with industry-standard protocols.</span>
+              </p>
+              <p className="flex items-start mb-3">
+                <FiShield className="text-orange-500 mr-3 mt-1 flex-shrink-0 text-xl" />
+                <span className="font-medium text-orange-800">All transactions are protected by our Secure Payment Guarantee.</span>
               </p>
               <p className="flex items-start">
-                <span className="mr-3 mt-1 flex-shrink-0"></span> {/* Placeholder for alignment */}
+                <FiFileText className="text-orange-500 mr-3 mt-1 flex-shrink-0 text-xl" />
                 <span>
-                  By completing this booking, you agree to our <a href="/terms" className="text-orange-600 hover:underline font-medium">Terms of Service</a> and <a href="/privacy" className="text-orange-600 hover:underline font-medium">Privacy Policy</a>.
+                  By completing this booking, you agree to our <a href="/terms" className="text-orange-600 hover:text-orange-700 hover:underline font-medium transition-colors">Terms of Service</a> and <a href="/privacy" className="text-orange-600 hover:text-orange-700 hover:underline font-medium transition-colors">Privacy Policy</a>.
                 </span>
               </p>
+            </div>
             </div>
             
           </div>
         </div>
+          
       </div>
-    </div>
+    
   );
 }

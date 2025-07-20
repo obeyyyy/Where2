@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fa';
 import { FiBriefcase, FiMapPin, FiCheckCircle, FiX } from 'react-icons/fi';
 import { motion } from 'framer-motion';
+import { formatDate } from 'date-fns';
 
 interface Segment {
   departure: { iataCode: string; at: string; terminal: string };
@@ -945,27 +946,105 @@ export default function RetrieveBooking({ searchParams }: RetrieveBookingProps) 
                   <FaPlane className="text-2xl font-bold text-orange-600" />
                   <h2 className="text-2xl font-bold text-gray-900">Flight Itinerary</h2>
                 </div>
-                {bookingData?.itinerary && (
-                  <FlightItineraryCard 
-                    itinerary={bookingData.itinerary}
-                    tripType="oneway"
-                    airports={Object.values(airportsJson)}
-                    className="mb-8"
-                    date={bookingData.itinerary.segments[0].departure.at}
-                  />
-                )}
+               {/* Flight Itinerary */}
+              <div className="border-t border-orange-200 pt-7 mt-7">
+                <h3 className="text-xl font-semibold text-[#5D4037] mb-5">Flight Details</h3>
                 
-                {bookingData.itinerary?.segments[0]?.carrierName && (
-                  <a 
-                    href={`https://www.google.com/search?q=${encodeURIComponent(bookingData.itinerary.segments[0].carrierName + ' check in')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center text-blue-600 hover:text-blue-800 mt-4"
-                  >
-                    Go to {bookingData.itinerary.segments[0].carrierName} check-in
-                    <FaExternalLinkAlt className="ml-1 w-3 h-3" />
-                  </a>
+                {/* Check if itinerary exists */}
+                {bookingData.itinerary && bookingData.itinerary.segments && bookingData.itinerary.segments.length > 0 && (
+                  <>
+                    {/* Determine if this is a round trip */}
+                    {(() => {
+                      const isRoundTrip = bookingData.itinerary.segments.length > 1 && 
+                        bookingData.itinerary.segments[0].departure.iataCode === 
+                          bookingData.itinerary.segments[bookingData.itinerary.segments.length - 1].arrival.iataCode && 
+                        bookingData.itinerary.segments[0].arrival.iataCode === 
+                          bookingData.itinerary.segments[bookingData.itinerary.segments.length - 1].departure.iataCode;
+                      
+                      // Find the index where return flight starts (if it's a round trip)
+                      const returnSegmentIndex = isRoundTrip ? 
+                        bookingData.itinerary.segments.findIndex((segment, index) => 
+                          index > 0 && segment.departure.iataCode === bookingData.itinerary.segments[0].arrival.iataCode
+                        ) : -1;
+                      
+                      // Create separate itineraries for outbound and return flights
+                      const outboundItinerary = {
+                        ...bookingData.itinerary,
+                        segments: isRoundTrip && returnSegmentIndex !== -1 ? 
+                          bookingData.itinerary.segments.slice(0, returnSegmentIndex) : 
+                          bookingData.itinerary.segments
+                      };
+                      
+                      // Only create return itinerary if this is a round trip
+                      const returnItinerary = isRoundTrip && returnSegmentIndex !== -1 ? {
+                        ...bookingData.itinerary,
+                        segments: bookingData.itinerary.segments.slice(returnSegmentIndex)
+                      } : null;
+                      
+                      return (
+                        <>
+                          {/* Outbound Flight */}
+                          <div className="mb-7">
+                            <div className="flex items-center mb-3 text-lg">
+                              <span className="font-bold text-[#5D4037]">
+                                {isRoundTrip ? 'Outbound Flight' : 'Flight'}
+                              </span>
+                              <span className="mx-3 text-gray-400">•</span>
+                              <span className="text-base text-gray-600">
+                                {new Date(outboundItinerary.segments[0].departure.at).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                            </div>
+                            <div className="pl-2 border-l-4 border-orange-200">
+                              <FlightItineraryCard
+                                itinerary={outboundItinerary}
+                                type="outbound"
+                                date={outboundItinerary.segments[0].departure.at}
+                                airports={[
+                                  { iata_code: outboundItinerary.segments[0].departure.iataCode },
+                                  { iata_code: outboundItinerary.segments[outboundItinerary.segments.length - 1].arrival.iataCode }
+                                ]}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Return Flight - only show if it's a round trip */}
+                          {returnItinerary && (
+                            <div>
+                              <div className="flex items-center mb-3 text-lg">
+                                <span className="font-bold text-[#5D4037]">Return Flight</span>
+                                <span className="mx-3 text-gray-400">•</span>
+                                <span className="text-base text-gray-600">
+                                  {new Date(returnItinerary.segments[0].departure.at).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+                              <div className="pl-2 border-l-4 border-orange-200">
+                                <FlightItineraryCard
+                                  itinerary={returnItinerary}
+                                  type="return"
+                                  date={returnItinerary.segments[0].departure.at}
+                                  airports={[
+                                    { iata_code: returnItinerary.segments[0].departure.iataCode },
+                                    { iata_code: returnItinerary.segments[returnItinerary.segments.length - 1].arrival.iataCode }
+                                  ]}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </>
                 )}
+              </div>
+            
                 {bookingData && (
                   <button
                     onClick={() => handleDownloadItinerary(bookingData)}

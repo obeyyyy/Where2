@@ -1012,16 +1012,16 @@ const BookingPage: React.FC = () => {
               )}
               
               {/* Passenger Information */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-6">Passenger Information</h2>
+              <div className="bg-white rounded-3xl shadow-sm p-6 border border-orange-200">
+                <h2 className="text-xl font-semibold text-orange-900 mb-6">Passenger Information</h2>
                 
                 {passengerData.map((passenger, index) => (
-                  <div key={index} className="mb-8 last:mb-0 border-b border-gray-100 pb-6 last:border-0">
+                  <div key={index} className="mb-8 last:mb-0 border-b border-orange-100 pb-6 last:border-0">
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold">
+                      <h3 className="text-lg font-semibold text-orange-800">
                         {index === 0 ? 'Main Passenger' : `Passenger ${index + 1}`}
                       </h3>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm bg-orange-50 text-orange-700 px-2 py-1 rounded-full">
                         {passenger.type === 'adult' ? 'Adult' : 
                          passenger.type === 'child' ? 'Child' : 'Infant'}
                       </span>
@@ -1041,21 +1041,21 @@ const BookingPage: React.FC = () => {
 
           {/* Right side - Booking Summary */}
           <div className="lg:w-1/3">
-            <div className="bg-white rounded-xl shadow-sm p-6 sticky top-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Booking Summary</h2>
+            <div className="bg-white rounded-3xl shadow-sm p-6 sticky top-6 border border-orange-200">
+              <h2 className="text-xl font-semibold text-orange-900 mb-4">Booking Summary</h2>
               
               <div className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Passengers:</span>
-                  <span className="font-medium">{passengerData.length} {passengerData.length === 1 ? 'Passenger' : 'Passengers'}</span>
+                  <span className="text-orange-900">Passengers:</span>
+                  <span className="font-medium text-orange-900">{passengerData.length} {passengerData.length === 1 ? 'Passenger' : 'Passengers'}</span>
                 </div>
                 
-                {trip?.price?.total && (
+                {priceInfo.total && (
                   <div className="space-y-2">
                     {/* Outbound Flight Price */}
                     {trip.price.breakdown?.outbound && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Flight:</span>
+                        <span className="text-orange-900">Flight:</span>
                         <span className="font-medium">
                           {trip.price.breakdown.currency || '€'}
                           {parseFloat(trip.price.breakdown.outbound.toString()).toFixed(2)}
@@ -1065,21 +1065,21 @@ const BookingPage: React.FC = () => {
                     
                     {/* Base Fare Total */}
                     <div className="flex justify-between border-t border-gray-100 pt-2 mt-2">
-                      <span className="text-gray-600">Base fare (per passenger):</span>
+                      <span className="text-orange-900">Base fare (per passenger):</span>
                       <span className="font-medium">
                         {trip.price.breakdown?.currency || '€'}
                         {(priceInfo.base / passengerData.length).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Service fee (per passenger):</span>
+                      <span className="text-orange-900">Service fee (per passenger):</span>
                       <span className="font-medium">
                         {trip.price.breakdown?.currency || '€'}
                         {parseFloat(priceInfo.servicePerPassenger.toFixed(2)).toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Tax (per passenger):</span>
+                      <span className="text-orange-900">Tax (per passenger):</span>
                       <span className="font-medium">
                         {trip.price.breakdown?.currency || '€'}
                         {parseFloat(priceInfo.markupPerPassenger.toFixed(2)).toFixed(2)}
@@ -1087,7 +1087,7 @@ const BookingPage: React.FC = () => {
                     </div>
                     <div className="border-t border-gray-200 mt-2 pt-2">
                       <div className="flex justify-between">
-                        <span className="font-medium">Subtotal per passenger:</span>
+                        <span className="font-medium text-orange-900">Subtotal per passenger:</span>
                         <span className="font-medium">
                           {trip.price.breakdown?.currency || '€'}
                           {(
@@ -1101,7 +1101,7 @@ const BookingPage: React.FC = () => {
                     
                     {/* Ancillaries */}
                     <div className="pt-2 border-t border-gray-100 mt-2">
-                      <span className="text-gray-700 font-medium">Additional Services:</span>
+                      <span className="text-orange-900 font-medium">Additional Services:</span>
                     </div>
                     
                     {ancillaryState.rows.length > 0 ? (
@@ -1117,7 +1117,7 @@ const BookingPage: React.FC = () => {
                           </div>
                         ))}
                         <div className="flex justify-between mt-2 pt-1 border-t border-dashed border-gray-100">
-                          <span className="text-gray-700 font-medium">Ancillaries Total:</span>
+                          <span className="font-medium text-orange-900">Ancillaries Total:</span>
                           <span className="font-medium text-green-600">
                             {typeof ancillaryState.total === 'number' ? `${ancillaryState.total.toFixed(2)} ${ancillaryState.currency}` : '0.00 EUR'}
                           </span>
@@ -1131,28 +1131,17 @@ const BookingPage: React.FC = () => {
                   </div>
                 )}
 
-                {trip?.price?.total && (
-                  <div className="border-t border-gray-200 pt-4 mt-4">
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>Total for {passengerData.length} {passengerData.length === 1 ? 'passenger' : 'passengers'}:</span>
-                      <span className={`${ancillaryState.rows.length > 0 ? 'animate-pulse-once' : ''} text-orange-500`}>
-                        €{typeof priceInfo.total === 'number' ? priceInfo.total.toFixed(2) : '0.00'}
-                        {ancillaryState.rows.length > 0 && (
-                          <span className="text-xs ml-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                            +Ancillaries
-                          </span>
-                        )}
+                {priceInfo.total && (
+                  <div className="border-t border-orange-200 mt-4 pt-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold text-orange-900">Total Price:</span>
+                      <span className="text-xl font-bold text-orange-900">
+                        {trip.price.currency || '€'}
+                        {(parseFloat(priceInfo.total.toString()) + (ancillaryState.total || 0)).toFixed(2)}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1 text-right">
-                      Includes €2.00 Tax + €1.00 Service fee per passenger
-                      {ancillaryState.total > 0 && typeof ancillaryState.total === 'number' && (
-                        <span className="ml-1">+ €{ancillaryState.total.toFixed(2)} in ancillary services</span>
-                      )}
-                    </p>
                   </div>
                 )}
-
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
@@ -1181,6 +1170,13 @@ const BookingPage: React.FC = () => {
                     No credit card fees
                   </p>
                 </div>
+              
+                <p className="text-sm text-orange-600 mt-2">
+                  All prices include taxes and fees
+                  {ancillaryState.total > 0 && (
+                    <span className="ml-1">+ €{ancillaryState.total.toFixed(2)} in ancillary services</span>
+                  )}
+                </p>
               </div>
             </div>
           </div>

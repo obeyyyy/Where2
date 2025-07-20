@@ -30,6 +30,7 @@ import {
   FiSmartphone,
   FiPackage
 } from 'react-icons/fi';
+import Link from 'next/link';
 
 const AnimatedStepCharacter = dynamic(
   () => import('@/app/components/AnimatedStepCharacter'),
@@ -455,32 +456,44 @@ function ConfirmationPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FFFDF6]">
-        <LoadingSpinner />
+      <div className="min-h-screen bg-orange-50 px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-4xl lg:max-w-7xl">
+          <div className="text-center bg-white p-8 rounded-3xl shadow-sm border border-orange-200 max-w-md mx-auto">
+            <h2 className="text-2xl font-semibold bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent mb-4">Loading your booking details</h2>
+            <AnimatedStepCharacter 
+                lottieUrl="https://lottie.host/92968f7f-75f4-4cd0-b275-407a53597ee1/ZGXiKMiv7g.json"
+                alt="Loading Booking"
+                className="w-60 h-60 mx-auto mb-2"
+              />
+            <div className="flex justify-center items-center space-x-2 mt-2">
+              <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></div>
+              <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse delay-150"></div>
+              <div className="w-2 h-2 rounded-full bg-orange-600 animate-pulse delay-300"></div>
+            </div>
+            <p className="text-orange-600 mt-4">Please wait while we retrieve your booking information.</p>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !booking) {
     return (
-      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <FiAlertTriangle className="h-5 w-5 text-red-400" aria-hidden="true" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
+      <div className="min-h-screen bg-orange-50 px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-4xl lg:max-w-7xl">
+          <div className="bg-white p-8 rounded-3xl shadow-sm max-w-md w-full text-center border border-orange-200 mx-auto">
+            <div className="text-orange-500 text-6xl mb-6">
+              <FiAlertTriangle className="mx-auto text-orange-500 animate-pulse" />
             </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent mb-4">Oops! Something went wrong.</h1>
+            <p className="text-orange-700 mb-6">{error || "We couldn't find your booking information. Please try again later."}</p>
+            <button
+              onClick={() => router.push('/')}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-[#FF7A00] to-[#FFB400] hover:from-[#FF7A00] hover:to-[#FFC107] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+            >
+              Return to Home
+            </button>
           </div>
-          <button
-            onClick={() => router.push('/')}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Return to Home
-          </button>
         </div>
       </div>
     );
@@ -488,16 +501,18 @@ function ConfirmationPage() {
 
   if (!booking) {
     return (
-      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Booking Not Found</h1>
-          <p className="text-gray-600 mb-6">We couldn't find any booking information. Please check your email for confirmation or contact support.</p>
-          <button
-            onClick={() => router.push('/')}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Return to Home
-          </button>
+      <div className="min-h-screen bg-orange-50 px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-4xl lg:max-w-7xl">
+          <div className="bg-white p-8 rounded-3xl shadow-sm max-w-md w-full text-center border border-orange-200 mx-auto">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent mb-4">Booking Not Found</h1>
+            <p className="text-orange-700 mb-6">We couldn't find any booking information. Please check your email for confirmation or contact support.</p>
+            <button
+              onClick={() => router.push('/')}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-[#FF7A00] to-[#FFB400] hover:from-[#FF7A00] hover:to-[#FFC107] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+            >
+              Return to Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -540,31 +555,32 @@ function ConfirmationPage() {
   }
 
   return (
-    <div className="min-h-screen py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-4 sm:py-8 px-4 sm:px-6 lg:px-8 bg-orange-50">
       <div className="max-w-4xl mx-auto">
         {/* Header with Animation */}
         <div className="text-center mb-8">
-          <div className="mx-auto w-[250px] h-[250px] mb-4">
+          <div className="mx-auto w-[250px] h-[250px] mb-4 relative">
             {booking.status === 'succeeded' || booking.status === 'confirmed' ? (
-              <div className="w-full h-full rounded-full">
+              <div className="w-full h-full rounded-full relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-100 to-yellow-100 rounded-full opacity-30 animate-pulse"></div>
                 <AnimatedStepCharacter 
                   lottieUrl="https://lottie.host/42f2651e-8c16-434e-b639-1cb75fcf19a3/r95IiVu0pY.json"
                   alt="Booking Confirmed"
-                  className="w-full h-full rounded-2xl"
+                  className="w-full h-full rounded-2xl relative z-10"
                 />
               </div>
             ) : booking.status === 'pending' ? (
-              <div className="w-24 h-24 mx-auto text-yellow-500">
-                <FiClock className="w-full h-full animate-pulse" />
+              <div className="w-32 h-32 mx-auto text-orange-500 bg-orange-100 rounded-full flex items-center justify-center">
+                <FiClock className="w-20 h-20 animate-pulse" />
               </div>
             ) : (
-              <div className="w-24 h-24 mx-auto text-red-500">
-                <FiAlertTriangle className="w-full h-full" />
+              <div className="w-32 h-32 mx-auto text-orange-500 bg-orange-100 rounded-full flex items-center justify-center">
+                <FiAlertTriangle className="w-20 h-20" />
               </div>
             )}
           </div>
           <div className="px-4 sm:px-6">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent mb-3">
               {booking.status === 'succeeded' || booking.status === 'confirmed' 
                 ? 'Booking Confirmed! 🎉'
                 : booking.status === 'pending'
@@ -575,16 +591,16 @@ function ConfirmationPage() {
               <div className="space-y-2">
                 {/* Display booking reference prominently if available */}
                 {booking.bookingReference && (
-                  <p className="text-gray-600 text-base sm:text-lg mb-2">
-                    <span className="font-semibold">Booking Reference:</span> <span className="font-mono font-bold text-gray-900 bg-yellow-100 px-2 py-1 rounded">{booking.bookingReference}</span>
-                    <span className="ml-2 text-sm text-gray-500">(Use this to retrieve your booking)</span>
+                  <p className="text-orange-700 text-base sm:text-lg mb-2">
+                    <span className="font-semibold">Booking Reference:</span> <span className="font-mono font-bold text-orange-900 bg-orange-100 px-2 py-1 rounded">{booking.bookingReference}</span>
+                    <span className="ml-2 text-sm text-orange-600">(Use this to retrieve your booking)</span>
                   </p>
                 )}
-                <p className="text-gray-600 text-base sm:text-lg">
-                  Order #: <span className="font-mono font-medium text-gray-700">{booking.bookingId || booking.id}</span>
+                <p className="text-orange-700 text-base sm:text-lg">
+                  Order #: <span className="font-mono font-medium text-orange-800">{booking.bookingId || booking.id}</span>
                 </p>
                 {booking.status === 'succeeded' && booking.payment?.paymentIntentId && (
-                  <p className="text-xs text-gray-500 font-mono">
+                  <p className="text-xs text-orange-600 font-mono">
                     Payment ID: {booking.payment.paymentIntentId}
                   </p>
                 )}
@@ -594,22 +610,22 @@ function ConfirmationPage() {
         </div>
 
         {/* Booking Summary */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Booking Summary</h2>
+        <div className="bg-white rounded-3xl shadow-sm border border-orange-200 overflow-hidden mb-8">
+          <div className="p-6 border-b border-orange-100">
+            <h2 className="text-xl font-semibold bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent">Booking Summary</h2>
           </div>
           
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Booking Reference</h3>
-                <p className="font-mono text-gray-900">{booking.bookingReference || 'Your booking is confirmed. We are still waiting for the airline to issue your booking reference. We will email you as soon as it is available.'}</p>
+                <h3 className="text-sm font-medium text-orange-600 mb-1">Booking Reference</h3>
+                <p className="font-mono text-orange-900">{booking.bookingReference || 'Your booking is confirmed. We are still waiting for the airline to issue your booking reference. We will email you as soon as it is available.'}</p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Status</h3>
+                <h3 className="text-sm font-medium text-orange-600 mb-1">Status</h3>
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                   booking.status === 'confirmed' || booking.status === 'succeeded' 
-                    ? 'bg-green-100 text-green-800' 
+                    ? 'bg-orange-100 text-orange-800' 
                     : booking.status === 'pending'
                     ? 'bg-yellow-100 text-yellow-800'
                     : 'bg-red-100 text-red-800'
@@ -621,149 +637,28 @@ function ConfirmationPage() {
             
             <div className="space-y-4">
               <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Booking Date</h3>
-                <p className="text-gray-900">
+                <h3 className="text-sm font-medium text-orange-600 mb-1">Booking Date</h3>
+                <p className="text-orange-900">
                   {booking.createdAt ? formatDateTime(booking.createdAt) : 'N/A'}
                 </p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Total Amount</h3>
-                <p className="text-gray-900 font-medium text-lg">
+                <h3 className="text-sm font-medium text-orange-600 mb-1">Total Amount</h3>
+                <p className="text-orange-900 font-medium text-lg bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent">
                   {formatAmount(booking.totalAmount || booking.payment?.amount || booking.amount || 0, booking.currency)}
                 </p>
               </div>
             </div>
           </div>
-          
-          {/* Ancillary Details */}
-          {booking.ancillarySelection && Object.keys(booking.ancillarySelection).length > 0 && (
-            <div className="border-t border-gray-200 p-6">
-              <h3 className="text-md font-medium text-gray-900 mb-4">Selected Extras</h3>
-              <div className="space-y-2">
-                {booking.ancillaryBreakdown ? (
-                  // If we have a detailed breakdown, show it
-                  JSON.parse(booking.ancillaryBreakdown).map((item: any, index: number) => {
-                    // Determine icon based on ancillary type
-                    let icon = <span className="w-2 h-2 rounded-full bg-orange-400 mr-2"></span>;
-                    if (item.type === 'bags' || item.type === 'bag') {
-                      icon = <FiBriefcase className="text-orange-500 mr-2" />;
-                    } else if (item.type === 'seats' || item.type === 'seat') {
-                      icon = <FiMapPin className="text-orange-500 mr-2" />;
-                    } else if (item.type === 'cancel_for_any_reason' || item.type === 'cancel') {
-                      icon = <FiCheckCircle className="text-orange-500 mr-2" />;
-                    }
-                    
-                    return (
-                      <div key={`ancillary-${index}`} className="flex flex-col py-2 border-b border-gray-100 last:border-b-0">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-700 font-medium flex items-center">
-                            {icon}
-                            {item.title || item.type?.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase()) || 'Extra'}
-                          </span>
-                          <span className="font-semibold text-gray-800">
-                            {formatAmount(item.amount, booking.currency)}
-                          </span>
-                        </div>
-                        {item.details && (
-                          <div className="ml-6 text-sm text-gray-500 mt-1">
-                            {item.details}
-                            {item.passenger && (
-                              <span className="ml-1">
-                                • Passenger: {booking.passengers?.find((p: any) => p.id === item.passenger)?.given_name || 'N/A'}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                ) : (
-                  // If we don't have a detailed breakdown, show what we have
-                  Object.entries(booking.ancillarySelection || {}).map(([key, value]: [string, any], index: number) => {
-                    // Determine icon based on key name
-                    let icon = <span className="w-2 h-2 rounded-full bg-orange-400 mr-2"></span>;
-                    if (key.includes('bag')) {
-                      icon = <FiBriefcase className="text-orange-500 mr-2" />;
-                    } else if (key.includes('seat')) {
-                      icon = <FiMapPin className="text-orange-500 mr-2" />;
-                    } else if (key.includes('cancel')) {
-                      icon = <FiX className="text-orange-500 mr-2" />;
-                    }
-                    
-                    return (
-                      <div key={`ancillary-${index}`} className="flex justify-between items-center py-1 border-b border-gray-100 last:border-b-0">
-                        <span className="text-gray-600 flex items-center">
-                          {icon}
-                          {key.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase())}
-                        </span>
-                        <span className="font-semibold text-gray-800">
-                          {typeof value === 'object' && value.amount ? formatAmount(value.amount, booking.currency) : 'Selected'}
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
-                
-                {booking.ancillaryAmount && (
-                  <div className="flex justify-between items-center pt-2 font-medium">
-                    <span>Total Extras</span>
-                    <span>{formatAmount(booking.ancillaryAmount, booking.currency)}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {/* Payment Details */}
-          {booking.payment && (
-            <div className="border-t border-gray-200 p-6 bg-gray-50">
-              <h3 className="text-md font-medium text-gray-900 mb-4">Payment Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Payment Status</p>
-                  <p className="font-medium">
-                    {booking.payment.status === 'succeeded' ? 'Paid' : booking.payment.status}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Payment Method</p>
-                  <p className="font-medium">
-                    {booking.payment.paymentMethod === 'card' ? 'Credit/Debit Card' : booking.payment.paymentMethod}
-                    {booking.payment.lastFour && (
-                      <span className="ml-2 text-gray-500">•••• {booking.payment.lastFour}</span>
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Amount Paid</p>
-                  <p className="font-medium">
-                    {formatAmount(booking.payment.amount || 0, booking.payment.currency)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Paid On</p>
-                  <p className="font-medium">
-                    {booking.payment.timestamp ? formatDateTime(booking.payment.timestamp) : 'N/A'}
-                  </p>
-                </div>
-                {booking.payment.paymentIntentId && (
-                  <div className="md:col-span-2">
-                    <p className="text-sm text-gray-500">Payment ID</p>
-                    <p className="font-mono text-sm text-gray-600 break-all">
-                      {booking.payment.paymentIntentId}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Flight Details */}
         {flightSegments.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Flight Details</h2>
+          <div className="bg-white rounded-3xl shadow-sm border border-orange-200 overflow-hidden mb-8 hover:shadow-md transition-shadow duration-300">
+            <div className="p-6 border-b border-orange-100 bg-gradient-to-r from-orange-50 to-white">
+              <h2 className="text-xl font-semibold bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent flex items-center">
+                <FiGlobe className="mr-2 text-orange-400" /> Flight Details
+              </h2>
             </div>
             <div className="p-6">
               <FlightItineraryCard
@@ -798,25 +693,25 @@ function ConfirmationPage() {
               {flightSegments.length > 1 && (
                 <div className="mt-6">
                   <FlightItineraryCard
-                        itinerary={{
-                          segments: flightSegments[1]?.segments.map((seg: any) => {
-                            return {
-                              departure: { 
-                                iataCode: seg.origin?.iata_code || seg.origin_iata_code || '', 
-                                at: seg.departing_at || seg.departure_time || '' 
-                              },
-                              arrival: { 
-                                iataCode: seg.destination?.iata_code || seg.destination_iata_code || '', 
-                                at: seg.arriving_at || seg.arrival_time || '' 
-                              },
-                              carrierCode: seg.marketing_carrier?.iata_code || seg.carrier_code || '',
-                              carrierName: seg.marketing_carrier?.name || seg.carrier_name || '',
-                              number: seg.marketing_carrier_flight_number || seg.flight_number || '',
-                              aircraft: { code: seg.aircraft?.code || seg.aircraft_code || '' }
-                            };
-                          }) || [],
-                          duration: flightSegments[1]?.duration || ''
-                        }}
+                    itinerary={{
+                      segments: flightSegments[1]?.segments.map((seg: any) => {
+                        return {
+                          departure: { 
+                            iataCode: seg.origin?.iata_code || seg.origin_iata_code || '', 
+                            at: seg.departing_at || seg.departure_time || '' 
+                          },
+                          arrival: { 
+                            iataCode: seg.destination?.iata_code || seg.destination_iata_code || '', 
+                            at: seg.arriving_at || seg.arrival_time || '' 
+                          },
+                          carrierCode: seg.marketing_carrier?.iata_code || seg.carrier_code || '',
+                          carrierName: seg.marketing_carrier?.name || seg.carrier_name || '',
+                          number: seg.marketing_carrier_flight_number || seg.flight_number || '',
+                          aircraft: { code: seg.aircraft?.code || seg.aircraft_code || '' }
+                        };
+                      }) || [],
+                      duration: flightSegments[1]?.duration || ''
+                    }}
                     date={flightSegments[1]?.segments[0]?.departing_at || ''}
                     type="return"
                     airports={[
@@ -828,57 +723,33 @@ function ConfirmationPage() {
                 </div>
               )}
             </div>
-            
-            {/* Show change/cancellation policy */}
-            {/* Temporarily removed due to type errors - to be fixed with proper typing */}
-            {/* {booking.conditions && (
-              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 text-sm text-gray-600">
-                {booking.conditions.change_before_departure && (
-                  <p className="mb-1 flex items-center text-gray-700">
-                    <FiRepeat className="mr-2 text-blue-500" /> 
-                    Flight changes {booking.conditions.change_before_departure.allowed ? 'allowed' : 'not allowed'} before departure.
-                    {booking.conditions.change_before_departure.penalty_amount && (
-                      <span className="ml-1">Fee: {formatAmount(booking.conditions.change_before_departure.penalty_amount, booking.conditions.change_before_departure.penalty_currency || booking.currency)}</span>
-                    )}
-                  </p>
-                )}
-                {booking.conditions.cancellation && (
-                  <p className="flex items-center text-gray-700">
-                    <FiX className="mr-2 text-red-500" /> 
-                    Cancellation {booking.conditions.cancellation.allowed ? 'allowed' : 'not allowed'}.
-                    {booking.conditions.cancellation.penalty_amount && (
-                      <span className="ml-1">Fee: {formatAmount(booking.conditions.cancellation.penalty_amount, booking.conditions.cancellation.penalty_currency || booking.currency)}</span>
-                    )}
-                    {booking.conditions.cancellation.refundable && booking.conditions.cancellation.refundable_until && (
-                      <span className="ml-1">Refundable until {new Date(booking.conditions.cancellation.refundable_until).toLocaleString()}.</span>
-                    )}
-                  </p>
-                )}
-              </div>
-            )} */}
           </div>
         )}
+         
+
 
         {/* Passenger Information */}
         {booking.passengers && booking.passengers.length > 0 && (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Passenger Information</h2>
+          <div className="bg-white rounded-3xl shadow-sm border border-orange-200 overflow-hidden mb-8 hover:shadow-md transition-shadow duration-300">
+            <div className="p-6 border-b border-orange-100 bg-gradient-to-r from-orange-50 to-white">
+              <h2 className="text-xl font-semibold bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent flex items-center">
+                <FiUser className="mr-2 text-orange-400" /> Passenger Information
+              </h2>
             </div>
             
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-orange-100">
               {booking.passengers.map((passenger: any, index: number) => (
                 <div key={`passenger-${index}`} className="p-6">
                   <div className="flex items-start">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
                       <FiUser className="h-5 w-5" />
                     </div>
                     <div className="ml-4 flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                        <h3 className="text-lg font-medium text-gray-900">
+                        <h3 className="text-lg font-medium text-orange-900">
                           {passenger.given_name} {passenger.family_name}
                         </h3>
-                        <span className="mt-1 sm:mt-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="mt-1 sm:mt-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                           {passenger.type === 'adult' ? 'Adult' : passenger.type === 'child' ? 'Child' : 'Infant'}
                         </span>
                       </div>
@@ -886,80 +757,24 @@ function ConfirmationPage() {
                       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {passenger.email && (
                           <div className="flex items-start">
-                            <FiMail className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
+                            <FiMail className="h-5 w-5 text-orange-400 mr-2 flex-shrink-0 mt-0.5" />
                             <div>
-                              <p className="text-sm text-gray-500">Email</p>
-                              <p className="text-sm font-medium text-gray-900">{passenger.email}</p>
+                              <p className="text-sm text-orange-600">Email</p>
+                              <p className="text-sm font-medium text-orange-900">{passenger.email}</p>
                             </div>
                           </div>
                         )}
                         
                         {passenger.phone && (
                           <div className="flex items-start">
-                            <FiPhone className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
+                            <FiPhone className="h-5 w-5 text-orange-400 mr-2 flex-shrink-0 mt-0.5" />
                             <div>
-                              <p className="text-sm text-gray-500">Phone</p>
-                              <p className="text-sm font-medium text-gray-900">{passenger.phone}</p>
+                              <p className="text-sm text-orange-600">Phone</p>
+                              <p className="text-sm font-medium text-orange-900">{passenger.phone}</p>
                             </div>
                           </div>
                         )}
-                        
-                        {passenger.dateOfBirth && (
-                          <div className="flex items-start">
-                            <FiCalendar className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm text-gray-500">Date of Birth</p>
-                              <p className="text-sm font-medium text-gray-900">
-                                {new Date(passenger.dateOfBirth).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                })}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {passenger.documentNumber && (
-                          <div className="flex items-start">
-                            <FiCreditCard className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm text-gray-500">Passport</p>
-                              <p className="text-sm font-medium text-gray-900">
-                                {passenger.documentNumber}
-                                {passenger.documentIssuingCountryCode && (
-                                  <span className="ml-2 text-gray-500">
-                                    ({passenger.documentIssuingCountryCode})
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {passenger.documentNationality && (
-                          <div className="flex items-start">
-                            <FiGlobe className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm text-gray-500">Nationality</p>
-                              <p className="text-sm font-medium text-gray-900">
-                                {passenger.documentNationality}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {passenger.gender && (
-                          <div className="flex items-start">
-                            <FiUser className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm text-gray-500">Gender</p>
-                              <p className="text-sm font-medium text-gray-900">
-                                {passenger.gender === 'm' ? 'Male' : passenger.gender === 'f' ? 'Female' : 'Other'}
-                              </p>
-                            </div>
-                          </div>
-                        )}
+
                       </div>
                     </div>
                   </div>
@@ -967,8 +782,8 @@ function ConfirmationPage() {
               ))}
             </div>
             
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-100">
-              <p className="text-sm text-gray-500">
+            <div className="bg-orange-50 px-6 py-4 border-t border-orange-100">
+              <p className="text-sm text-orange-600">
                 Need to update any details? Please contact our support team for assistance.
               </p>
             </div>
@@ -976,189 +791,61 @@ function ConfirmationPage() {
         )}
 
         {/* Payment Details */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Payment Details</h2>
+        <div className="bg-white rounded-3xl shadow-sm border border-orange-200 overflow-hidden mb-8 hover:shadow-md transition-shadow duration-300">
+          <div className="p-6 border-b border-orange-100 bg-gradient-to-r from-orange-50 to-white">
+            <h2 className="text-xl font-semibold bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent flex items-center">
+              <FiCreditCard className="mr-2 text-orange-400" /> Payment Details
+            </h2>
           </div>
           <div className="p-6">
             <div className="space-y-4">
               {/* Base Price */}
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Base Flight Price</span>
-                <span className="text-gray-900">
+                <span className="text-orange-700">Base Flight Price</span>
+                <span className="text-orange-900">
                   {formatAmount(booking.amount || booking.trip?.price?.basePrice , booking.currency)}
                 </span>
               </div>
               
               {/* Service Fee */}
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Service Fee ({booking.passengers?.length || 1} {(booking.passengers?.length || 1) > 1 ? 'passengers' : 'passenger'})</span>
-                <span className="text-gray-900">
+                <span className="text-orange-700">Service Fee ({booking.passengers?.length || 1} {(booking.passengers?.length || 1) > 1 ? 'passengers' : 'passenger'})</span>
+                <span className="text-orange-900">
                   {formatAmount((booking.passengers?.length || 1) * 2, booking.currency)}
                 </span>
               </div>
               
               {/* Markup Fee */}
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Booking Fee ({booking.passengers?.length || 1} {(booking.passengers?.length || 1) > 1 ? 'passengers' : 'passenger'})</span>
-                <span className="text-gray-900">
+                <span className="text-orange-700">Booking Fee ({booking.passengers?.length || 1} {(booking.passengers?.length || 1) > 1 ? 'passengers' : 'passenger'})</span>
+                <span className="text-orange-900">
                   {formatAmount((booking.passengers?.length || 1) * 1, booking.currency)}
                 </span>
               </div>
-              
-              {/* Debug Ancillary Data */}
-              <div className="hidden">
-                {(() => {
-                  console.log('Booking data for ancillaries:', {
-                    hasAncillaryBreakdown: !!booking.ancillaryBreakdown,
-                    ancillaryBreakdownType: typeof booking.ancillaryBreakdown,
-                    hasAncillarySelection: !!booking.ancillarySelection,
-                    ancillarySelectionType: typeof booking.ancillarySelection,
-                    rawAncillaryBreakdown: booking.ancillaryBreakdown,
-                    rawAncillarySelection: booking.ancillarySelection
-                  });
-                  return null;
-                })()}
-              </div>
-              
-              {/* Ancillary Services */}
-              {(booking.ancillaryBreakdown || booking.ancillarySelection || booking.order?.ancillaries) ? (
-                <>
-                  <div className="border-t border-gray-200 my-4"></div>
-                  <div className="mb-2">
-                    <span className="text-gray-600 font-medium">Selected Extras</span>
-                  </div>
-                  
-                  {/* Parse and display ancillary breakdown */}
-                  {(() => {
-                    let ancillaryItems = [];
-                    
-                    // First try to parse ancillaryBreakdown if it exists
-                    if (booking.ancillaryBreakdown) {
-                      try {
-                        // Handle both string and object formats
-                        const breakdown = typeof booking.ancillaryBreakdown === 'string' 
-                          ? JSON.parse(booking.ancillaryBreakdown)
-                          : booking.ancillaryBreakdown;
-                          
-                        console.log('Parsed ancillary breakdown:', breakdown);
-                        
-                        if (Array.isArray(breakdown) && breakdown.length > 0) {
-                          ancillaryItems = breakdown;
-                        }
-                      } catch (e) {
-                        console.error('Error parsing ancillary breakdown:', e);
-                      }
-                    }
-                    // Then try ancillarySelection if breakdown parsing failed
-                    else if (booking.ancillarySelection) {
-                      try {
-                        // Handle both string and object formats
-                        const selection = typeof booking.ancillarySelection === 'string'
-                          ? JSON.parse(booking.ancillarySelection)
-                          : booking.ancillarySelection;
-                          
-                        console.log('Using ancillary selection:', selection);
-                        
-                        if (selection.services && Array.isArray(selection.services)) {
-                          ancillaryItems = selection.services.map((service: any) => ({
-                            title: service.title || service.name || 'Extra Service',
-                            type: service.type || 'ancillary',
-                            amount: parseFloat(service.amount || service.total_amount || '0'),
-                            passenger: service.passenger_id || service.passenger_ids?.[0],
-                            details: service.description || ''
-                          }));
-                        }
-                      } catch (e) {
-                        console.error('Error parsing ancillary selection:', e);
-                      }
-                    }
-                    // Finally try order.ancillaries if available
-                    else if (booking.order?.ancillaries) {
-                      try {
-                        console.log('Using order.ancillaries:', booking.order.ancillaries);
-                        
-                        // Handle both array and object formats
-                        const ancillaries = Array.isArray(booking.order.ancillaries)
-                          ? booking.order.ancillaries
-                          : [booking.order.ancillaries];
-                          
-                        ancillaryItems = ancillaries.map((item: any) => ({
-                          title: item.title || item.name || item.type || 'Extra Service',
-                          type: item.type || 'ancillary',
-                          amount: parseFloat(item.amount || item.price || '0'),
-                          passenger: item.passenger_id || item.passenger,
-                          details: item.description || ''
-                        }));
-                      } catch (e) {
-                        console.error('Error parsing order.ancillaries:', e);
-                      }
-                    }
-                    
-                    // If we have items to display, render them
-                    if (ancillaryItems.length > 0) {
-                      return ancillaryItems.map((item: any, index: number) => {
-                        // Determine icon based on ancillary type
-                        let IconComponent = FiPackage;
-                        if (item.type === 'bags' || item.type === 'bag' || (item.title && item.title.toLowerCase().includes('bag'))) {
-                          IconComponent = FiBriefcase;
-                        } else if (item.type === 'seats' || item.type === 'seat' || (item.title && item.title.toLowerCase().includes('seat'))) {
-                          IconComponent = FiMapPin;
-                        } else if (item.type === 'cancel_for_any_reason' || item.type === 'cancel' || (item.title && item.title.toLowerCase().includes('cancel'))) {
-                          IconComponent = FiCheckCircle;
-                        }
-                        
-                        return (
-                          <div key={`ancillary-${index}`} className="flex justify-between items-center py-2">
-                            <span className="text-gray-600 flex items-center">
-                              <IconComponent className="text-orange-500 mr-2" />
-                              {item.title || item.type?.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase()) || 'Extra'}
-                              {item.passenger && booking.passengers && (
-                                <span className="ml-1 text-xs text-gray-500">
-                                  • {booking.passengers.find((p: any) => p.id === item.passenger)?.given_name || 'Passenger'}
-                                </span>
-                              )}
-                            </span>
-                            <span className="font-semibold text-gray-800">
-                              {formatAmount(item.amount, booking.currency || 'EUR')}
-                            </span>
-                          </div>
-                        );
-                      });
-                    }
-                    
-                    // If no items found but we know there are ancillaries, show a generic message
-                    return (
-                      <div className="py-2 text-gray-600">
-                        Selected extras included in total price
-                      </div>
-                    );
-                  })()}
-                </>
-              ) : null}
+
               
               {/* Divider */}
-              <div className="border-t border-gray-200 my-4"></div>
+              <div className="border-t border-orange-100 my-4"></div>
               
               {/* Total Amount */}
               <div className="flex justify-between items-center font-medium text-lg">
-                <span className="text-gray-900">Total Amount</span>
-                <span className="text-blue-600">
+                <span className="text-orange-900">Total Amount</span>
+                <span className="bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent">
                   {formatAmount(booking.payment?.amount || booking.totalAmount || '0', booking.currency)}
                 </span>
               </div>
               
               {/* Payment Method */}
               {booking.payment && (
-                <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="mt-6 pt-6 border-t border-orange-100">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Paid with</span>
-                    <span className="text-gray-900">
+                    <span className="text-orange-600">Paid with</span>
+                    <span className="text-orange-900">
                       {booking.payment.paymentMethod}
                       {booking.payment.lastFour && ` •••• ${booking.payment.lastFour}`}
                     </span>
                   </div>
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="mt-2 text-xs text-orange-600">
                     {booking.payment.timestamp && `Processed on ${new Date(booking.payment.timestamp).toLocaleString()}`}
                   </div>
                 </div>
@@ -1169,10 +856,13 @@ function ConfirmationPage() {
 
         {/* Retrieve Booking Section */}
         <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-          <div className="bg-white p-6 rounded-2xl shadow-lg border border-orange-100">
-            <h3 className="text-xl font-bold mb-4 text-gray-800">Retrieve Your Booking</h3>
-            <p className="text-gray-600 mb-4">
-              Save your offer ID to access your booking later
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-orange-200 hover:shadow-md transition-shadow duration-300">
+            <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent flex items-center">
+              <FiPackage className="mr-2 text-orange-400" /> Retrieve Your Booking
+            </h3>
+            <p className="text-orange-700 mb-4 flex items-center">
+              <FiSmartphone className="mr-2 text-orange-400" />
+              Save your booking ID to access your trip details later
             </p>
             
             <div className="flex gap-2">
@@ -1180,31 +870,36 @@ function ConfirmationPage() {
                 type="text" 
                 value={booking?.id || ''}
                 readOnly
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                className="flex-1 px-4 py-2 border border-orange-200 rounded-xl bg-orange-50 text-orange-900 font-mono focus:ring-2 focus:ring-orange-300 focus:border-orange-300 focus:outline-none"
               />
               <Link 
                 href={`/retrieve-booking/${booking?.id || ''}`}
-                className="px-6 py-2 bg-gradient-to-r from-[#FF8C00] to-[#FFA500] text-white rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center"
+                className="px-6 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FFB400] text-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center"
               >
-                View Booking
+                <FiArrowRight className="mr-2" /> View Booking
               </Link>
             </div>
+            <p className="text-xs text-orange-600 mt-3 flex items-center justify-center">
+              <FiInfo className="mr-1" /> You can use this ID to retrieve your booking details anytime
+            </p>
           </div>
 
           {/* Phone Mockup */}
           <div className="relative hidden lg:block">
-            
             <div className="relative mx-auto w-64">
-              {/* Phone frame */}
-              
-                <div className="rounded-xl overflow-hidden bg-white">
-                  {/* Replace with your actual phone mockup image */}
-                  <img 
-                    src="/images/mock2-left.png" 
-                    alt="Booking on mobile"
-                    className="w-full h-auto"
-                  />
-                </div>
+              {/* Phone frame with animated glow */}
+              <div className="rounded-3xl overflow-hidden bg-white border-4 border-orange-100 shadow-lg relative">
+                {/* Animated gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-100 via-yellow-50 to-orange-100 opacity-50 animate-pulse"></div>
+                {/* Phone mockup image */}
+                <img 
+                  src="/images/mock2-left.png" 
+                  alt="Booking on mobile"
+                  className="w-full h-auto relative z-10"
+                />
+                {/* Decorative elements */}
+                <div className="absolute top-2 right-2 w-3 h-3 bg-orange-400 rounded-full animate-ping opacity-75"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1213,20 +908,18 @@ function ConfirmationPage() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
           <button
             onClick={() => router.push('/')}
-            className="px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-gradient-to-r from-[#FF7A00] to-[#FFB400] hover:from-[#FF7A00] hover:to-[#FFC107] shadow-sm hover:shadow-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 flex items-center justify-center"
           >
-            Back to Home
+            <FiArrowRight className="mr-2 transform rotate-180" /> Back to Home
           </button>
           <button
             onClick={() => window.print()}
-            className="px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="px-6 py-3 border border-orange-200 text-base font-medium rounded-xl text-orange-700 bg-white hover:bg-orange-50 hover:shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 flex items-center justify-center"
           >
-            Print Itinerary
+            <FiFilm className="mr-2" /> Print Itinerary
           </button>
         </div>
       </div>
     </div>
   );
 }
-
-import Link from 'next/link';

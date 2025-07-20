@@ -160,12 +160,6 @@ export default function LandingPage() {
     return () => clearInterval(interval);
   }, [testimonials.length]);
 
-  // Animation variants
-  const widgetVariants = {
-    offscreen: { opacity: 0, y: 40 },
-    onscreen: { opacity: 1, y: 0, transition: { type: "spring", bounce: 0.3, duration: 0.8 } }
-  };
-
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-orange-100/50 to-orange-50 flex flex-col mb-8 overflow-hidden">
   
@@ -475,195 +469,165 @@ export default function LandingPage() {
   
       
         {/* How It Works Section */}
-        <section className="py-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            className="text-center mb-20"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.8 }}
-          >
-            <h2 className="text-5xl md:text-6xl font-black text-gray-900 mb-6">
-              How It{" "}
-              <span className="bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
-                Works
-              </span>
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Six simple steps to your perfect trip. We've streamlined the entire process so you can focus on what
-              matters most—your adventure.
-            </p>
-          </motion.div>
-
-          <div className="space-y-24">
-            {[
-              {
-                step: 1,
-                title: "Set Your Budget",
-                description:
-                  "Tell us your total trip budget. We'll instantly filter the best packages for you—no surprises, no hidden fees.",
-                color: "from-orange-500 to-orange-600",
-                direction: "left",  
-                lottieUrl: "https://lottie.host/21e3efcb-81c4-4370-8ab8-aafe48ea52b8/QjYBNDDXy7.json",
-              },
-              {
-                step: 2,
-                title: "Pick Your Destination",
-                description:
-                  "Explore a world of possibilities—just pick a city or country and let our smart algorithms do the rest.",
-                color: "from-orange-400 to-orange-500",
-                direction: "right",
-                lottieUrl: "https://lottie.host/a64ed254-83f8-47ad-9514-0b5209327090/8I3AoRgYZE.json",
-              },
-              {
-                step: 3,
-                title: "Choose Your Dates",
-                description:
-                  "Tell us when you want to travel. We'll match you with the best deals for your exact schedule.",
-                color: "from-orange-500 to-orange-600",
-                direction: "left",
-                lottieUrl: "https://lottie.host/f700a726-6aa6-4218-b8b7-529b0f0810d9/hrcPylRORJ.json",
-              },
-              {
-                step: 4,
-                title: "Select Hotel & Flight",
-                description:
-                  "Hand-pick your favorite hotels and flights—mix, match, and create your perfect travel combination.",
-                color: "from-orange-400 to-orange-500",
-                direction: "right",
-                lottieUrl: "https://lottie.host/debd1f55-4862-4559-8829-9daa93e1c9b7/L1e1WecQV3.json",
-              },
-              {
-                step: 5,
-                title: "Review & Book",
-                description:
-                  "Double-check your package details. When you're ready, book everything in one click—secure and simple.",
-                color: "from-orange-500 to-orange-600",
-                direction: "left",
-                lottieUrl: "https://lottie.host/ebde747a-6ed6-4502-8b16-e0e272dda9d4/1Ech6zWI4Z.json",
-              },
-              {
-                step: 6,
-                title: "Get Instant Confirmation",
-                description:
-                  "Your booking is confirmed instantly—no waiting, no stress. Start packing for your adventure!",
-                color: "from-orange-400 to-orange-500",
-                direction: "right",
-                lottieUrl: "https://lottie.host/c6ab46c7-8573-409d-85b8-093b284087ee/cU0hmmGLXq.json",
-              },
-            ].map((item, index) => (
-              <motion.div
-                key={item.step}
-                className={`flex flex-col ${item.direction === "right" ? "lg:flex-row-reverse" : "lg:flex-row"} items-center gap-12 lg:gap-20`}
-                initial={{ opacity: 0, x: item.direction === "left" ? -50 : 50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.1, ease:"easeOut" }}
-              
-              >
-                <div className="relative flex-shrink-0">
-                  <div
-                    className={`absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-gradient-to-r ${item.color} rounded-2xl flex items-center justify-center text-white text-xl font-bold shadow-lg z-10`}
-                  >
-                    {item.step}
-                  </div>
-                  <div className="w-32 h-32 bg-gradient-to-br from-orange-100 to-orange-50 rounded-3xl flex items-center justify-center shadow-lg">
-                    <AnimatedStepCharacter lottieUrl={item.lottieUrl} alt={`${item.title} Character`} />
-                  </div>
-                </div>
-                <div className={`flex-1 ${item.direction === "right" ? "lg:text-right" : "lg:text-left"} text-center`}>
-                  <h3
-                    className={`text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r ${item.color} bg-clip-text text-transparent`}
-                  >
-                    {item.title}
-                  </h3>
-                  <p className="text-gray-600 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto lg:mx-0">
-                    {item.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
+        <section className="w-full py-24 relative overflow-hidden bg-gradient-to-br from-orange-50 to-white">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 z-0">
+            <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-br from-orange-400 to-yellow-400 rounded-full blur-3xl opacity-10"></div>
+            <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-br from-orange-300 to-orange-500 rounded-full blur-3xl opacity-10"></div>
+            <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-gradient-to-br from-yellow-300 to-orange-300 rounded-full blur-3xl opacity-10"></div>
+            <div className="absolute top-1/4 right-1/4 w-48 h-48 bg-gradient-to-br from-orange-200 to-yellow-200 rounded-full blur-3xl opacity-10"></div>
           </div>
-        </div>
-      </section>
-      
-      {/* Mobile Experience Section */}
-      
-      <section className="w-full py-16 md:py-24 overflow-hidden">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-10 md:gap-16 items-center">
-          <div className="text-center md:text-left">
-            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-gray-900 mb-4 md:mb-6">
-                Seamless{" "}
-                <span className="bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
-                  Mobile
-                </span>
-                <br className="hidden sm:block" />
-                <span className="sm:ml-2">Experience</span>
-              </h2>
-              <p className="text-lg sm:text-xl text-gray-600 mb-0 leading-relaxed max-w-3xl mx-auto md:mx-0">
-                Book and manage trips effortlessly from your phone with our award-winning mobile experience.
-              </p>
-          </div>
+          
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.9, ease: [0.33, 0, 0.67, 1] }}
+              className="text-center mb-16"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 0.8 }}
             >
-              
+              <motion.div
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-100 to-orange-200 rounded-full text-orange-700 font-semibold text-sm mb-6"
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                ✨ Your Journey Starts Here
+              </motion.div>
+              <h2 className="text-5xl font-extrabold mb-6 text-center bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent select-none drop-shadow-md">
+                How It Works
+              </h2>
+              <p className="text-center text-lg text-orange-700 mb-8 font-medium tracking-wide max-w-3xl mx-auto">
+                Six simple steps to your perfect trip. We've streamlined the entire process so you can focus on what
+                matters most—your adventure.
+              </p>
+            </motion.div>
 
-              <div className="space-y-6">
-                {[
-                  {
-                    icon: <FiCheckCircle className="text-orange-500 text-2xl" />,
-                    title:"Trip Search",
-                    text: "Mobile-friendly booking flow optimized for phones and tablets so you can book your trip from as easy as your phone",
-                    img:"./images/phone1.png"
-                  },
-                  {
-                    icon: <FiClock className="text-orange-500 text-2xl" />,
-                    title:"Trip Management",
-                    text: "View your itinerary and passenger details anytime, anywhere so you can manage your trip from as easy as your phone",
-                    img:"./images/phone1.png"
-                  },
-                  {
-                    icon: <FiCalendar className="text-orange-500 text-2xl" />,
-                    title:"Booking Confirmation",
-                    text: "Secure payment processing with instant booking confirmation so you can book and pay for your trip from as easy as your phone",
-                    img:"./images/phone1.png"
-                  },
-                  {
-                    icon: <FiSmartphone className="text-orange-500 text-2xl" />,
-                    title:"Booking Retrieval",
-                    text: "Retrieve bookings instantly with your reference number so you can access your trip details from as easy as your phone",
-                    img:"./images/phone1.png"
-                  },
-                ].map((item, i) => (
+            {/* Hexagon Flow Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+              {[
+                {
+                  step: 1,
+                  title: "Set Your Budget",
+                  description: "Tell us your total trip budget. We'll instantly filter the best packages for you—no surprises, no hidden fees.",
+                  color: "from-orange-500 to-orange-600",
+                  lottieUrl: "https://lottie.host/21e3efcb-81c4-4370-8ab8-aafe48ea52b8/QjYBNDDXy7.json",
+                },
+                {
+                  step: 2,
+                  title: "Pick Your Destination",
+                  description: "Explore a world of possibilities—just pick a city or country and let our smart algorithms do the rest.",
+                  color: "from-orange-400 to-orange-500",
+                  lottieUrl: "https://lottie.host/a64ed254-83f8-47ad-9514-0b5209327090/8I3AoRgYZE.json",
+                },
+                {
+                  step: 3,
+                  title: "Choose Your Dates",
+                  description: "Tell us when you want to travel. We'll match you with the best deals for your exact schedule.",
+                  color: "from-orange-500 to-orange-600",
+                  lottieUrl: "https://lottie.host/f700a726-6aa6-4218-b8b7-529b0f0810d9/hrcPylRORJ.json",
+                },
+                {
+                  step: 4,
+                  title: "Select Hotel & Flight",
+                  description: "Hand-pick your favorite hotels and flights—mix, match, and create your perfect travel combination.",
+                  color: "from-orange-400 to-orange-500",
+                  lottieUrl: "https://lottie.host/debd1f55-4862-4559-8829-9daa93e1c9b7/L1e1WecQV3.json",
+                },
+                {
+                  step: 5,
+                  title: "Review & Book",
+                  description: "Double-check your package details. When you're ready, book everything in one click—secure and simple.",
+                  color: "from-orange-500 to-orange-600",
+                  lottieUrl: "https://lottie.host/ebde747a-6ed6-4502-8b16-e0e272dda9d4/1Ech6zWI4Z.json",
+                },
+                {
+                  step: 6,
+                  title: "Get Instant Confirmation",
+                  description: "Your booking is confirmed instantly—no waiting, no stress. Start packing for your adventure!",
+                  color: "from-orange-400 to-orange-500",
+                  lottieUrl: "https://lottie.host/c6ab46c7-8573-409d-85b8-093b284087ee/cU0hmmGLXq.json",
+                },
+              ].map((item, index) => (
+                <motion.div
+                  key={item.step}
+                  className="relative"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                >
                   <motion.div
-                    key={i}
-                    className="flex flex-col lg:grid lg:grid-cols-2 items-center gap-6 border border-2 border-black p-4 sm:p-6 bg-orange-50 backdrop-blur-sm rounded-2xl shadow-lg w-full"
-                    transition={{ duration: 0.2 }}
+                    className="bg-white rounded-3xl border border-orange-200 overflow-hidden h-full flex flex-col shadow-lg hover:shadow-2xl transition-all duration-300"
+                    whileHover={{ y: -8, boxShadow: "0 20px 40px rgba(255, 122, 0, 0.15)" }}
                   >
-                    <div className="flex flex-col justify-center space-y-3 w-full">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-3 sm:mb-4">
-                        <span className="flex-shrink-0 text-2xl sm:text-3xl">{item.icon}</span>
-                        <h3 className="font-extrabold text-3xl sm:text-4xl md:text-5xl lg:text-6xl bg-gradient-to-r from-orange-500 to-orange-700 bg-clip-text text-transparent tracking-tight">{item.title}</h3>
-                      </div>
-                      <span className="text-gray-800 font-medium text-base sm:text-lg">{item.text}</span>
+                    {/* Card Header with Step Number */}
+                    <div className="relative bg-gradient-to-r from-orange-100 to-orange-200 p-6 flex justify-between items-center">
+                      <h3 className="text-xl font-bold text-orange-800">Step {item.step}</h3>
+                      <motion.div
+                        className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-full flex items-center justify-center text-white text-xl font-black shadow-md`}
+                        whileHover={{ scale: 1.1, rotate: 10 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        {item.step}
+                      </motion.div>
                     </div>
-                   
-                    <div className="flex items-center justify-center mt-4 lg:mt-0 h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[60vh] rounded-2xl overflow-hidden">
-                      <img src={item.img} alt="phone_mockup" className='border border-2 border-gray-800 rounded-2xl w-auto h-[30vh] sm:h-[35vh] md:h-[40vh] lg:h-[50vh] ' />
+                    
+                    {/* Animation Container */}
+                    <div className="p-6 flex justify-center bg-gradient-to-br from-orange-50 to-white">
+                      <div className="w-32 h-32 relative">
+                        <AnimatedStepCharacter lottieUrl={item.lottieUrl} alt={`${item.title} Character`} />
+                      </div>
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="p-6 flex-grow flex flex-col">
+                      <h4 className={`text-2xl font-bold mb-3 bg-gradient-to-r ${item.color} bg-clip-text text-transparent`}>
+                        {item.title}
+                      </h4>
+                      <p className="text-orange-800 mb-4 flex-grow">
+                        {item.description}
+                      </p>
+                      
+                      {/* Progress Dots */}
+                      <div className="flex items-center gap-2 mt-auto pt-4 border-t border-orange-100">
+                        {[...Array(6)].map((_, i) => (
+                          <div
+                            key={i}
+                            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                              i < item.step ? 'bg-orange-500' : 'bg-orange-200'
+                            }`}
+                          />
+                        ))}
+                        <span className="ml-2 text-xs text-orange-600 font-medium">{item.step}/6</span>
+                      </div>
                     </div>
                   </motion.div>
-                ))}
+                </motion.div>
+              ))}
+            </div>
+            
+            {/* Call to Action */}
+            <motion.div 
+              className="text-center mt-12"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <div className="inline-block bg-gradient-to-r from-orange-100 to-orange-200 p-1 rounded-full">
+                <button className="bg-gradient-to-r from-[#FF7A00] to-[#FFB400] text-white font-bold py-3 px-8 rounded-full hover:shadow-lg transition-all duration-300 flex items-center gap-2">
+                  Start Planning Now
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
               </div>
             </motion.div>
           </div>
-        </div>
-      </section>
-
+        </section>
+      
       <section
         className="relative py-36 overflow-hidden text-white"
         style={{
@@ -770,7 +734,6 @@ export default function LandingPage() {
       </section>
       <Testimonials />
 
-     
 
         {/* Final CTA + Trust Section */}
         <section  className="relative py-36 overflow-hidden text-white"
@@ -810,6 +773,81 @@ export default function LandingPage() {
           >
             <TrustBadges />
           </motion.div>
+        </div>
+      </section>
+
+      {/* Mobile Experience Section */}
+      <section className="w-full py-16 md:py-24 overflow-hidden">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-10 md:gap-16 items-center">
+          <div className="text-center md:text-left">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-gray-900 mb-4 md:mb-6">
+                Seamless{" "}
+                <span className="bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
+                  Mobile
+                </span>
+                <br className="hidden sm:block" />
+                <span className="sm:ml-2">Experience</span>
+              </h2>
+              <p className="text-lg sm:text-xl text-gray-600 mb-0 leading-relaxed max-w-3xl mx-auto md:mx-0">
+                Book and manage trips effortlessly from your phone with our award-winning mobile experience.
+              </p>
+          </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.9, ease: [0.33, 0, 0.67, 1] }}
+            >
+              
+
+              <div className="space-y-6">
+                {[
+                  {
+                    icon: <FiCheckCircle className="text-orange-500 text-2xl" />,
+                    title:"Trip Search",
+                    text: "Mobile-friendly booking flow optimized for phones and tablets so you can book your trip from as easy as your phone",
+                    img:"./images/phone1.png"
+                  },
+                  {
+                    icon: <FiClock className="text-orange-500 text-2xl" />,
+                    title:"Trip Management",
+                    text: "View your itinerary and passenger details anytime, anywhere so you can manage your trip from as easy as your phone",
+                    img:"./images/phone1.png"
+                  },
+                  {
+                    icon: <FiCalendar className="text-orange-500 text-2xl" />,
+                    title:"Booking Confirmation",
+                    text: "Secure payment processing with instant booking confirmation so you can book and pay for your trip from as easy as your phone",
+                    img:"./images/phone1.png"
+                  },
+                  {
+                    icon: <FiSmartphone className="text-orange-500 text-2xl" />,
+                    title:"Booking Retrieval",
+                    text: "Retrieve bookings instantly with your reference number so you can access your trip details from as easy as your phone",
+                    img:"./images/phone1.png"
+                  },
+                ].map((item, i) => (
+                  <motion.div
+                    key={i}
+                    className="flex flex-col lg:grid lg:grid-cols-2 items-center gap-6 border border-2 border-black p-4 sm:p-6 bg-orange-50 backdrop-blur-sm rounded-2xl shadow-lg w-full"
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="flex flex-col justify-center space-y-3 w-full">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-3 sm:mb-4">
+                        <span className="flex-shrink-0 text-2xl sm:text-3xl">{item.icon}</span>
+                        <h3 className="font-extrabold text-3xl sm:text-4xl md:text-5xl lg:text-6xl bg-gradient-to-r from-orange-500 to-orange-700 bg-clip-text text-transparent tracking-tight">{item.title}</h3>
+                      </div>
+                      <span className="text-gray-800 font-medium text-base sm:text-lg">{item.text}</span>
+                    </div>
+                   
+                    <div className="flex items-center justify-center mt-4 lg:mt-0 h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[60vh] rounded-2xl overflow-hidden">
+                      <img src={item.img} alt="phone_mockup" className='border border-2 border-gray-800 rounded-2xl w-auto h-[30vh] sm:h-[35vh] md:h-[40vh] lg:h-[50vh] ' />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
         </div>
       </section>
         

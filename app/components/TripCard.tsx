@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useTripCart } from './TripCartContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CustomButton from './CustomButton';
+import { motion } from 'framer-motion';
 
 // Helper function to get city name from IATA code
 interface Airport {
@@ -239,22 +240,123 @@ export default function TripCard({
     breakdown: undefined
   };
 
+  // Format price for display - always show 2 decimal places for consistency
+  const formatPriceValue = (amount: string | number) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return num.toFixed(2);
+  };
+
+  // Format duration
+  const formatDuration = (duration: string) => {
+    const match = duration.match(/PT(\d+H)?(\d+M)?/);
+    if (!match) return duration;
+    const hours = (match[1] ? match[1].replace('H', 'h ') : '');
+    const minutes = (match[2] ? match[2].replace('M', 'm') : '');
+    return `${hours}${minutes}`.trim();
+  };
+
+  // Enhanced price display for clarity
+  const displayPriceValue = formatPriceValue(price.total);
+
   // Combined display for both outbound and inbound flights
   const displayFlights = itineraries.map((itinerary, index) => (
-    <div key={index} className="flight-segment mb-4">
-      <div className="flex items-center">
-        <Image src={getAirlineLogoUrl(itinerary.segments[0].carrierCode)} alt="Airline Logo" width={50} height={25} />
-        <span className="ml-2 font-semibold">{itinerary.segments[0].carrierCode} {itinerary.segments[0].number}</span>
-        <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-medium">
-          {index === 0 ? 'Outbound' : 'Return'}
-        </span>
+    <motion.div 
+      key={index} 
+      className={`bg-white rounded-3xl border border-orange-200 shadow-lg overflow-hidden w-full ${selected ? 'ring-2 ring-orange-500' : ''} relative`}
+      whileHover={{ boxShadow: "0 8px 24px rgba(255, 165, 0, 0.25)" }}
+      transition={{ type: "spring", stiffness: 150, damping: 20 }}
+    >
+      {/* Vacation-themed decorative elements */}
+      <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-gradient-to-br from-yellow-300/20 to-orange-400/20 -mr-10 -mt-10 blur-xl"></div>
+      <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-gradient-to-tr from-[#00B4D8]/10 to-[#90E0EF]/10 -ml-8 -mb-8 blur-lg"></div>
+      
+      <div className="absolute top-0 right-0 bg-gradient-to-r from-[#FF7A00] to-[#FFB400] text-white px-4 py-1.5 rounded-bl-2xl text-sm font-bold z-10 shadow-md">
+        {displayPriceValue} {currency}
       </div>
-      <div className="flex justify-between mt-1">
-        <span>{formatDateString(itinerary.segments[0].departure.at)} {formatTime(itinerary.segments[0].departure.at)}</span>
-        <span>{itinerary.segments[0].departure.iataCode} ➔ {itinerary.segments[itinerary.segments.length - 1].arrival.iataCode}</span>
-        <span>{formatDateString(itinerary.segments[itinerary.segments.length - 1].arrival.at)} {formatTime(itinerary.segments[itinerary.segments.length - 1].arrival.at)}</span>
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-full bg-orange-100 p-1 shadow-sm flex items-center justify-center">
+            <Image src={getAirlineLogoUrl(itinerary.segments[0].carrierCode)} alt="Airline Logo" width={40} height={40} className="object-contain" />
+          </div>
+          <div>
+            <span className="font-semibold text-orange-900">{itinerary.segments[0].carrierCode} {itinerary.segments[0].number}</span>
+            <div className="mt-1">
+              <span className="px-3 py-1 bg-gradient-to-r from-[#FF7A00] to-[#FFB400] text-white rounded-full text-xs font-medium shadow-sm">
+                {index === 0 ? 'Outbound' : 'Return'}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-4 mt-4 relative">
+          {/* Flight path line with vacation-themed styling */}
+          <div className="absolute left-0 right-0 top-6 h-1 bg-gradient-to-r from-[#FF7A00] via-[#FFB400] to-[#00B4D8]/40 z-0 rounded-full shadow-sm"></div>
+          {/* Decorative airplane icon */}
+          <div className="absolute left-1/2 top-5 transform -translate-x-1/2 -translate-y-1/2 z-10">
+            <div className="w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center">
+              <span className="text-xs text-[#FF7A00]">✈️</span>
+            </div>
+          </div>
+          
+          {/* Departure */}
+          <div className="relative z-10 text-center group">
+            <motion.div 
+              className="text-2xl font-bold text-orange-900 relative inline-block"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              {formatTime(itinerary.segments[0].departure.at)}
+              <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-[#FF7A00] to-[#FFB400] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-full"></div>
+            </motion.div>
+            <div className="text-lg font-semibold bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent mt-1">
+              {itinerary.segments[0].departure.iataCode}
+            </div>
+            <div className="text-sm text-orange-700 mt-1 font-medium">{formatDateString(itinerary.segments[0].departure.at)}</div>
+            <div className="text-xs bg-gradient-to-r from-[#00B4D8] to-[#90E0EF] bg-clip-text text-transparent font-medium mt-0.5">{getCityName(itinerary.segments[0].departure.iataCode)}</div>
+          </div>
+          
+          {/* Duration */}
+          <div className="flex flex-col items-center justify-center z-10">
+            <motion.div 
+              className="w-12 h-12 rounded-full bg-gradient-to-br from-white to-orange-50 border border-orange-200 shadow-md flex items-center justify-center mb-2"
+              whileHover={{ scale: 1.1, rotate: 15, boxShadow: "0 8px 16px rgba(255, 122, 0, 0.15)" }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <span className="text-lg bg-gradient-to-r from-[#FF7A00] to-[#00B4D8] bg-clip-text text-transparent">✈️</span>
+            </motion.div>
+            <div className="text-sm font-medium bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent">
+              {(() => {
+                const match = itinerary.duration.match(/PT(\d+H)?(\d+M)?/);
+                if (!match) return itinerary.duration;
+                const hours = (match[1] ? match[1].replace('H', 'h ') : '');
+                const minutes = (match[2] ? match[2].replace('M', 'm') : '');
+                return `${hours}${minutes}`.trim();
+              })()}
+            </div>
+            <div className="mt-1 px-3 py-0.5 rounded-full bg-gradient-to-r from-[#00B4D8]/10 to-[#90E0EF]/20 text-xs font-medium text-[#0077B6] border border-[#90E0EF]/30">
+              {itinerary.segments.length > 1 ? `${itinerary.segments.length - 1} stop${itinerary.segments.length > 2 ? 's' : ''}` : 'Direct'}
+            </div>
+          </div>
+          
+          {/* Arrival */}
+          <div className="relative z-10 text-center group">
+            <motion.div 
+              className="text-2xl font-bold text-orange-900 relative inline-block"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              {formatTime(itinerary.segments[itinerary.segments.length - 1].arrival.at)}
+              <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-[#FFB400] to-[#FF7A00] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-full"></div>
+            </motion.div>
+            <div className="text-lg font-semibold bg-gradient-to-r from-[#FFB400] to-[#FF7A00] bg-clip-text text-transparent mt-1">
+              {itinerary.segments[itinerary.segments.length - 1].arrival.iataCode}
+            </div>
+            <div className="text-sm text-orange-700 mt-1 font-medium">{formatDateString(itinerary.segments[itinerary.segments.length - 1].arrival.at)}</div>
+            <div className="text-xs bg-gradient-to-r from-[#90E0EF] to-[#00B4D8] bg-clip-text text-transparent font-medium mt-0.5">{getCityName(itinerary.segments[itinerary.segments.length - 1].arrival.iataCode)}</div>
+          </div>
+        </div>
       </div>
-    </div>
+    </motion.div>
   ));
 
   // Format price for display - always show 2 decimal places for consistency
@@ -265,14 +367,30 @@ export default function TripCard({
 
   // Enhanced price display for clarity
   const displayPrice = (
-    <div className="flex flex-col gap-0.5 group relative mt-2 mb-2">
-      <span className="font-bold text-2xl text-orange-600">
+    <motion.div 
+      className="flex flex-col gap-0.5 group relative mt-2 mb-2 p-4 bg-gradient-to-br from-white to-orange-50 rounded-2xl border border-orange-200 shadow-md"
+      whileHover={{ y: -2, boxShadow: "0 12px 24px rgba(255, 122, 0, 0.15)" }}
+      transition={{ type: "spring", stiffness: 300 }}
+    >
+      {/* Decorative elements */}
+      <div className="absolute top-0 right-0 w-20 h-20 rounded-full bg-gradient-to-br from-yellow-300/10 to-orange-400/10 -mr-6 -mt-6 blur-lg"></div>
+      <div className="absolute bottom-0 left-0 w-16 h-16 rounded-full bg-gradient-to-tr from-[#00B4D8]/5 to-[#90E0EF]/10 -ml-5 -mb-5 blur-md"></div>
+      
+      <span className="font-bold text-2xl bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent relative z-10">
         Total price:
       </span>
-      <span className="font-extrabold text-3xl text-gray-900">
-        {price.currency} {formatPrice(price.total)}
-      </span>
-    </div>
+      <div className="flex items-baseline relative z-10">
+        <span className="font-extrabold text-3xl text-gray-900 mr-1">
+          {price.currency}
+        </span>
+        <span className="font-extrabold text-4xl bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent">
+          {formatPriceValue(price.total)}
+        </span>
+      </div>
+      <div className="text-xs text-[#00B4D8] font-medium mt-1 flex items-center relative z-10">
+        <span className="mr-1">✓</span> Best value for your budget
+      </div>
+    </motion.div>
   );
 
   // Get the appropriate segments based on flight type
@@ -403,15 +521,7 @@ export default function TripCard({
   const stopsLabel = outboundStopsLabel;
   const stopsColor = outboundStopsColor;
 
-  // Format duration
-  const formatDuration = (duration: string) => {
-    const match = duration.match(/PT(\d+H)?(\d+M)?/);
-    if (!match) return duration;
-    const hours = (match[1] ? match[1].replace('H', 'h ') : '');
-    const minutes = (match[2] ? match[2].replace('M', 'm') : '');
-    return `${hours}${minutes}`.trim();
-  };
-
+ 
   // Calculate nights (only for outbound flights)
   const nights = departureDate && arrivalDate ? 
     Math.max(1, Math.round((+arrivalDate - +departureDate) / (1000 * 60 * 60 * 24))) : null;
@@ -441,110 +551,165 @@ export default function TripCard({
   const aircraftCode = returnSegment?.aircraft?.code || outboundSegment?.aircraft?.code;
 
   return (
-    <div
-      className={`w-full max-w-3xl mx-auto bg-white rounded-xl shadow-sm transition-all border border-gray-100 overflow-hidden`}
+    <motion.div
+      className={`w-full max-w-3xl mx-auto rounded-3xl overflow-hidden relative transition-all`}
       onClick={(e) => {
         e.stopPropagation();
         if (onSelect) onSelect();
       }}
       style={{ cursor: 'pointer' }}
+      initial={{ opacity: 0.9, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ boxShadow: "0 8px 24px rgba(255, 165, 0, 0.15)" }}
+      transition={{ type: "spring", stiffness: 150, damping: 20 }}
     >
-      <div className="p-5">
+      <div className="p-5 relative z-10 bg-white rounded-3xl border border-orange-200">
         {/* Compact Header with Essential Info */}
         <div className="flex justify-between items-center mb-4 gap-3">
           {/* Flight Summary */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="relative w-8 h-8 bg-white rounded-lg border border-gray-100 flex-shrink-0">
+            <motion.div 
+              className="flex items-center gap-3 mb-2"
+              whileHover={{ x: 3 }}
+              transition={{ type: "spring", stiffness: 250, damping: 20 }}
+            >
+              <motion.div 
+                className="relative w-10 h-10 bg-orange-200 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-orange-600 shadow-sm"
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                {/* Clean background to match FAQSection style */}
                 <Image 
                   src={getAirlineLogoUrl(itineraries[0].segments[0].carrierCode)} 
                   alt="Airline logo" 
                   fill 
-                  className="object-contain w-full h-full p-1" 
+                  className="object-contain w-full h-full p-1 relative z-10" 
                   unoptimized={true} 
                 />
-              </div>
+              </motion.div>
               <div className="truncate">
-                <h3 className="text-lg font-medium text-gray-900">
-                  {getCityName(itineraries[0].segments[0].departure.iataCode)}    -    {getCityName(itineraries[0].segments[itineraries[0].segments.length - 1].arrival.iataCode)}
+                <h3 className="text-lg sm:text-xl font-bold text-orange-900 truncate">
+                  {getCityName(itineraries[0].segments[0].departure.iataCode)} <span className="mx-2 text-orange-600">✈</span> {getCityName(itineraries[0].segments[itineraries[0].segments.length - 1].arrival.iataCode)}
                 </h3>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs font-medium text-orange-700">
                   {itineraries[0].segments[0].carrierCode} {itineraries[0].segments[0].number} • {formatDisplayDate(new Date(itineraries[0].segments[0].departure.at))}
                 </p>
               </div>
-            </div>
+            </motion.div>
             
             {/* Stops Badge */}
-            <div className="flex gap-1">
+            <div className="flex gap-2 flex-wrap">
               {effectiveTripType === 'roundtrip' ? (
                 <>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                    {outboundStopsLabel}
-                  </span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                    {returnStopsLabel}
-                  </span>
+                  <motion.span 
+                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-800 border border-orange-200"
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    <span className="mr-1">🛫</span> {outboundStopsLabel}
+                  </motion.span>
+                  <motion.span 
+                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-800 border border-orange-200"
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    <span className="mr-1">🛬</span> {returnStopsLabel}
+                  </motion.span>
                 </>
               ) : (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                  {stopsLabel}
-                </span>
+                <motion.span 
+                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-800 border border-orange-200"
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <span className="mr-1">✈️</span> {stopsLabel}
+                </motion.span>
               )}
             </div>
           </div>
           
           {/* Total Price */}
-          <div className="bg-gradient-to-br from-orange-500 to-amber-400 shadow-lg shadow-orange-500/30 text-white font-bold text-lg px-3 py-2 rounded-lg whitespace-nowrap flex-shrink-0">
+          <motion.div 
+            className="bg-orange-50 border border-orange-200 text-orange-800 font-bold text-sm sm:text-lg px-2 sm:px-3 py-1 sm:py-2 rounded-lg whitespace-nowrap flex-shrink-0 shadow-sm mt-1 sm:mt-0"
+            whileHover={{ scale: 1.05, y: -2 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
             {price.currency} {(() => {
               if (!selectedHotel) return parseFloat(price.total).toFixed(0);
               const hotelTotal = selectedHotel.totalPrice ? parseFloat(selectedHotel.totalPrice) : 0;
               return (parseFloat(price.total) + hotelTotal).toFixed(0);
             })()}
-          </div>
+          </motion.div>
         </div>
       
       {/* Outbound Flight Route */}
       <div className="my-6">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mr-2">
-              Outbound Flight
-            </span>
-          </h4>
+        <motion.h4 
+          className="text-sm font-bold mb-3 flex items-center relative z-10"
+          whileHover={{ x: 5 }}
+          transition={{ type: "spring", stiffness: 300 }}
+        >
+          <motion.span 
+            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-900 border border-orange-200 mr-2"
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <span className="mr-1">🛫</span> Outbound Flight
+          </motion.span>
+        </motion.h4>
           <div className="relative">
-            {/* Flight path line - narrower */}
-            <div className="absolute left-1/4 right-1/4 top-1/2 h-[2px] bg-gradient-to-r from-blue-400 to-blue-500 -translate-y-1/2 z-0"></div>
+            {/* Flight path line with FAQSection theme */}
+            <div className="absolute left-1/4 right-1/4 top-1/2 h-[2px] bg-orange-200 -translate-y-1/2 z-0"></div>
+            {/* Removed decorative airplane icon to prevent overlap with duration */}
             
             <div className="relative grid grid-cols-[1fr_auto_1fr] items-center mt-4 px-2 sm:px-4">
             {/* Outbound Departure */}
-            <div className="text-left pr-3 z-10">
-              <div className="text-2xl font-bold text-gray-900">{formatTime(itineraries[0].segments[0].departure.at)}</div>
-              <div className="text-sm font-medium text-gray-700">{itineraries[0].segments[0].departure.iataCode}</div>
-              <div className="text-xs text-gray-500 whitespace-normal leading-snug line-clamp-2 max-w-[80px] sm:max-w-none">{getCityName(itineraries[0].segments[0].departure.iataCode)}</div>
-              <div className="text-xs text-gray-400 mt-0.5">
-                {formatDisplayDate(new Date(itineraries[0].segments[0].departure.at))}
-              </div>
-            </div>
+            <motion.div 
+              className="text-left pr-3 z-10"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="text-2xl font-bold text-orange-900">{formatTime(itineraries[0].segments[0].departure.at)}</div>
+              <div className="text-lg font-medium text-orange-700">{itineraries[0].segments[0].departure.iataCode}</div>
+              <div className="text-xs text-orange-800 font-medium">{getCityName(itineraries[0].segments[0].departure.iataCode)}</div>
+            </motion.div>
             
             {/* Outbound Duration */}
-            <div className="px-3 py-1 rounded-full bg-white border border-gray-200 shadow-sm text-xs font-medium text-gray-700 mx-auto z-20">
-              {formatDuration(outboundDuration)}
-            </div>
+            <motion.div 
+              className="px-4 py-1.5 rounded-full bg-orange-100 text-orange-900 border border-orange-200 text-sm font-medium mx-auto z-20"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <span className="text-orange-900">
+                {(() => {
+                  const match = outboundDuration.match(/PT(\d+H)?(\d+M)?/);
+                  if (!match) return outboundDuration;
+                  const hours = (match[1] ? match[1].replace('H', 'h ') : '');
+                  const minutes = (match[2] ? match[2].replace('M', 'm') : '');
+                  return `${hours}${minutes}`.trim();
+                })()}
+              </span>
+            </motion.div>
             
             {/* Outbound Arrival */}
-            <div className="text-right pl-3 z-10">
-              <div className="text-2xl font-bold text-gray-900">{formatTime(itineraries[0].segments[itineraries[0].segments.length - 1].arrival.at)}</div>
-              <div className="text-sm font-medium text-gray-700">{itineraries[0].segments[itineraries[0].segments.length - 1].arrival.iataCode}</div>
-              <div className="text-xs text-gray-500 whitespace-normal leading-snug line-clamp-2 max-w-[80px] sm:max-w-none">{getCityName(itineraries[0].segments[itineraries[0].segments.length - 1].arrival.iataCode)}</div>
-              <div className="text-xs text-gray-400 mt-0.5">
+            <motion.div 
+              className="text-right pl-3 z-10"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="text-2xl font-bold text-orange-900">{formatTime(itineraries[0].segments[itineraries[0].segments.length - 1].arrival.at)}</div>
+              <div className="text-lg font-medium text-orange-700">{itineraries[0].segments[itineraries[0].segments.length - 1].arrival.iataCode}</div>
+              <div className="text-xs text-orange-800 font-medium">{getCityName(itineraries[0].segments[itineraries[0].segments.length - 1].arrival.iataCode)}</div>
+              <div className="text-xs text-orange-600 mt-0.5">
                 {formatDisplayDate(new Date(itineraries[0].segments[itineraries[0].segments.length - 1].arrival.at))}
               </div>
-            </div>
+            </motion.div>
           </div>
           
           {/* Layover Information for Outbound Flight */}
           {outboundSegments.length > 1 && (
-            <div className="mt-4 pt-3 border-t border-gray-100">
-              <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+            <div className="mt-4 pt-3 border-t border-orange-100">
+              <h4 className="text-xs font-medium text-orange-700 uppercase tracking-wider mb-2">
                 Outbound Layover{outboundSegments.length > 2 ? 's' : ''}
               </h4>
               <div className="space-y-2">
@@ -587,45 +752,65 @@ export default function TripCard({
                 {itineraries[1].segments[0].carrierCode} {itineraries[1].segments[0].number}
               </span>
             </div>
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 w-fit">
-              Return Flight
-            </span>
+            <motion.span 
+              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-900 border border-orange-200 w-fit"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <span className="mr-1">🛬</span> Return Flight
+            </motion.span>
             
           </div>
         
           <div className="relative grid grid-cols-[1fr_auto_1fr] items-center mt-4 px-2 sm:px-4">
             {/* Inbound Departure */}
-            {/* Flight path line - narrower */}
-            <div className="absolute left-1/4 right-1/4 top-1/2 h-[2px] bg-gradient-to-r from-purple-400 to-purple-500 -translate-y-1/2 z-0"></div>
-            <div className="text-left pr-3 z-10">
-              <div className="text-2xl font-bold text-gray-900">{formatTime(itineraries[1].segments[0].departure.at)}</div>
-              <div className="text-sm font-medium text-gray-700">{itineraries[1].segments[0].departure.iataCode}</div>
-              <div className="text-xs text-gray-500 whitespace-normal leading-snug line-clamp-2 max-w-[80px] sm:max-w-none">{getCityName(itineraries[1].segments[0].departure.iataCode)}</div>
-              <div className="text-xs text-gray-400 mt-0.5">
+            {/* Flight path line with FAQSection theme */}
+            <div className="absolute left-1/4 right-1/4 top-1/2 h-[2px] bg-orange-200 -translate-y-1/2 z-0"></div>
+            {/* Removed decorative airplane icon to prevent overlap with duration */}
+            
+            <motion.div 
+              className="text-left pr-3 z-10"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="text-2xl font-bold text-orange-900">{formatTime(itineraries[1].segments[0].departure.at)}</div>
+              <div className="text-lg font-medium text-orange-700">{itineraries[1].segments[0].departure.iataCode}</div>
+              <div className="text-xs text-orange-800 font-medium">{getCityName(itineraries[1].segments[0].departure.iataCode)}</div>
+              <div className="text-xs text-orange-600 mt-0.5">
                 {formatDisplayDate(new Date(itineraries[1].segments[0].departure.at))}
               </div>
-            </div>
+            </motion.div>
             
             {/* Inbound Duration */}
-            <div className="px-3 py-1 h-[28px] flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-sm text-xs font-medium text-gray-700 mx-auto z-20">
-              {formatDuration(returnDuration)}
-            </div>
+            <motion.div 
+              className="px-4 py-1.5 rounded-full bg-orange-100 text-orange-900 border border-orange-200 text-sm font-medium mx-auto z-20"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <span className="text-orange-900">
+                {formatDuration(returnDuration)}
+              </span>
+            </motion.div>
             
             {/* Inbound Arrival */}
-            <div className="text-right pl-3 z-10">
-              <div className="text-2xl font-bold text-gray-900">{formatTime(itineraries[1].segments[itineraries[1].segments.length - 1].arrival.at)}</div>
-              <div className="text-sm font-medium text-gray-700">{itineraries[1].segments[itineraries[1].segments.length - 1].arrival.iataCode}</div>
-              <div className="text-xs text-gray-500 whitespace-normal leading-snug line-clamp-2 max-w-[80px] sm:max-w-none">{getCityName(itineraries[1].segments[itineraries[1].segments.length - 1].arrival.iataCode)}</div>
-              <div className="text-xs text-gray-400 mt-0.5">
+            <motion.div 
+              className="text-right pl-3 z-10"
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className="text-2xl font-bold text-orange-900">{formatTime(itineraries[1].segments[itineraries[1].segments.length - 1].arrival.at)}</div>
+              <div className="text-lg font-medium text-orange-700">{itineraries[1].segments[itineraries[1].segments.length - 1].arrival.iataCode}</div>
+              <div className="text-xs text-orange-800 font-medium">{getCityName(itineraries[1].segments[itineraries[1].segments.length - 1].arrival.iataCode)}</div>
+              <div className="text-xs text-orange-600 mt-0.5">
                 {formatDisplayDate(new Date(itineraries[1].segments[itineraries[1].segments.length - 1].arrival.at))}
               </div>
-            </div>
+            </motion.div>
           </div>
           
           {/* Layover Information for Return Flight */}
           {returnSegments.length > 1 && (
-            <div className="mt-4 pt-3 border-t border-gray-100">
-              <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+            <div className="mt-4 pt-3 border-t border-orange-100">
+              <h4 className="text-xs font-medium text-orange-700 uppercase tracking-wider mb-2">
                 Return Layover{returnSegments.length > 2 ? 's' : ''}
               </h4>
               <div className="space-y-2">
@@ -721,6 +906,6 @@ export default function TripCard({
         </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -2,8 +2,8 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
-import { FaClipboardList, FaPlane, FaTimes, FaBars } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import { FaClipboardList, FaPlane, FaTimes, FaBars, FaTicketAlt, FaSearch } from "react-icons/fa";
 
 import { useState } from "react";
 
@@ -31,8 +31,9 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-sm border-b border-gray-100">
-      <nav className="container mx-auto px-4 md:px-6 flex items-center h-24 md:h-28 justify-between relative">
+    <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-100 shadow-sm">
+      <div className="absolute inset-0 bg-gradient-to-r from-orange-50/30 to-transparent opacity-60"></div>
+      <nav className="container mx-auto px-4 md:px-6 flex items-center h-20 md:h-24 justify-between relative z-10">
         <Link href="/" className="flex items-center flex-none h-full group" aria-label="Go to homepage">
           <motion.div
             className="h-full flex items-center justify-center flex-none"
@@ -45,81 +46,180 @@ export default function Navbar() {
             <img src="/Logo.svg" alt="Where2 Logo" className="h-12 w-auto md:h-16 object-contain drop-shadow-lg transition-transform group-hover:scale-105" />
           </motion.div>
         </Link>
+        
         {/* Desktop Nav Links */}
-        <ul className="hidden md:flex gap-8 font-semibold text-gray-700 text-base items-center">
-          {navLinks.map(link => (
-            <li key={link.href}>
+        <ul className="hidden md:flex gap-6 font-medium text-orange-800 text-base items-center">
+          {navLinks.map((link, index) => (
+            <motion.li 
+              key={link.href}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+            >
               <a 
                 href={link.href} 
-                className="hover:text-[#FF8C00] focus:text-[#FF8C00] transition-colors px-2 py-1 rounded focus:outline-none focus:ring-2 focus:ring-[#FFA500]" 
+                className="relative px-3 py-2 rounded-full hover:bg-orange-50 focus:bg-orange-50 transition-all duration-300 focus:outline-none group" 
                 tabIndex={0}
                 onClick={link.href.startsWith('#') ? handleLinkClick : undefined}
               >
-                {link.label}
+                <span className="relative z-10">{link.label}</span>
+                <span className="absolute bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#FF7A00] to-[#FFB400] group-hover:w-full transition-all duration-300"></span>
               </a>
-            </li>
+            </motion.li>
           ))}
         </ul>
-        {/* Desktop View - Keep original buttons */}
-        <div className="hidden md:flex items-center gap-4 ml-4">
-          <Link href="/trip-summary" className="bg-[#FFA500] hover:bg-[#FF8C00] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors duration-200">
-            <FaClipboardList className="text-lg" />
-            Trip Summary
-          </Link>
-          <Link href="/retrieve-booking" className="bg-[#FFA500] hover:bg-[#FF8C00] text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors duration-200">
-            <FaPlane className="text-lg" />
-            Retrieve Booking
-          </Link>
-        </div>
-        {/* Mobile View - Compact Retrieve Booking button */}
-        <div className="md:hidden flex items-center gap-2 ml-3">
-          <Link href="/retrieve-booking" className="bg-[#FFA500]/90 hover:bg-[#FF8C00] text-white px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all duration-200 hover:shadow-sm">
-            <FaPlane className="text-xs" />
-            <span>Booking</span>
-          </Link>
-          {/* Hamburger menu button */}
-          <button
-            className="p-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500]/50 hover:bg-gray-100 transition-colors"
-            onClick={() => setMenuOpen(!menuOpen)}
+        
+        {/* Desktop View - Action Buttons */}
+        <div className="hidden md:flex items-center gap-3 ml-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            whileHover={{ scale: 1.03 }}
+            className="relative group"
           >
-            {menuOpen ? <FaTimes className="text-gray-700 text-base" /> : <FaBars className="text-gray-700 text-base" />}
-          </button>
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-300 to-orange-400 rounded-full opacity-70 group-hover:opacity-100 blur-sm transition duration-200"></div>
+            <Link 
+              href="/trip-summary" 
+              className="relative bg-white hover:bg-orange-50 text-orange-700 px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-colors duration-300 border border-orange-200 group-hover:border-orange-300"
+            >
+              <div className="p-1.5 bg-gradient-to-br from-[#FF7A00] to-[#FFB400] rounded-full">
+                <FaClipboardList className="text-white text-xs" />
+              </div>
+              <span>Trip Summary</span>
+            </Link>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            whileHover={{ scale: 1.03 }}
+            className="relative group"
+          >
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF7A00] to-[#FFB400] rounded-full opacity-80 group-hover:opacity-100 blur-sm transition duration-200"></div>
+            <Link 
+              href="/retrieve-booking" 
+              className="relative bg-gradient-to-r from-[#FF7A00] to-[#FFB400] text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all duration-300 shadow-sm hover:shadow group-hover:shadow-orange-200/50"
+            >
+              <FaTicketAlt className="text-white text-xs" />
+              <span>Retrieve Booking</span>
+            </Link>
+          </motion.div>
         </div>
+        
+        {/* Mobile View - Compact Buttons */}
+        <div className="md:hidden flex items-center gap-2 ml-3">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Link 
+              href="/retrieve-booking" 
+              className="bg-gradient-to-r from-[#FF7A00] to-[#FFB400] text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 shadow-sm hover:shadow transition-all duration-200"
+            >
+              <FaTicketAlt className="text-xs" />
+              <span>Booking</span>
+            </Link>
+          </motion.div>
+          
+          {/* Hamburger menu button */}
+          <motion.button
+            className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-orange-300 hover:bg-orange-50 transition-colors bg-white border border-orange-200"
+            onClick={() => setMenuOpen(!menuOpen)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {menuOpen ? 
+              <FaTimes className="text-orange-600 text-base" /> : 
+              <FaBars className="text-orange-600 text-base" />
+            }
+          </motion.button>
+        </div>
+        
         {/* Mobile Menu */}
-        {menuOpen && (
-          <ul className="absolute top-full left-0 right-0 bg-white/95 border-b border-gray-100 shadow-lg flex flex-col items-center gap-4 py-6 md:hidden animate-fadeIn">
-            {navLinks.map(link => (
-              <li key={link.href}>
-                <a 
-                  href={link.href} 
-                  className="block px-4 py-2 font-semibold text-gray-700 hover:text-[#FF8C00] focus:text-[#FF8C00] focus:outline-none focus:ring-2 focus:ring-[#FFA500] rounded text-lg" 
-                  tabIndex={0} 
-                  onClick={(e) => {
-                    if (link.href.startsWith('#')) {
-                      handleLinkClick(e);
-                    } else {
-                      setMenuOpen(false);
-                    }
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div 
+              className="absolute top-full left-0 right-0 bg-white border-b border-orange-100 shadow-lg md:hidden z-50"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.ul 
+                className="flex flex-col items-center gap-2 py-6 px-4"
+                initial="closed"
+                animate="open"
+                variants={{
+                  open: {
+                    transition: { staggerChildren: 0.07, delayChildren: 0.1 }
+                  },
+                  closed: {
+                    transition: { staggerChildren: 0.05, staggerDirection: -1 }
+                  }
+                }}
+              >
+                {navLinks.map(link => (
+                  <motion.li 
+                    key={link.href}
+                    className="w-full"
+                    variants={{
+                      open: { opacity: 1, y: 0 },
+                      closed: { opacity: 0, y: -20 }
+                    }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <a 
+                      href={link.href} 
+                      className="block w-full px-4 py-3 font-medium text-orange-800 hover:bg-orange-50 rounded-xl transition-colors" 
+                      tabIndex={0} 
+                      onClick={(e) => {
+                        if (link.href.startsWith('#')) {
+                          handleLinkClick(e);
+                        } else {
+                          setMenuOpen(false);
+                        }
+                      }}
+                    >
+                      {link.label}
+                    </a>
+                  </motion.li>
+                ))}
+                
+                {/* Mobile View - Action Buttons */}
+                <motion.div 
+                  className="w-full mt-4 space-y-3 px-4"
+                  variants={{
+                    open: { opacity: 1, y: 0 },
+                    closed: { opacity: 0, y: -20 }
                   }}
                 >
-                  {link.label}
-                </a>
-              </li>
-            ))}
-            {/* Mobile View - Add to hamburger menu */}
-            <div className="md:hidden flex flex-col gap-2 mt-4">
-              <Link href="/trip-summary" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md text-base font-medium flex items-center gap-2">
-                <FaClipboardList />
-                Trip Summary
-              </Link>
-            </div>
-          </ul>
-        )}
+                  <Link 
+                    href="/trip-summary" 
+                    className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 py-3 px-4 rounded-xl text-base font-medium flex items-center gap-3 transition-colors"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <div className="p-1.5 bg-gradient-to-br from-[#FF7A00] to-[#FFB400] rounded-full">
+                      <FaClipboardList className="text-white text-xs" />
+                    </div>
+                    <span>Trip Summary</span>
+                  </Link>
+                  
+                  <Link 
+                    href="/retrieve-booking" 
+                    className="w-full bg-gradient-to-r from-[#FF7A00] to-[#FFB400] text-white py-3 px-4 rounded-xl text-base font-medium flex items-center gap-3 transition-colors shadow-sm"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <FaSearch className="text-white text-sm" />
+                    <span>Find My Booking</span>
+                  </Link>
+                </motion.div>
+              </motion.ul>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
-      <style jsx>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
-        .animate-fadeIn { animation: fadeIn 0.2s ease; }
-      `}</style>
     </header>
   );
 }

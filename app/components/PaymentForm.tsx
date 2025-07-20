@@ -259,29 +259,29 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
   return (
     <div className="w-full">
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="bg-white sm:p-6">
-          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center">
-            <FiCreditCard className="mr-3 text-blue-600" />
+      <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-orange-200">
+        <div className="bg-gradient-to-r from-[#FF7A00] to-[#FFB400] p-6">
+          <h3 className="text-xl font-semibold text-white flex items-center">
+            <FiCreditCard className="mr-3" />
             Payment Details
           </h3>
         </div>
         
         {/* Test Card Details Box */}
-        <div className="bg-blue-50 p-4 mb-4 mx-4 mt-4 rounded-md">
-          <div className="flex justify-between items-center mb-2">
-            <h4 className="font-medium text-blue-800 flex items-center">
+        <div className="bg-orange-50 p-6 mx-6 mt-6 rounded-2xl border border-orange-100">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="font-medium text-orange-800 flex items-center">
               <FiInfo className="mr-2" /> Test Card Details
             </h4>
           </div>
-          <div className="space-y-2 text-sm">
+          <div className="space-y-3 text-sm">
             <div className="flex justify-between items-center">
-              <span className="text-gray-700">Card Number:</span>
+              <span className="text-orange-700">Card Number:</span>
               <div className="flex items-center">
-                <span className="font-mono bg-white px-2 py-1 rounded border border-gray-200">{testCardDetails.cardNumber}</span>
+                <span className="font-mono bg-white px-3 py-2 rounded-lg border border-orange-200">{testCardDetails.cardNumber}</span>
                 <button 
                   onClick={() => copyToClipboard(testCardDetails.cardNumber.replace(/\s/g, ''))}
-                  className="ml-2 text-blue-600 hover:text-blue-800"
+                  className="ml-2 text-orange-600 hover:text-orange-800 transition-colors"
                   title="Copy to clipboard"
                 >
                   <FiCopy size={16} />
@@ -289,12 +289,12 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               </div>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-700">Expiry Date:</span>
+              <span className="text-orange-700">Expiry Date:</span>
               <div className="flex items-center">
-                <span className="font-mono bg-white px-2 py-1 rounded border border-gray-200">{testCardDetails.expiryDate}</span>
+                <span className="font-mono bg-white px-3 py-2 rounded-lg border border-orange-200">{testCardDetails.expiryDate}</span>
                 <button 
                   onClick={() => copyToClipboard(testCardDetails.expiryDate)}
-                  className="ml-2 text-blue-600 hover:text-blue-800"
+                  className="ml-2 text-orange-600 hover:text-orange-800 transition-colors"
                   title="Copy to clipboard"
                 >
                   <FiCopy size={16} />
@@ -302,12 +302,12 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               </div>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-700">CVV:</span>
+              <span className="text-orange-700">CVV:</span>
               <div className="flex items-center">
-                <span className="font-mono bg-white px-2 py-1 rounded border border-gray-200">{testCardDetails.cvv}</span>
+                <span className="font-mono bg-white px-3 py-2 rounded-lg border border-orange-200">{testCardDetails.cvv}</span>
                 <button 
                   onClick={() => copyToClipboard(testCardDetails.cvv)}
-                  className="ml-2 text-blue-600 hover:text-blue-800"
+                  className="ml-2 text-orange-600 hover:text-orange-800 transition-colors"
                   title="Copy to clipboard"
                 >
                   <FiCopy size={16} />
@@ -315,78 +315,84 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               </div>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-700">Cardholder Name:</span>
+              <span className="text-orange-700">Cardholder Name:</span>
               <div className="flex items-center">
-                <span className="font-mono bg-white px-2 py-1 rounded border border-gray-200">{testCardDetails.cardholderName}</span>
+                <span className="font-mono bg-white px-3 py-2 rounded-lg border border-orange-200">{testCardDetails.cardholderName}</span>
                 <button 
                   onClick={() => copyToClipboard(testCardDetails.cardholderName)}
-                  className="ml-2 text-blue-600 hover:text-blue-800"
+                  className="ml-2 text-orange-600 hover:text-orange-800 transition-colors"
                   title="Copy to clipboard"
                 >
                   <FiCopy size={16} />
                 </button>
               </div>
             </div>
-            <p className="text-xs text-blue-700 mt-2">
-              These test card details will be automatically used for Duffel payment testing.
-              Click the copy icons to copy values to clipboard for easy pasting.
+            <p className="text-sm text-orange-700 mt-3 bg-white p-3 rounded-lg border border-orange-100 flex items-start">
+              <FiInfo className="mr-2 mt-0.5 text-orange-500 flex-shrink-0" />
+              <span>These test card details will be automatically used for Duffel payment testing. Click the copy icons to copy values to clipboard for easy pasting.</span>
             </p>
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-          <div className="bg-gray-50 rounded-md p-3 sm:p-4">
+        <div className="p-6 space-y-6">
+          <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
             <div className="flex justify-between items-center">
-              <span className="text-gray-700">Total</span>
-              <span className="text-lg sm:text-xl font-medium text-gray-900">
+              <span className="text-orange-800 font-medium">Total Amount</span>
+              <span className="text-xl font-bold text-orange-900 bg-white px-4 py-2 rounded-lg border border-orange-200 shadow-sm">
                 {new Intl.NumberFormat('en-US', {
                   style: 'currency',
                   currency: currency || 'EUR'
                 }).format(amount)}
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">Includes all taxes and fees</p>
+            <p className="text-sm text-orange-600 mt-2 flex items-center">
+              <FiCheckCircle className="w-4 h-4 mr-1 text-orange-500" />
+              Includes all taxes and fees
+            </p>
           </div>
 
-          <div className="space-y-3 sm:space-y-4 w-full sm:w-auto p-0 m-0">
-            <div className="border border-gray-200 rounded-md overflow-hidden">
-              <div className="bg-gray-50 p-2 sm:p-3 border-b border-gray-200">
-              <h4 className="text-xs sm:text-sm font-medium text-gray-700">Card Information</h4>
+          <div className="space-y-4 w-full">
+            <div className="border border-orange-200 rounded-2xl overflow-hidden">
+              <div className="bg-orange-100 p-4 border-b border-orange-200">
+                <h4 className="font-medium text-orange-800">Card Information</h4>
               </div>
-              <div className="p-2 sm:p-4" ref={paymentFormRef}>
+              <div className="p-4" ref={paymentFormRef}>
                 {/* Global styles for Duffel payment form */}
                 <style jsx global>{`
                   /* Target Duffel payment form elements */
                   .StripeElement {
-                    border-radius: 6px !important;
-                    padding: 12px !important;
-                    border: 1px solid #E2E8F0 !important;
+                    border-radius: 12px !important;
+                    padding: 14px !important;
+                    border: 1px solid #FED7AA !important; /* orange-200 */
                     background-color: white !important;
-                    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1) !important;
+                    box-shadow: 0 1px 3px 0 rgba(255, 122, 0, 0.1) !important;
                   }
                   
                   /* Style the payment button */
                   button[type="submit"] {
-                    background-color: #FFB800 !important;
+                    background: linear-gradient(to right, #FF7A00, #FFB400) !important;
                     color: white !important;
                     font-weight: 600 !important;
-                    border-radius: 6px !important;
-                    padding: 12px 16px !important;
+                    border-radius: 12px !important;
+                    padding: 14px 20px !important;
                     border: none !important;
                     font-size: 16px !important;
                     cursor: pointer !important;
-                    transition: background-color 0.2s !important;
-                    margin-top: 10px !important;
+                    transition: all 0.2s !important;
+                    margin-top: 16px !important;
                     display: block !important;
+                    box-shadow: 0 4px 12px rgba(255, 122, 0, 0.25) !important;
                   }
                   
                   button[type="submit"]:hover {
-                    background-color: #F59E0B !important;
+                    transform: translateY(-2px) !important;
+                    box-shadow: 0 6px 16px rgba(255, 122, 0, 0.3) !important;
                   }
                   
                   /* Ensure form inputs are large enough to prevent zoom */
                   input, select {
                     font-size: 16px !important;
+                    color: #9A3412 !important; /* orange-800 */
                   }
                   
                   /* Mobile optimizations */
@@ -394,7 +400,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                     /* Ensure container doesn't overflow on mobile */
                     .StripeElement {
                       width: 100% !important;
-                      padding: 10px !important;
+                      padding: 12px !important;
                       margin: 0 0 8px 0 !important;
                     }
                     
@@ -409,15 +415,15 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                     label {
                       display: block !important;
                       margin-bottom: 5px !important;
-                      font-size: 12px !important;
-                      
+                      font-size: 14px !important;
+                      color: #9A3412 !important; /* orange-800 */
                     }
                     
                     /* Adjust button on mobile */
                     button[type="submit"] {
                       width: 100% !important;
-                      padding: 10px !important;
-                      font-size: 14px !important;
+                      padding: 12px !important;
+                      font-size: 16px !important;
                     }
                     
                     /* Fix any potential overflow issues */
@@ -461,45 +467,49 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                       default: {
                         'font-size': '16px',
                         'padding': '0px',
-                        'border-radius': '6px',
-                        'border': '1px solid #E2E8F0',
-                        'box-shadow': '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                        'border-radius': '12px',
+                        'border': '1px solid #FED7AA', /* orange-200 */
+                        'box-shadow': '0 1px 3px 0 rgba(255, 122, 0, 0.1)',
                         'width': '100%',
-                        'font-family': 'Inter, sans-serif'
+                        'font-family': 'Inter, sans-serif',
+                        'color': '#9A3412' /* orange-800 */
                       },
                       focus: {
-                        'border-color': '#FFB800',
-                        'outline': 'none'
+                        'border-color': '#FF7A00',
+                        'outline': 'none',
+                        'box-shadow': '0 0 0 3px rgba(255, 122, 0, 0.2)'
                       },
                       hover: {
-                        'border-color': '#CBD5E0'
+                        'border-color': '#FDBA74' /* orange-300 */
                       }
                     },
                     select: {
                       default: {
                         'font-size': '16px',
                         'padding': '15px',
-                        'border-radius': '6px',
-                        'border': '1px solid #E2E8F0',
-                        'box-shadow': '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                        'border-radius': '12px',
+                        'border': '1px solid #FED7AA', /* orange-200 */
+                        'box-shadow': '0 1px 3px 0 rgba(255, 122, 0, 0.1)',
                         'width': '100%',
-                        'font-family': 'Inter, sans-serif'
+                        'font-family': 'Inter, sans-serif',
+                        'color': '#9A3412' /* orange-800 */
                       },
                       focus: {
-                        'border-color': '#FFB800',
-                        'outline': 'none'
+                        'border-color': '#FF7A00',
+                        'outline': 'none',
+                        'box-shadow': '0 0 0 3px rgba(255, 122, 0, 0.2)'
                       }
                     },
                     label: {
                       'font-size': '14px',
                       'font-weight': '500',
-                      'color': '#4A5568',
-                      'margin-bottom': '4px',
+                      'color': '#9A3412', /* orange-800 */
+                      'margin-bottom': '6px',
                       'font-family': 'Inter, sans-serif',
                       'padding': '15px',
                     },
                     inputErrorMessage: {
-                      'color': '#E53E3E',
+                      'color': '#DC2626', /* red-600 */
                       'font-size': '14px',
                       'margin-top': '4px',
                       'font-family': 'Inter, sans-serif'
@@ -507,7 +517,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                     sectionTitle: {
                       'font-size': '16px',
                       'font-weight': '600',
-                      'color': '#2D3748',
+                      'color': '#9A3412', /* orange-800 */
                       'margin-bottom': '8px',
                       'font-family': 'Inter, sans-serif'
                     },
@@ -516,20 +526,21 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
                       'grid-gap': '16px'
                     },
                     button: {
-                      'background-color': '#FFB800',
+                      'background': 'linear-gradient(to right, #FF7A00, #FFB400)',
                       'color': 'white',
                       'font-weight': '600',
-                      'border-radius': '6px',
-                      'padding': '12px 16px',
+                      'border-radius': '12px',
+                      'padding': '14px 20px',
                       'border': 'none',
                       'width': '100%',
                       'font-size': '16px',
                       'cursor': 'pointer',
-                      'transition': 'background-color 0.2s',
-                      'margin-top': '10px',
+                      'transition': 'all 0.2s',
+                      'margin-top': '16px',
                       'max-width': '100%',
                       'display': 'block',
-                      'font-family': 'Inter, sans-serif'
+                      'font-family': 'Inter, sans-serif',
+                      'box-shadow': '0 4px 12px rgba(255, 122, 0, 0.25)'
                     }
                   }}
                   paymentIntentClientToken={clientToken}
@@ -565,9 +576,32 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
               </div>
             </div>
 
-            <div className="flex items-start text-xs sm:text-sm text-gray-500">
-              <FiLock className="mt-0.5 mr-2 text-gray-400" />
-              <span>Payments secured with 256-bit encryption</span>
+            <div className="flex items-center text-sm text-orange-600 bg-orange-50 p-3 rounded-xl border border-orange-100">
+              <FiLock className="mr-2 text-orange-500" />
+              <span>Your payment is secured with 256-bit encryption</span>
+            </div>
+            
+            {error && (
+              <div className="mt-4 p-4 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100 flex items-center">
+                <FiInfo className="mr-2 text-red-500" />
+                {error}
+              </div>
+            )}
+            
+            {/* Payment benefits */}
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center text-orange-700">
+                <FiCheckCircle className="mr-2 text-orange-500" />
+                <span>No booking fees</span>
+              </div>
+              <div className="flex items-center text-orange-700">
+                <FiCheckCircle className="mr-2 text-orange-500" />
+                <span>Free cancellation within 24 hours</span>
+              </div>
+              <div className="flex items-center text-orange-700">
+                <FiCheckCircle className="mr-2 text-orange-500" />
+                <span>Instant confirmation</span>
+              </div>
             </div>
           </div>
         </div>
