@@ -469,125 +469,113 @@ export default function LandingPage() {
   
       
         {/* How It Works Section */}
-        <section className="w-full py-24 relative overflow-hidden bg-gradient-to-br from-orange-50 to-white">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 z-0">
-            <div className="absolute top-20 left-10 w-72 h-72 bg-gradient-to-br from-orange-400 to-yellow-400 rounded-full blur-3xl opacity-10"></div>
-            <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-br from-orange-300 to-orange-500 rounded-full blur-3xl opacity-10"></div>
-            <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-gradient-to-br from-yellow-300 to-orange-300 rounded-full blur-3xl opacity-10"></div>
-            <div className="absolute top-1/4 right-1/4 w-48 h-48 bg-gradient-to-br from-orange-200 to-yellow-200 rounded-full blur-3xl opacity-10"></div>
+        <section className="w-full py-24 relative overflow-hidden bg-orange-50">
+          {/* Background Pattern - Simplified and reduced */}
+          <div className="absolute inset-0 z-0 opacity-10">
+            <div className="absolute top-20 left-10 w-72 h-72 bg-orange-400 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-400 rounded-full blur-3xl"></div>
           </div>
           
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <motion.div
-              className="text-center mb-16"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.8 }}
-            >
-              <motion.div
-                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-100 to-orange-200 rounded-full text-orange-700 font-semibold text-sm mb-6"
-                initial={{ opacity: 0, scale: 0.8 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center px-4 py-2 bg-orange-100 rounded-full text-orange-700 font-semibold text-sm mb-6">
                 ✨ Your Journey Starts Here
-              </motion.div>
-              <h2 className="text-5xl font-extrabold mb-6 text-center bg-gradient-to-r from-[#FF7A00] to-[#FFB400] bg-clip-text text-transparent select-none drop-shadow-md">
+              </div>
+              <h2 className="text-5xl font-extrabold mb-6 text-center text-[#FF7A00]">
                 How It Works
               </h2>
               <p className="text-center text-lg text-orange-700 mb-8 font-medium tracking-wide max-w-3xl mx-auto">
                 Six simple steps to your perfect trip. We've streamlined the entire process so you can focus on what
                 matters most—your adventure.
               </p>
-            </motion.div>
+            </div>
 
-            {/* Hexagon Flow Layout */}
+            {/* Step Cards Layout - Optimized for performance */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
               {[
                 {
                   step: 1,
                   title: "Set Your Budget",
                   description: "Tell us your total trip budget. We'll instantly filter the best packages for you—no surprises, no hidden fees.",
-                  color: "from-orange-500 to-orange-600",
+                  color: "text-orange-600",
+                  bgColor: "bg-orange-500",
                   lottieUrl: "https://lottie.host/21e3efcb-81c4-4370-8ab8-aafe48ea52b8/QjYBNDDXy7.json",
                 },
                 {
                   step: 2,
                   title: "Pick Your Destination",
                   description: "Explore a world of possibilities—just pick a city or country and let our smart algorithms do the rest.",
-                  color: "from-orange-400 to-orange-500",
+                  color: "text-orange-500",
+                  bgColor: "bg-orange-400",
                   lottieUrl: "https://lottie.host/a64ed254-83f8-47ad-9514-0b5209327090/8I3AoRgYZE.json",
                 },
                 {
                   step: 3,
                   title: "Choose Your Dates",
                   description: "Tell us when you want to travel. We'll match you with the best deals for your exact schedule.",
-                  color: "from-orange-500 to-orange-600",
+                  color: "text-orange-600",
+                  bgColor: "bg-orange-500",
                   lottieUrl: "https://lottie.host/f700a726-6aa6-4218-b8b7-529b0f0810d9/hrcPylRORJ.json",
                 },
                 {
                   step: 4,
                   title: "Select Hotel & Flight",
                   description: "Hand-pick your favorite hotels and flights—mix, match, and create your perfect travel combination.",
-                  color: "from-orange-400 to-orange-500",
+                  color: "text-orange-500",
+                  bgColor: "bg-orange-400",
                   lottieUrl: "https://lottie.host/debd1f55-4862-4559-8829-9daa93e1c9b7/L1e1WecQV3.json",
                 },
                 {
                   step: 5,
                   title: "Review & Book",
                   description: "Double-check your package details. When you're ready, book everything in one click—secure and simple.",
-                  color: "from-orange-500 to-orange-600",
+                  color: "text-orange-600",
+                  bgColor: "bg-orange-500",
                   lottieUrl: "https://lottie.host/ebde747a-6ed6-4502-8b16-e0e272dda9d4/1Ech6zWI4Z.json",
                 },
                 {
                   step: 6,
                   title: "Get Instant Confirmation",
                   description: "Your booking is confirmed instantly—no waiting, no stress. Start packing for your adventure!",
-                  color: "from-orange-400 to-orange-500",
+                  color: "text-orange-500",
+                  bgColor: "bg-orange-400",
                   lottieUrl: "https://lottie.host/c6ab46c7-8573-409d-85b8-093b284087ee/cU0hmmGLXq.json",
                 },
-              ].map((item, index) => (
-                <motion.div
+              ].map((item) => (
+                <div
                   key={item.step}
                   className="relative"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.3 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
                 >
                   <div
                     className="bg-white rounded-3xl border border-orange-200 overflow-hidden h-full flex flex-col shadow-lg"
                   >
-                    {/* Card Header with Step Number */}
-                    <div className="relative bg-gradient-to-r from-orange-100 to-orange-200 p-6 flex justify-between items-center">
+                    {/* Card Header with Step Number - Simplified */}
+                    <div className="relative bg-orange-100 p-6 flex justify-between items-center">
                       <h3 className="text-xl font-bold text-orange-800">Step {item.step}</h3>
                       <div
-                        className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-full flex items-center justify-center text-white text-xl font-black shadow-md`}
+                        className={`w-12 h-12 ${item.bgColor} rounded-full flex items-center justify-center text-white text-xl font-black shadow-md`}
                       >
                         {item.step}
                       </div>
                     </div>
                     
-                    {/* Animation Container */}
-                    <div className="p-6 flex justify-center bg-gradient-to-br from-orange-50 to-white">
+                    {/* Animation Container - Simplified */}
+                    <div className="p-6 flex justify-center bg-orange-50">
                       <div className="w-32 h-32 relative">
                         <AnimatedStepCharacter lottieUrl={item.lottieUrl} alt={`${item.title} Character`} />
                       </div>
                     </div>
                     
-                    {/* Content */}
+                    {/* Content - Simplified */}
                     <div className="p-6 flex-grow flex flex-col">
-                      <h4 className={`text-2xl font-bold mb-3 bg-gradient-to-r ${item.color} bg-clip-text text-transparent`}>
+                      <h4 className={`text-2xl font-bold mb-3 ${item.color}`}>
                         {item.title}
                       </h4>
                       <p className="text-orange-800 mb-4 flex-grow">
                         {item.description}
                       </p>
                       
-                      {/* Progress Dots */}
+                      {/* Progress Dots - Simplified */}
                       <div className="flex items-center gap-2 mt-auto pt-4 border-t border-orange-100">
                         {[...Array(6)].map((_, i) => (
                           <div
@@ -601,27 +589,21 @@ export default function LandingPage() {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
             
-            {/* Call to Action */}
-            <motion.div 
-              className="text-center mt-12"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
-              <div className="inline-block bg-gradient-to-r from-orange-100 to-orange-200 p-1 rounded-full">
-                <button className="bg-gradient-to-r from-[#FF7A00] to-[#FFB400] text-white font-bold py-3 px-8 rounded-full hover:shadow-lg transition-all duration-300 flex items-center gap-2">
+            {/* Call to Action - Simplified */}
+            <div className="text-center mt-12">
+              <div className="inline-block bg-orange-100 p-1 rounded-full">
+                <button className="bg-[#FF7A00] text-white font-bold py-3 px-8 rounded-full flex items-center gap-2">
                   Start Planning Now
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
                 </button>
               </div>
-            </motion.div>
+            </div>
           </div>
         </section>
       
