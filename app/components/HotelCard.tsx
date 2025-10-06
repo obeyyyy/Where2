@@ -1,5 +1,6 @@
 import React from 'react';
 import HotelSentiment from './HotelSentiment';
+import { useRouter } from 'next/navigation';
 
 interface HotelInfo {
   price: string;
@@ -10,6 +11,12 @@ interface HotelInfo {
   rating?: number;
   address?: string;
   amenities?: string[];
+  searchResultId?: string;
+  accommodation_id?: string;
+  check_in_date?: string;
+  check_out_date?: string;
+  rooms?: number;
+  guests?: Array<{ type: string; age?: number }>;
 }
 
 interface HotelCardProps {
@@ -24,6 +31,7 @@ interface HotelCardProps {
 }
 
 const HotelCard: React.FC<HotelCardProps> = ({ hotel, idx, selected, nights, onSelect, sentiment, loadingSentiment, sentimentError }) => {
+  const router = useRouter();
   return (
     <div
       key={hotel.offerId || idx}
@@ -36,7 +44,17 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel, idx, selected, nights, onS
       role="option"
       aria-selected={selected}
       tabIndex={0}
-      onClick={onSelect}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (onSelect) {
+          onSelect();
+        } else if (hotel.searchResultId && hotel.accommodation_id) {
+          // Navigate to hotel details with all required parameters
+          const url = `/hotel/${hotel.searchResultId}:${hotel.accommodation_id}:${hotel.check_in_date || ''}:${hotel.check_out_date || ''}:${hotel.rooms || 1}:${hotel.guests?.length || 1}`;
+          window.open(url, '_blank');
+        }
+      }}
       onFocus={onSelect}
     >
       <div className="flex items-center justify-between mb-2">

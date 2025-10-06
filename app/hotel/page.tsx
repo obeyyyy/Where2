@@ -42,7 +42,7 @@ const HotelPage: React.FC = () => {
                 setLoading(true);
                 
                 // Default to London coordinates if no destination is provided
-                const defaultLocation = '51.5074,-0.1278'; // London coordinates
+                const defaultLocation = '51.5071,-0.1416'; // London coordinates
                 const locationParam = destination === 'null' || !destination ? defaultLocation : destination;
                 
                 // Ensure we have valid dates
@@ -199,10 +199,7 @@ const HotelPage: React.FC = () => {
                                 {/* Hotel Info */}
                                 <div className="p-4">
                                     <h2 className="font-bold text-lg mb-1">{hotel.name}</h2>
-                                    <p className="text-gray-600 mb-2 flex items-center gap-1">
-                                        <FiMapPin className="text-orange-500" />
-                                        {hotel.location.address.city_name}, {hotel.location.address.country_code}
-                                    </p>
+                                    
                                     
                                     {/* Price */}
                                     {hotel.price_range && (

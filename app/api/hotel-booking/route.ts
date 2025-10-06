@@ -1,52 +1,94 @@
 import { NextResponse } from 'next/server';
 import { duffel } from '@/lib/duffel';
 
+interface GuestInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth: string;
+}
+
+interface PaymentInfo {
+  amount: string;
+  currency: string;
+  cardNumber: string;
+  expiryMonth: string;
+  expiryYear: string;
+  cvc: string;
+} 
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { 
-      quoteId, 
-      email, 
-      phoneNumber, 
-      guests, 
-      specialRequests 
+      quoteId,
+      guestInfo,
+      paymentInfo 
+    }: {
+      quoteId: string;
+      guestInfo: GuestInfo;
+      paymentInfo: PaymentInfo;
     } = body;
 
-    if (!quoteId || !email || !phoneNumber || !guests || !Array.isArray(guests) || guests.length === 0) {
+    if (!quoteId || !guestInfo || !paymentInfo) {
       return NextResponse.json(
-        { error: 'Missing required booking parameters' },
+        { error: 'Missing required parameters' },
         { status: 400 }
       );
     }
 
-    // Format the booking request for Duffel Stays API
-    const bookingParams = {
-      quote_id: quoteId,
-      email,
-      phone_number: phoneNumber,
-      guests: guests.map(guest => ({
-        given_name: guest.firstName,
-        family_name: guest.lastName,
-        born_on: guest.birthDate
-      })),
-      accommodation_special_requests: specialRequests || undefined
+    // Prepare guest information according to Duffel's API requirements
+    const guest = {
+      given_name: guestInfo.firstName,
+      family_name: guestInfo.lastName,
+      // Add other required fields for the guest
+      // Note: The exact structure depends on Duffel's API requirements
     };
 
-    // Call Duffel Stays API to create a booking
-    const bookingResponse = await duffel.stays.bookings.create(bookingParams);
+    // Create booking using Duffel API
+    const booking = await duffel.stays.bookings.create({
+      quote_id: quoteId,
+      guests: [guest],
+      payment: {
+        // Use card token (this should be obtained securely from the client)
+        card_id: 'card_token_here', // Replace with actual token from client
+        currency: paymentInfo.currency,
+        amount: paymentInfo.amount
+      },
+      metadata: {
+        source: 'where2-web-app',
+        booking_reference: `WH2-${Date.now()}`,
+        guest_email: guestInfo.email,
+        guest_phone: guestInfo.phone,
+        guest_dob: guestInfo.dateOfBirth
+      }
+    });
 
     return NextResponse.json({
       success: true,
-      booking: bookingResponse.data
+      booking: booking.data
     });
+
   } catch (error: any) {
-    console.error('Error creating hotel booking:', error);
+    console.error('Booking error:', error);
+    // Handle specific error cases
+    let errorMessage = 'Failed to create booking';
+    let statusCode = 500;
+    if (error.errors) {
+      // Handle Duffel API specific errors
+      errorMessage = error.errors.map((e: any) => e.message).join(', ');
+      statusCode = 400; // Bad request
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return NextResponse.json(
       { 
-        error: 'Failed to create hotel booking',
-        details: error.message || 'Unknown error'
+        success: false, 
+        error: errorMessage 
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }
