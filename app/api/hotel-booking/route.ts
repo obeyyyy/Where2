@@ -53,16 +53,15 @@ export async function POST(request: Request) {
       payment: {
         // Use card token (this should be obtained securely from the client)
         card_id: 'card_token_here', // Replace with actual token from client
-        currency: paymentInfo.currency,
-        amount: paymentInfo.amount
+        three_d_secure_session_id: paymentInfo.currency
       },
       metadata: {
         source: 'where2-web-app',
         booking_reference: `WH2-${Date.now()}`,
-        guest_email: guestInfo.email,
-        guest_phone: guestInfo.phone,
-        guest_dob: guestInfo.dateOfBirth
-      }
+        dob: guestInfo.dateOfBirth
+      },
+      email: guestInfo.email,
+      phone_number: guestInfo.phone
     });
 
     return NextResponse.json({
