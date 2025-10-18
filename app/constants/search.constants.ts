@@ -1,6 +1,18 @@
 import { CabinClass } from "@/types/search.types";
 
 // constants/search.constants.ts
+export interface SearchFormData {
+  origin: string | null;
+  destination: string | null;
+  departureDate: string;
+  returnDate: string;
+  travelers: number;
+  roomCount: number;
+  guestCount: number;
+  roomType: string;
+  cabinClass: CabinClass;
+}
+
 export const SEARCH_TYPES = {
   ALL: 'all',
   FLIGHTS: 'flights',
@@ -16,7 +28,7 @@ export const CABIN_CLASSES: CabinClass[] = ['economy', 'premium_economy', 'busin
 
 export const ROOM_TYPES = ['any', 'standard', 'deluxe', 'suite', 'family_room', 'villa'] as const;
 
-export const DEFAULT_FORM_DATA: FormData = {
+export const DEFAULT_FORM_DATA: SearchFormData = {
   origin: null,
   destination: null,
   departureDate: '',
