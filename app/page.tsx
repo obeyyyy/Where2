@@ -1,197 +1,147 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import Footer from './components/Footer';
-import { 
-  FiArrowRight, 
-  FiArrowLeft, 
-  FiCalendar, 
-  FiUsers,
-  FiMapPin,
-  FiDollarSign,
-  FiGlobe,
-  FiFilter,
-  FiSearch,
-  FiRefreshCw,
-  FiCheckCircle,
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import {
+  FiArrowRight,
   FiBriefcase,
   FiHome,
-  FiShield,
-  FiZap,
+  FiCalendar,
+  FiUsers,
+  FiMapPin,
   FiStar,
-  FiClock,
-  FiSmartphone,
-  FiThumbsUp,
-  FiBell,
-  FiHeadphones,
-  FiMap
 } from 'react-icons/fi';
-import { motion } from "framer-motion";
-import AnimatedStepCharacter from "./components/AnimatedStepCharacter";
-import TrustBadges from "./components/TrustBadges";
-import FAQSection from "./components/FAQSection";
-import TravelBlogSection from "./components/TravelBlogSection";
-import Link from "next/link";
-import { useRouter } from 'next/navigation';
-import { FeatureCard } from './components/FeatureCard';
-import { AirportAutocomplete, type AirportOption } from './components/AirportAutocomplete';
+
+// Import your existing components
+import Footer from './components/Footer';
+import AnimatedStepCharacter from './components/AnimatedStepCharacter';
+import TrustBadges from './components/TrustBadges';
+import FAQSection from './components/FAQSection';
+import TravelBlogSection from './components/TravelBlogSection';
+import { AirportAutocomplete } from './components/AirportAutocomplete';
 import Testimonials from './components/Testimonials';
 import Button from './components/Button';
-import Where2Button from './components/Button';
-import { title } from 'process';
 
-// AnimatedWord component for hero title
-function AnimatedWord({ words, colors, interval = 2000 }: { words: string[]; colors: string[]; interval?: number }) {
-  const [index, setIndex] = useState<number>(0);
-  const [fade, setFade] = useState<boolean>(true);
+// Import custom hooks
+import { useSearchForm } from '../hooks/useSearchForm';
+import { useAnimatedWord } from '../hooks/useAnimatedWord';
 
-  useEffect(() => {
-    const fadeOut = setTimeout(() => setFade(false), interval - 300);
-    const timer = setTimeout(() => {
-      setIndex((prev: number) => (prev + 1) % words.length);
-      setFade(true);
-    }, interval);
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(fadeOut);
-    };
-  }, [index, interval, words.length]);
+// Import constants
+import { SEARCH_TYPES, HERO_ANIMATION } from '../app/constants/search.constants';
+
+// Import utilities
+import { getMinDate, getMinReturnDate, formatCabinClass } from './utils/search.utils';
+
+/**
+ * AnimatedWord Component
+ * Displays rotating words with fade animation
+ */
+function AnimatedWord() {
+  const { currentWord, currentIndex, fade } = useAnimatedWord({
+    words: HERO_ANIMATION.WORDS,
+    interval: HERO_ANIMATION.INTERVAL,
+  });
 
   return (
     <span
-      className={`transition-all duration-300 ease-in-out inline-block px-2 py-2 rounded-2xl font-bold`}
+      className="transition-all duration-300 ease-in-out inline-block px-2 py-2 rounded-2xl font-bold"
       style={{
-        color: colors[index],
+        color: HERO_ANIMATION.COLORS[currentIndex],
         opacity: fade ? 1 : 0,
         transform: fade ? 'translateY(0)' : 'translateY(20px)',
         background: 'linear-gradient(to right, rgba(245, 228, 198, 0.74), rgba(248, 236, 201, 0.56))',
       }}
     >
-      {words[index]}
+      {currentWord}
     </span>
   );
 }
 
-export default function LandingPage() {
-  const router = useRouter();
-  const [activeSearchType, setActiveSearchType] = useState('all');
-  const [tripType, setTripType] = useState('Round Trip');
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    origin: null as AirportOption | null,
-    destination: null as AirportOption | null,
-    departureDate: '',
-    returnDate: '',
-    travelers: 1,
-    roomCount: 1,
-    guestCount: 1,
-    roomType: 'any',
-    cabinClass: 'economy'
-  });
-
-  const handleFlightSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Skip if required fields are missing
-    if (!formData.origin?.iata || !formData.destination?.iata || !formData.departureDate) {
-      return;
-    }
-
-    // Prepare search parameters
-    const searchParams = new URLSearchParams({
-      origin: formData.origin.iata,
-      destination: formData.destination.iata,
-      departureDate: formData.departureDate,
-      returnDate: tripType === 'Round Trip' ? formData.returnDate : '',
-      tripType: tripType.toLowerCase().replace(' ', '') as 'roundtrip' | 'oneway',
-      travelers: formData.travelers.toString(),
-      currency: 'USD',
-      budget: '1000',
-      includeHotels: 'false',
-      useDuffel: 'true',
-      nights: '7' // Add nights parameter
-    });
-
-    // Log search parameters for debugging
-    console.log('Search parameters:', Object.fromEntries(searchParams.entries()));
-
-    router.push(`/search?${searchParams.toString()}`);
-  };
-
-  const handleHotelSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Use the correct API endpoint
-    router.push(`/hotel?destination=${formData.destination}&checkIn=${formData.departureDate}&checkOut=${formData.returnDate}&rooms=${formData.roomCount}&guests=${formData.guestCount}&type=${formData.roomType}`);
-  };
-
-  const handleInputChange = (field: string, value: string | number | AirportOption | null) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  // Testimonials data
-  const testimonials = [
-    {
-      name: "Sarah M.",
-      text: "Where2 made planning my last vacation so easy and affordable! I loved booking my flight and hotel together.",
-      country: "🇫🇷 France"
-    },
-    {
-      name: "James K.",
-      text: "Best value for money and the smoothest booking process I've tried. Highly recommend!",
-      country: "🇬🇧 UK"
-    },
-    {
-      name: "Ana R.",
-      text: "I saved over $200 on my trip by bundling my flight and hotel. The site is beautiful and simple to use!",
-      country: "🇪🇸 Spain"
-    },
-  ];
-
-  // Simple carousel state (auto-rotate)
-  const [currentTestimonial, setCurrentTestimonial] = React.useState(0);
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [testimonials.length]);
+/**
+ * ErrorDisplay Component
+ * Shows validation errors
+ */
+function ErrorDisplay({ errors }: { errors: string[] }) {
+  if (errors.length === 0) return null;
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-orange-100/50 to-orange-50 flex flex-col mb-8 overflow-hidden">
-  
-      {/* Hero Section */}
-      <section className="section-lg p-4 m-0 relative overflow-hidden sm:p-8 p-4"> {/* Enhanced hero section */}
-        {/* Video with overlay gradient */}
-        <div className="absolute inset-0 z-0 sm:p-4 p-0">
-        <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-      >
-        <source src="/images/hero-vid.mp4" type="video/mp4" />
-      </video>
-          
+    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+      <div className="flex items-start">
+        <div className="flex-shrink-0">
+          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+          </svg>
         </div>
-  
-        <div className="container-slim relative z-10"> {/* Content above video */}
-  
+        <div className="ml-3">
+          <h3 className="text-sm font-medium text-red-800">
+            {errors.length === 1 ? 'Please fix the following error:' : 'Please fix the following errors:'}
+          </h3>
+          <ul className="mt-2 text-sm text-red-700 list-disc list-inside">
+            {errors.map((error, index) => (
+              <li key={index}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Main Landing Page Component
+ */
+export default function LandingPage() {
+  const [activeSearchType, setActiveSearchType] = useState<string>(SEARCH_TYPES.ALL);
+  const [tripType, setTripType] = useState<'roundtrip' | 'oneway'>('roundtrip');
+
+  const {
+    formData,
+    errors,
+    isSubmitting,
+    handleInputChange,
+    handleFlightSearch,
+    handleHotelSearch,
+  } = useSearchForm();
+
+  const onFlightSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleFlightSearch(tripType);
+  };
+
+  const onHotelSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleHotelSearch();
+  };
+
+  return (
+    <div className="w-full min-h-screen bg-gradient-to-b from-orange-100/50 to-orange-50 flex flex-col">
+      {/* Hero Section */}
+      <section className="section-lg p-4 m-0 relative overflow-hidden sm:p-8">
+        {/* Background Video */}
+        <div className="absolute inset-0 z-0 sm:p-4 p-0">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          >
+            <source src="/images/hero-vid.mp4" type="video/mp4" />
+          </video>
+        </div>
+
+        <div className="container-slim relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
             className="w-full text-center"
           >
-  
-            {/* Enhanced Hero Section */}
+            {/* Hero Content */}
             <div className="flex flex-col items-center">
               <div className="mt-5 sm:p-4 p-0">
-                {/* Product Badge - Enhanced */}
+                {/* Product Badge */}
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -199,22 +149,24 @@ export default function LandingPage() {
                   className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-md border border-indigo-200/50 rounded-full px-8 py-4 shadow-2xl ring-1 ring-white/20"
                 >
                   <div className="w-3 h-2 bg-green-500 rounded-full animate-pulse p-0 sm:p-4" />
-                  <span className="text-gray-700 font-semibold">Now Live • AI-Powered Travel Planning</span>
+                  <span className="text-gray-700 font-semibold">SOON • AI-Powered Travel Planning</span>
                   <div className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">BETA</div>
                 </motion.div>
-                <h1 className="text-5xl md:text-6xl font-black mb-0 text-gray-800 mt-5 p-4 ">
+
+                {/* Hero Title */}
+                <h1 className="text-5xl md:text-6xl font-black mb-0 text-gray-800 mt-5 p-4">
                   Your Next
                   <span className="relative h-16 md:h-20 inline-block ml-2 align-middle">
-                    {/* Animated word will be rendered here */}
-                    <AnimatedWord words={["Trip....", "Getaway", "Escape", "Journey"]} colors={["#FF8C00", "#FFA500", "#FF6B35", "#FF8C00"]} interval={2500} />
+                    <AnimatedWord />
                   </span>
                 </h1>
-                {/* Key Benefits - Enhanced */}
+
+                {/* Key Benefits */}
                 <div className="flex flex-wrap justify-center mb-8 gap-4">
                   {[
-                    { icon: <FiZap className="w-5 h-5" />, text: "AI-powered matching", color: "from-amber-400 to-orange-500" },
-                    { icon: <FiShield className="w-5 h-5" />, text: "Secure & reliable", color: "from-emerald-400 to-teal-500" },
-                    { icon: <FiClock className="w-5 h-5" />, text: "Book in minutes", color: "from-indigo-400 to-purple-500" },
+                    { icon: '⚡', text: 'AI-powered matching', color: 'from-amber-400 to-orange-500' },
+                    { icon: '🛡️', text: 'Secure & reliable', color: 'from-emerald-400 to-teal-500' },
+                    { icon: '⏱️', text: 'Book in minutes', color: 'from-indigo-400 to-purple-500' },
                   ].map((item, idx) => (
                     <motion.div
                       key={idx}
@@ -223,27 +175,31 @@ export default function LandingPage() {
                       transition={{ duration: 0.5, delay: 0.7 + idx * 0.1 }}
                       className="flex items-center gap-3 text-white bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1"
                     >
-                      <span className={`bg-gradient-to-r ${item.color} p-2 rounded-full`}>{item.icon}</span>
+                      <span className={`bg-gradient-to-r ${item.color} p-2 rounded-full text-xl`}>
+                        {item.icon}
+                      </span>
                       <span className="font-semibold">{item.text}</span>
                     </motion.div>
                   ))}
                 </div>
-  
-                {/* Hero Search Section */}
-                <div className="mt-0 w-full max-w-4xl mx-auto px-4 sm:px-6">
-                  {/* Search Type Selector - Enhanced */}
-                  <div className="flex flex gap-2 sm:gap-3 mb-8 p-3 rounded-full justify-center bg-black/20 backdrop-blur-lg border border-white/10 shadow-2xl mx-2 sm:mx-4">
+
+                {/* Search Section */}
+                <div className="mt-0 w-full max-w-2xl mx-auto px-4 sm:px-6">
+                  {/* Search Type Selector */}
+                  <div className="flex gap-4 sm:gap-10 mb-8 p-3 rounded-full justify-center bg-black/20 backdrop-blur-lg border border-white/10 shadow-2xl mx-8 sm:mx-8">
                     {[
-                      { icon: <FiBriefcase className="w-5 h-5" />, label: 'TRIP', type: 'all' },
-                      { icon: <FiArrowRight className="w-5 h-5" />, label: 'FLIGHT', type: 'flights' },
-                      { icon: <FiHome className="w-5 h-5" />, label: 'HOTEL', type: 'hotels' }
+                      { icon: <FiBriefcase className="w-5 h-5" />, label: 'TRIP', type: SEARCH_TYPES.ALL },
+                      { icon: <FiArrowRight className="w-5 h-5" />, label: 'FLIGHT', type: SEARCH_TYPES.FLIGHTS },
+                      { icon: <FiHome className="w-5 h-5" />, label: 'HOTEL', type: SEARCH_TYPES.HOTELS },
                     ].map((item) => (
                       <motion.button
                         key={item.type}
                         onClick={() => setActiveSearchType(item.type)}
-                        className={`flex items-center px-3 sm:px-5 py-2 sm:py-3 rounded-full transition-all ${activeSearchType === item.type
-                          ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg ring-2 ring-white/20'
-                          : 'text-white/90 bg-white/10 hover:bg-white/20'}`}
+                        className={`flex items-center px-3 sm:px-5 py-2 sm:py-3 rounded-full transition-all ${
+                          activeSearchType === item.type
+                            ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg ring-2 ring-white/20'
+                            : 'text-white/90 bg-white/10 hover:bg-white/20'
+                        }`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
@@ -252,211 +208,278 @@ export default function LandingPage() {
                       </motion.button>
                     ))}
                   </div>
-  
+
+                  {/* Error Display */}
+                  <ErrorDisplay errors={errors} />
+
                   {/* Search Forms */}
                   <motion.div
-                    className=" rounded-2xl"
+                    className="rounded-2xl"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    {activeSearchType === 'all' ? (
+                    {activeSearchType === SEARCH_TYPES.ALL && (
                       <Link href="/search" className="block text-center">
                         <Button
                           text="Plan Your Perfect Trip"
                           href="/search"
                           icon={true}
-                          noLink={true} /* Add noLink prop to prevent nested Links */
+                          noLink={true}
                         />
-                        <p className="mt-10 p-4 text-white font-medium tracking-wide backdrop-blur-sm bg-black/10 inline-block rounded-full px-8 shadow-lg">Find the best flight & hotel combinations</p>
+                        <p className="mt-10 p-4 text-white font-medium tracking-wide backdrop-blur-sm bg-black/10 inline-block rounded-full px-8 shadow-lg">
+                          Find the best flight & hotel combinations
+                        </p>
                       </Link>
-                    ) : activeSearchType === 'flights' ? (
-                      <div className="space-y-6">
+                    )}
+
+                    {activeSearchType === SEARCH_TYPES.FLIGHTS && (
+                      <form onSubmit={onFlightSubmit} className="space-y-6">
                         {/* Trip Type Selection */}
                         <div className="flex gap-4 p-1 rounded-lg w-fit mb-2">
-                          {['Round Trip', 'One Way'].map((type) => (
+                          {(['roundtrip', 'oneway'] as const).map((type) => (
                             <button
                               key={type}
-                              className={`px-4 py-2 rounded-lg transition-all ${tripType === type
-                                ? 'bg-white/100 text-black font-medium border border-white/30'
-                                : 'bg-white/10 text-white/100 border border-white/10 hover:bg-white/15'}`}
+                              type="button"
+                              className={`px-4 py-2 rounded-lg transition-all ${
+                                tripType === type
+                                  ? 'bg-white/100 text-black font-medium border border-white/30'
+                                  : 'bg-white/10 text-white/100 border border-white/10 hover:bg-white/15'
+                              }`}
                               onClick={() => setTripType(type)}
                             >
-                              {type}
+                              {type === 'roundtrip' ? 'Round Trip' : 'One Way'}
                             </button>
                           ))}
                         </div>
-  
-                        {/* Flight Search Fields - Enhanced */}
+
+                        {/* Flight Search Fields */}
                         <div className="space-y-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="col-span-2 md:col-span-1">
-                            <label className="block text-md font-bold text-white mb-1">From</label>
-                            <div className="relative z-10">
-                              <AirportAutocomplete
-                                value={formData.origin}
-                                onChange={(value) => handleInputChange('origin', value)}
-                                label="Origin"
-                                required
-                              />
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {/* Origin */}
+                            <div className="col-span-2 md:col-span-1">
+                              <label className="block text-md font-bold text-white mb-1">From</label>
+                              <div className="relative z-10">
+                                <AirportAutocomplete
+                                  value={formData.origin}
+                                  onChange={(value) => handleInputChange('origin', value)}
+                                  label="Origin"
+                                  required
+                                />
+                              </div>
                             </div>
-                          </div>
-                          <div className="col-span-2 md:col-span-1">
-                            <label className="block text-md font-bold text-white mb-1">To</label>
-                            <div className="relative z-10">
-                              <AirportAutocomplete
-                                value={formData.destination}
-                                onChange={(value) => handleInputChange('destination', value)}
-                                label="Destination"
-                                required
-                              />
+
+                            {/* Destination */}
+                            <div className="col-span-2 md:col-span-1">
+                              <label className="block text-md font-bold text-white mb-1">To</label>
+                              <div className="relative z-10">
+                                <AirportAutocomplete
+                                  value={formData.destination}
+                                  onChange={(value) => handleInputChange('destination', value)}
+                                  label="Destination"
+                                  required
+                                />
+                              </div>
                             </div>
-                          </div>
-                          <div>
-                            <label className="block text-md font-bold text-white mb-1">Departure</label>
-                            <div className="relative">
-                              <input
-                                type="date"
-                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                value={formData.departureDate}
-                                onChange={(e) => handleInputChange('departureDate', e.target.value)}
-                                required
-                              />
-                              <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
-                            </div>
-                          </div>
-                          {tripType === 'Round Trip' && (
+
+                            {/* Departure Date */}
                             <div>
-                              <label className="block text-md font-bold text-white mb-1">Return</label>
+                              <label className="block text-md font-bold text-white mb-1">Departure</label>
                               <div className="relative">
                                 <input
                                   type="date"
                                   className="w-full pl-10 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                  value={formData.returnDate}
-                                  onChange={(e) => handleInputChange('returnDate', e.target.value)}
+                                  value={formData.departureDate}
+                                  onChange={(e) => handleInputChange('departureDate', e.target.value)}
+                                  min={getMinDate()}
+                                  required
                                 />
-                                <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
+                                <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                               </div>
                             </div>
-                          )}
-                        </div>
-                        
-                        {/* Passenger Selection */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="col-span-2 md:col-span-1">
-                            <label className="block text-md font-bold text-white mb-1">Passengers</label>
-                            <div className="relative">
-                              <select
-                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent appearance-none"
-                                value={formData.travelers}
-                                onChange={(e) => handleInputChange('travelers', parseInt(e.target.value))}
-                              >
-                                {[1, 2, 3, 4, 5, 6].map(num => (
-                                  <option key={num} value={num}>{num} {num === 1 ? 'passenger' : 'passengers'}</option>
-                                ))}
-                              </select>
-                              <FiUsers className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
+
+                            {/* Return Date */}
+                            {tripType === 'roundtrip' && (
+                              <div>
+                                <label className="block text-md font-bold text-white mb-1">Return</label>
+                                <div className="relative">
+                                  <input
+                                    type="date"
+                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                    value={formData.returnDate}
+                                    onChange={(e) => handleInputChange('returnDate', e.target.value)}
+                                    min={getMinReturnDate(formData.departureDate)}
+                                    required
+                                  />
+                                  <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Passengers and Class */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="col-span-2 md:col-span-1">
+                              <label className="block text-md font-bold text-white mb-1">Passengers</label>
+                              <div className="relative">
+                                <select
+                                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent appearance-none"
+                                  value={formData.travelers}
+                                  onChange={(e) => handleInputChange('travelers', parseInt(e.target.value))}
+                                >
+                                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                                    <option key={num} value={num}>
+                                      {num} {num === 1 ? 'passenger' : 'passengers'}
+                                    </option>
+                                  ))}
+                                </select>
+                                <FiUsers className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                              </div>
+                            </div>
+
+                            <div className="col-span-2 md:col-span-1">
+                              <label className="block text-md font-bold text-white mb-1">Class</label>
+                              <div className="relative">
+                                <select
+                                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent appearance-none"
+                                  value={formData.cabinClass}
+                                  onChange={(e) => handleInputChange('cabinClass', e.target.value)}
+                                >
+                                  <option value="economy">Economy</option>
+                                  <option value="premium_economy">Premium Economy</option>
+                                  <option value="business">Business</option>
+                                  <option value="first">First Class</option>
+                                </select>
+                                <FiStar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                              </div>
                             </div>
                           </div>
-                          <div className="col-span-2 md:col-span-1">
-                            <label className="block text-md font-bold text-white mb-1">Class</label>
-                            <div className="relative">
-                              <select
-                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent appearance-none"
-                                value={formData.cabinClass}
-                                onChange={(e) => handleInputChange('cabinClass', e.target.value)}
-                              >
-                                {['Economy', 'Premium Economy', 'Business', 'First'].map(cls => (
-                                  <option key={cls} value={cls.toLowerCase()}>{cls}</option>
-                                ))}
-                              </select>
-                              <FiStar className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
-                            </div>
-                          </div>
+
+                          {/* Submit Button */}
+                          <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="w-full py-4 mt-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-lg shadow-xl hover:shadow-2xl hover:from-amber-400 hover:to-orange-400 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isSubmitting ? 'Searching...' : 'Search Flights'}
+                            <FiArrowRight className="inline-block ml-2 group-hover:translate-x-1 transition-transform" />
+                          </button>
                         </div>
-  
-                        <button
-                          type="submit"
-                          onClick={handleFlightSearch}
-                          className="w-full py-4 mt-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-lg shadow-xl hover:shadow-2xl hover:from-amber-400 hover:to-orange-400 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={!formData.origin?.iata || !formData.destination?.iata || !formData.departureDate}
-                        >
-                          Search Flights <FiArrowRight className="inline-block ml-2 group-hover:translate-x-1 transition-transform" />
-                        </button>
-                      </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-6">
+                      </form>
+                    )}
+
+                    {activeSearchType === SEARCH_TYPES.HOTELS && (
+                      <form onSubmit={onHotelSubmit} className="space-y-6">
                         {/* Hotel Search Fields */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {/* Destination */}
                           <div className="col-span-2">
                             <label className="block text-md font-bold text-white mb-1">Destination</label>
                             <div className="relative">
                               <input
                                 type="text"
                                 placeholder="City or hotel name"
-                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                value={formData.destination?.city || ''}
+                                onChange={(e) => handleInputChange('destination', { city: e.target.value } as any)}
+                                required
                               />
                               <FiMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             </div>
                           </div>
+
+                          {/* Check-in Date */}
                           <div>
                             <label className="block text-md font-bold text-white mb-1">Check-in</label>
                             <div className="relative">
                               <input
                                 type="date"
-                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                value={formData.departureDate}
+                                onChange={(e) => handleInputChange('departureDate', e.target.value)}
+                                min={getMinDate()}
+                                required
                               />
                               <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             </div>
                           </div>
+
+                          {/* Check-out Date */}
                           <div>
                             <label className="block text-md font-bold text-white mb-1">Check-out</label>
                             <div className="relative">
                               <input
                                 type="date"
-                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                value={formData.returnDate}
+                                onChange={(e) => handleInputChange('returnDate', e.target.value)}
+                                min={getMinReturnDate(formData.departureDate)}
+                                required
                               />
                               <FiCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             </div>
                           </div>
                         </div>
-  
-                        {/* Room and Guest Selection */}
+
+                        {/* Rooms, Guests, and Room Type */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="col-span-1">
                             <label className="block text-md font-bold text-white mb-1">Rooms</label>
-                            <select className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none">
-                              {[1, 2, 3, 4].map(num => (
-                                <option key={num} value={num}>{num} {num === 1 ? 'room' : 'rooms'}</option>
+                            <select
+                              className="w-full pl-4 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent appearance-none"
+                              value={formData.roomCount}
+                              onChange={(e) => handleInputChange('roomCount', parseInt(e.target.value))}
+                            >
+                              {[1, 2, 3, 4, 5].map((num) => (
+                                <option key={num} value={num}>
+                                  {num} {num === 1 ? 'room' : 'rooms'}
+                                </option>
                               ))}
                             </select>
                           </div>
+
                           <div className="col-span-1">
                             <label className="block text-md font-bold text-white mb-1">Guests</label>
-                            <select className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none">
-                              {[1, 2, 3, 4, 5, 6].map(num => (
-                                <option key={num} value={num}>{num} {num === 1 ? 'guest' : 'guests'}</option>
+                            <select
+                              className="w-full pl-4 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent appearance-none"
+                              value={formData.guestCount}
+                              onChange={(e) => handleInputChange('guestCount', parseInt(e.target.value))}
+                            >
+                              {[1, 2, 3, 4, 5, 6].map((num) => (
+                                <option key={num} value={num}>
+                                  {num} {num === 1 ? 'guest' : 'guests'}
+                                </option>
                               ))}
                             </select>
                           </div>
+
                           <div className="col-span-2">
                             <label className="block text-md font-bold text-white mb-1">Room Type</label>
-                            <select className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none">
-                              {['Any Type', 'Standard', 'Deluxe', 'Suite', 'Family Room', 'Villa'].map(type => (
-                                <option key={type} value={type.toLowerCase()}>{type}</option>
-                              ))}
+                            <select
+                              className="w-full pl-4 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent appearance-none"
+                              value={formData.roomType}
+                              onChange={(e) => handleInputChange('roomType', e.target.value)}
+                            >
+                              <option value="any">Any Type</option>
+                              <option value="standard">Standard</option>
+                              <option value="deluxe">Deluxe</option>
+                              <option value="suite">Suite</option>
+                              <option value="family_room">Family Room</option>
+                              <option value="villa">Villa</option>
                             </select>
                           </div>
                         </div>
-  
+
+                        {/* Submit Button */}
                         <button
-                          onClick={handleHotelSearch}
-                          className="w-full py-4 mt-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-lg shadow-xl hover:shadow-2xl hover:from-amber-400 hover:to-orange-400 transition-all group"
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full py-4 mt-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-lg shadow-xl hover:shadow-2xl hover:from-amber-400 hover:to-orange-400 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Search Hotels <FiArrowRight className="inline-block ml-2 group-hover:translate-x-1 transition-transform" />
+                          {isSubmitting ? 'Searching...' : 'Search Hotels'}
+                          <FiArrowRight className="inline-block ml-2 group-hover:translate-x-1 transition-transform" />
                         </button>
-                      </div>
+                      </form>
                     )}
                   </motion.div>
                 </div>
@@ -465,382 +488,12 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
-    
-  
-      
-        {/* How It Works Section */}
-        <section className="w-full py-24 relative overflow-hidden bg-orange-50">
-          {/* Background Pattern - Simplified and reduced */}
-          <div className="absolute inset-0 z-0 opacity-10">
-            <div className="absolute top-20 left-10 w-72 h-72 bg-orange-400 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-400 rounded-full blur-3xl"></div>
-          </div>
-          
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center px-4 py-2 bg-orange-100 rounded-full text-orange-700 font-semibold text-sm mb-6">
-                ✨ Your Journey Starts Here
-              </div>
-              <h2 className="text-5xl font-extrabold mb-6 text-center text-[#FF7A00]">
-                How It Works
-              </h2>
-              <p className="text-center text-lg text-orange-700 mb-8 font-medium tracking-wide max-w-3xl mx-auto">
-                Six simple steps to your perfect trip. We've streamlined the entire process so you can focus on what
-                matters most—your adventure.
-              </p>
-            </div>
 
-            {/* Step Cards Layout - Optimized for performance */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-              {[
-                {
-                  step: 1,
-                  title: "Set Your Budget",
-                  description: "Tell us your total trip budget. We'll instantly filter the best packages for you—no surprises, no hidden fees.",
-                  color: "text-orange-600",
-                  bgColor: "bg-orange-500",
-                  lottieUrl: "https://lottie.host/21e3efcb-81c4-4370-8ab8-aafe48ea52b8/QjYBNDDXy7.json",
-                },
-                {
-                  step: 2,
-                  title: "Pick Your Destination",
-                  description: "Explore a world of possibilities—just pick a city or country and let our smart algorithms do the rest.",
-                  color: "text-orange-500",
-                  bgColor: "bg-orange-400",
-                  lottieUrl: "https://lottie.host/a64ed254-83f8-47ad-9514-0b5209327090/8I3AoRgYZE.json",
-                },
-                {
-                  step: 3,
-                  title: "Choose Your Dates",
-                  description: "Tell us when you want to travel. We'll match you with the best deals for your exact schedule.",
-                  color: "text-orange-600",
-                  bgColor: "bg-orange-500",
-                  lottieUrl: "https://lottie.host/f700a726-6aa6-4218-b8b7-529b0f0810d9/hrcPylRORJ.json",
-                },
-                {
-                  step: 4,
-                  title: "Select Hotel & Flight",
-                  description: "Hand-pick your favorite hotels and flights—mix, match, and create your perfect travel combination.",
-                  color: "text-orange-500",
-                  bgColor: "bg-orange-400",
-                  lottieUrl: "https://lottie.host/debd1f55-4862-4559-8829-9daa93e1c9b7/L1e1WecQV3.json",
-                },
-                {
-                  step: 5,
-                  title: "Review & Book",
-                  description: "Double-check your package details. When you're ready, book everything in one click—secure and simple.",
-                  color: "text-orange-600",
-                  bgColor: "bg-orange-500",
-                  lottieUrl: "https://lottie.host/ebde747a-6ed6-4502-8b16-e0e272dda9d4/1Ech6zWI4Z.json",
-                },
-                {
-                  step: 6,
-                  title: "Get Instant Confirmation",
-                  description: "Your booking is confirmed instantly—no waiting, no stress. Start packing for your adventure!",
-                  color: "text-orange-500",
-                  bgColor: "bg-orange-400",
-                  lottieUrl: "https://lottie.host/c6ab46c7-8573-409d-85b8-093b284087ee/cU0hmmGLXq.json",
-                },
-              ].map((item) => (
-                <div
-                  key={item.step}
-                  className="relative"
-                >
-                  <div
-                    className="bg-white rounded-3xl border border-orange-200 overflow-hidden h-full flex flex-col shadow-lg"
-                  >
-                    {/* Card Header with Step Number - Simplified */}
-                    <div className="relative bg-orange-100 p-6 flex justify-between items-center">
-                      <h3 className="text-xl font-bold text-orange-800">Step {item.step}</h3>
-                      <div
-                        className={`w-12 h-12 ${item.bgColor} rounded-full flex items-center justify-center text-white text-xl font-black shadow-md`}
-                      >
-                        {item.step}
-                      </div>
-                    </div>
-                    
-                    {/* Animation Container - Simplified */}
-                    <div className="p-6 flex justify-center bg-orange-50">
-                      <div className="w-32 h-32 relative">
-                        <AnimatedStepCharacter lottieUrl={item.lottieUrl} alt={`${item.title} Character`} />
-                      </div>
-                    </div>
-                    
-                    {/* Content - Simplified */}
-                    <div className="p-6 flex-grow flex flex-col">
-                      <h4 className={`text-2xl font-bold mb-3 ${item.color}`}>
-                        {item.title}
-                      </h4>
-                      <p className="text-orange-800 mb-4 flex-grow">
-                        {item.description}
-                      </p>
-                      
-                      {/* Progress Dots - Simplified */}
-                      <div className="flex items-center gap-2 mt-auto pt-4 border-t border-orange-100">
-                        {[...Array(6)].map((_, i) => (
-                          <div
-                            key={i}
-                            className={`w-2 h-2 rounded-full ${
-                              i < item.step ? 'bg-orange-500' : 'bg-orange-200'
-                            }`}
-                          />
-                        ))}
-                        <span className="ml-2 text-xs text-orange-600 font-medium">{item.step}/6</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Call to Action - Simplified */}
-            <div className="text-center mt-12">
-              <div className="inline-block bg-orange-100 p-1 rounded-full">
-                <button className="bg-[#FF7A00] text-white font-bold py-3 px-8 rounded-full flex items-center gap-2">
-                  Start Planning Now
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      
-      <section
-        className="relative py-36 overflow-hidden text-white"
-        style={{
-          backgroundImage:
-            'linear-gradient(to bottom right, rgba(15,15,15,0.75), rgba(255,115,67,0.75)), url("/images/adventure.jpg")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            className="text-center mb-20"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.8 }}
-          >
-            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white drop-shadow-md">
-              Why Travelers Trust{' '}
-              <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
-                Where2
-              </span>
-            </h2>
-            <p className="mt-4 text-lg md:text-xl text-orange-100 max-w-2xl mx-auto leading-relaxed">
-              Where2 eliminates the stress of planning. Get affordable, visa-friendly, ready-to-book trips — matched to your exact budget and timing.
-            </p>
-          </motion.div>
-
-          <div className="grid gap-10 sm:grid-cols-1 lg:grid-cols-3">
-            {[
-              {
-                title: 'Built Around Your Budget & Nationality',
-                description:
-                  'Filter only visa-free countries. Get real-time flight + hotel packages tailored to your wallet and travel window — no manual searching.',
-                benefits: [
-                  'Visa-free destinations based on nationality',
-                  'Live pricing under your set budget',
-                  'Instant trip suggestions — no effort',
-                  'Flight + hotel packages built automatically',
-                ],
-                icon: <FiMap className="w-6 h-6 text-white" />,
-                color: 'bg-gradient-to-tr from-yellow-500 to-orange-500',
-              },
-              {
-                title: 'Book Smarter, Not Harder',
-                description:
-                  'Ditch the chaos of jumping between sites. Where2 bundles it all in seconds — with 1-click secure checkout, optimized for deals.',
-                benefits: [
-                  'Smart matching of flights and hotels',
-                  'One-click checkout with Stripe',
-                  'Up to 40% cheaper vs separate bookings',
-                  'AI-backed deal finder',
-                ],
-                icon: <FiZap className="w-6 h-6 text-white" />,
-                color: 'bg-gradient-to-tr from-blue-500 to-cyan-500',
-              },
-              {
-                title: 'Travel Confidence, Not Chaos',
-                description:
-                  'One confirmation, 24/7 assistance, and unified policies. If flights change — we rebook you automatically. No stress.',
-                benefits: [
-                  'One confirmation for all bookings',
-                  '24/7 chat support for your trip',
-                  'Unified cancellation & refunds',
-                  'Free rebooking for changes',
-                ],
-                icon: <FiShield className="w-6 h-6 text-white" />,
-                color: 'bg-gradient-to-tr from-green-500 to-emerald-500',
-              },
-            ].map((feature, idx) => (
-              <motion.div
-                key={idx}
-                className="bg-white/10 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/10"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.9, delay: idx * 0.1, ease: [0.33, 0, 0.67, 1] }}
-              >
-                <div className="flex items-start gap-4 mb-6">
-                  <div className={`w-12 h-12 ${feature.color} rounded-xl flex items-center justify-center shadow-md`}>
-                    {feature.icon}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
-                    <p className="text-orange-100 text-sm leading-relaxed">{feature.description}</p>
-                  </div>
-                </div>
-                <div className="mt-6 pt-6 border-t border-white/10">
-                  <h4 className="text-base font-semibold text-white mb-3">What You Get:</h4>
-                  <ul className="space-y-2 text-sm text-orange-100">
-                    {feature.benefits.map((item, itemIdx) => (
-                      <li key={itemIdx} className="flex items-start gap-2">
-                        <FiCheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Remaining sections - keeping your existing ones */}
       <Testimonials />
-
-
-        {/* Final CTA + Trust Section */}
-        <section  className="relative py-36 overflow-hidden text-white"
-        style={{
-          backgroundImage:
-            'linear-gradient(to bottom right, rgba(15,15,15,0.75), rgba(255,115,67,0.75)), url("/images/adventure2.jpg")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}>
-        <div className="absolute inset-1 bg-black/10 pointer-events-none" />
-
-        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.9, ease: [0.33, 0, 0.67, 1] }}
-          >
-            <h2 className="text-5xl md:text-6xl font-extrabold text-white mb-5 ">
-              Ready for Your Next Adventure?
-            </h2>
-            <p className="text-lg md:text-xl text-orange-100 mb-10 leading-relaxed max-w-2xl mx-auto">
-              Join thousands of travelers using Where2 to save time, money, and guesswork on every trip.
-            </p>
-
-            <Button text="Plan Your Trip" href="/search" icon={true}/>
-          </motion.div>
-
-          {/* Trust Badges */}
-          <motion.div
-            className="mt-8 w-full"
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.9, delay: 0.1, ease: [0.33, 0, 0.67, 1] }}
-          >
-            <TrustBadges />
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Mobile Experience Section */}
-      <section className="w-full py-16 md:py-24 overflow-hidden">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-10 md:gap-16 items-center">
-          <div className="text-center md:text-left">
-            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-gray-900 mb-4 md:mb-6">
-                Seamless{" "}
-                <span className="bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
-                  Mobile
-                </span>
-                <br className="hidden sm:block" />
-                <span className="sm:ml-2">Experience</span>
-              </h2>
-              <p className="text-lg sm:text-xl text-gray-600 mb-0 leading-relaxed max-w-3xl mx-auto md:mx-0">
-                Book and manage trips effortlessly from your phone with our award-winning mobile experience.
-              </p>
-          </div>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.9, ease: [0.33, 0, 0.67, 1] }}
-            >
-              
-
-              <div className="space-y-6">
-                {[
-                  {
-                    icon: <FiCheckCircle className="text-orange-500 text-2xl" />,
-                    title:"Trip Search",
-                    text: "Mobile-friendly booking flow optimized for phones and tablets so you can book your trip from as easy as your phone",
-                    img:"./images/phone1.png"
-                  },
-                  {
-                    icon: <FiClock className="text-orange-500 text-2xl" />,
-                    title:"Trip Management",
-                    text: "View your itinerary and passenger details anytime, anywhere so you can manage your trip from as easy as your phone",
-                    img:"./images/phone1.png"
-                  },
-                  {
-                    icon: <FiCalendar className="text-orange-500 text-2xl" />,
-                    title:"Booking Confirmation",
-                    text: "Secure payment processing with instant booking confirmation so you can book and pay for your trip from as easy as your phone",
-                    img:"./images/phone1.png"
-                  },
-                  {
-                    icon: <FiSmartphone className="text-orange-500 text-2xl" />,
-                    title:"Booking Retrieval",
-                    text: "Retrieve bookings instantly with your reference number so you can access your trip details from as easy as your phone",
-                    img:"./images/phone1.png"
-                  },
-                ].map((item, i) => (
-                  <motion.div
-                    key={i}
-                    className="flex flex-col lg:grid lg:grid-cols-2 items-center gap-6 border border-2 border-black p-4 sm:p-6 bg-orange-50 backdrop-blur-sm rounded-2xl shadow-lg w-full"
-                    transition={{ duration: 0.2 }}
-                  >
-                    <div className="flex flex-col justify-center space-y-3 w-full">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-3 sm:mb-4">
-                        <span className="flex-shrink-0 text-2xl sm:text-3xl">{item.icon}</span>
-                        <h3 className="font-extrabold text-3xl sm:text-4xl md:text-5xl lg:text-6xl bg-gradient-to-r from-orange-500 to-orange-700 bg-clip-text text-transparent tracking-tight">{item.title}</h3>
-                      </div>
-                      <span className="text-gray-800 font-medium text-base sm:text-lg">{item.text}</span>
-                    </div>
-                   
-                    <div className="flex items-center justify-center mt-4 lg:mt-0 h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[60vh] rounded-2xl overflow-hidden">
-                      <img src={item.img} alt="phone_mockup" className='border border-2 border-gray-800 rounded-2xl w-auto h-[30vh] sm:h-[35vh] md:h-[40vh] lg:h-[50vh] ' />
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-        
       <FAQSection />
-      
-      {/* Travel Blog Section */}
-      <section className="">
-        <div className="container-base">
-          <TravelBlogSection />
-        </div>
-      </section>
-     
-      {/* Footer */}
-      <Footer/>
+      <TravelBlogSection />
+      <Footer />
     </div>
   );
 }

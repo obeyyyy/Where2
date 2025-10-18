@@ -356,7 +356,7 @@ export default function TripSummaryPage() {
               
               <div className="flex items-center bg-gray-50 px-3 py-2 rounded-lg">
                 <FiUsers className="mr-2 text-[#FFA500]" />
-                <span className="font-medium">{searchParams.travelers || 1} Traveler{(Number(searchParams.travelers || 1) > 1 ? 's' : '')}</span>
+                <span className="font-medium">{searchParams.travelers || 5} Traveler{(Number(searchParams.travelers || 5) > 1 ? 's' : '')}</span>
               </div>
             </div>
           </div>
