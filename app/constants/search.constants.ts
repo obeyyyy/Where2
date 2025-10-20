@@ -1,9 +1,10 @@
 import { CabinClass } from "@/types/search.types";
+import { AirportOption } from "../components/AirportAutocomplete";
 
 // constants/search.constants.ts
-export interface SearchFormData {
-  origin: string | null;
-  destination: string | null;
+export interface FormData {
+  origin: AirportOption | null;
+  destination: AirportOption | null;
   departureDate: string;
   returnDate: string;
   travelers: number;
@@ -28,8 +29,8 @@ export const CABIN_CLASSES: CabinClass[] = ['economy', 'premium_economy', 'busin
 
 export const ROOM_TYPES = ['any', 'standard', 'deluxe', 'suite', 'family_room', 'villa'] as const;
 
-export const DEFAULT_FORM_DATA: SearchFormData = {
-  origin: null,
+export const DEFAULT_FORM_DATA: FormData = {
+  origin:null,
   destination: null,
   departureDate: '',
   returnDate: '',
