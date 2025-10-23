@@ -119,39 +119,32 @@ const BookingPage: React.FC = () => {
 
   // Memoize price calculations
   const priceInfo = useMemo(() => {
-    if (!bookingData?.trip) return {
-      base: 0,
-      markupPerPassenger: 0,
-      servicePerPassenger: 0,
-      passengers: 0,
-      markupTotal: 0,
-      serviceTotal: 0,
-      total: 0,
-      currency: 'EUR',
-      ancillaryTotal: 0,
-      ancillaryRows: [],
-    };
+  if (!bookingData?.trip) return {
+    base: 0,
+    markupPerPassenger: 0,
+    servicePerPassenger: 0,
+    passengers: 0,
+    markupTotal: 0,
+    serviceTotal: 0,
+    total: 0,
+    currency: 'EUR',
+    ancillaryTotal: 0,
+    ancillaryRows: [],
+  };
 
-    const basePerPassenger = parseFloat(bookingData.trip.price.total.toString());
-    const result = computePricing({
-      baseAmount: basePerPassenger,
-      passengers: passengerData.length || 1,
-      currency: bookingData.trip.price.currency || bookingData.trip.price.breakdown?.currency || 'EUR',
-      ancillaryTotal: ancillaryState.total,
-    });
-    
-    // Add ancillary rows to price info
-    result.ancillaryRows = ancillaryState.rows;
-    
-    console.log('🔍 DEBUG - Price calculation with ancillaries:', {
-      baseAmount: basePerPassenger,
-      passengers: passengerData.length || 1,
-      ancillaryTotal: ancillaryState.total,
-      result
-    });
-    
-    return result;
-  }, [bookingData?.trip, passengerData.length, ancillaryState]);  // Track the entire ancillaryState object // Recalculate when ancillaries change
+  // Ensure we're using the base price without ancillaries
+  const basePrice = bookingData.trip.price?.base_amount 
+    ? parseFloat(bookingData.trip.price.base_amount)
+    : parseFloat(bookingData.trip.price.total) - ancillaryState.total;
+
+  return computePricing({
+    baseAmount: basePrice,
+    passengers: passengerData.length || 1,
+    currency: bookingData.trip.price.currency || 'EUR',
+    ancillaryTotal: ancillaryState.total,
+    ancillaryRows: ancillaryState.rows
+  });
+}, [bookingData, passengerData.length, ancillaryState]);  // Track the entire ancillaryState object // Recalculate when ancillaries change
 
   // Get list of all countries from world-countries package
   const countries = useMemo(() => {
@@ -316,6 +309,50 @@ const BookingPage: React.FC = () => {
             mealPreferences: []
           };
           
+          // CRITICAL: SINGLE SOURCE OF TRUTH - Use offer passengers count
+          // The offer from Duffel API is the authoritative source for passenger count
+          // This prevents mismatches between UI selections and actual booked offer
+          let travelerCount = 1; // Default fallback
+          
+          // Type guard for number validation
+          const isValidNumber = (value: any): value is number => {
+            const num = Number(value);
+            return !isNaN(num) && num > 0 && num <= 9 && Number.isInteger(num);
+          };
+          
+          // Priority 1: Use offer passengers_count (SINGLE SOURCE OF TRUTH)
+          if (savedData.trip?.passengers_count && isValidNumber(savedData.trip.passengers_count)) {
+            travelerCount = Number(savedData.trip.passengers_count);
+            console.log('✅ Travelers from offer (passengers_count):', travelerCount);
+          }
+          // Priority 2: Use offer passengers array length
+          else if (savedData.trip?.passengers && Array.isArray(savedData.trip.passengers) && savedData.trip.passengers.length > 0) {
+            travelerCount = savedData.trip.passengers.length;
+            console.log('✅ Travelers from offer (passengers.length):', travelerCount);
+          }
+          // Fallback: Use searchParams only if offer data is missing
+          else if (savedData.searchParams?.travelers && isValidNumber(savedData.searchParams.travelers)) {
+            travelerCount = Number(savedData.searchParams.travelers);
+            console.log('⚠️ Travelers from searchParams (fallback):', travelerCount);
+          }
+          else {
+            console.warn('⚠️ No valid passenger count found, using default:', travelerCount);
+          }
+          
+          // Validation: Ensure travelerCount is within acceptable range
+          if (!isValidNumber(travelerCount)) {
+            console.error('❌ Invalid traveler count detected:', travelerCount, '- resetting to 1');
+            travelerCount = 1;
+          }
+          
+          console.log('🔍 FINAL TRAVELER COUNT (from offer):', travelerCount);
+          console.log('🔍 Source data:', {
+            'OFFER passengers_count': savedData.trip?.passengers_count,
+            'OFFER passengers.length': savedData.trip?.passengers?.length,
+            'searchParams (ignored)': savedData.searchParams?.travelers,
+            'validated': travelerCount
+          });
+          
           // Set booking data with proper defaults
           const bookingData = {
             trip: savedData.trip || {},
@@ -324,7 +361,7 @@ const BookingPage: React.FC = () => {
               to: savedData.searchParams?.to || '',
               departureDate: savedData.searchParams?.departureDate || '',
               returnDate: savedData.searchParams?.returnDate || '',
-              travelers: savedData.searchParams?.travelers || 1,
+              travelers: travelerCount, // Use the determined count
               tripType: (savedData.searchParams?.tripType as 'oneway' | 'roundtrip') || 'oneway',
               budget: savedData.searchParams?.budget || 0,
               currency: savedData.searchParams?.currency || 'USD'
@@ -334,8 +371,6 @@ const BookingPage: React.FC = () => {
           
           setBookingData(bookingData);
           
-          // Build passenger array matching traveler count
-          const travelerCount = Number(savedData.searchParams?.travelers) || 1;
           console.log('🔍 DEBUG - Creating passenger forms for', travelerCount, 'travelers');
           
           // Always create the exact number of passengers based on traveler count
@@ -918,8 +953,15 @@ const BookingPage: React.FC = () => {
                   
                   {passengerData.length > 0 ? (
                     <>
-                      <div className="mb-4 p-2 bg-blue-50 rounded">
-                        <p className="text-sm text-blue-700">Debug: {passengerData.length} passenger(s)</p>
+                      {/* Debug: Show passenger count from multiple sources */}
+                      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <p className="text-sm font-semibold text-blue-900 mb-2">Passenger Count Check:</p>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-blue-700">
+                          <div>Forms: <span className="font-bold">{passengerData.length}</span></div>
+                          <div>SearchParams: <span className="font-bold">{bookingData.searchParams?.travelers || 'N/A'}</span></div>
+                          <div>Offer Passengers: <span className="font-bold">{bookingData.trip?.passengers?.length || 'N/A'}</span></div>
+                          <div>Passengers Count: <span className="font-bold">{bookingData.trip?.passengers_count || 'N/A'}</span></div>
+                        </div>
                       </div>
                       <DuffelAncillariesComponent
                         offerId={bookingData.trip.id}

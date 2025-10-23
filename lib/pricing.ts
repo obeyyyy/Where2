@@ -1,5 +1,7 @@
 // Utility functions to keep pricing logic in one place
 
+import { AncillaryRow } from "@/types/Ancillary";
+
 
 export const ANCILLARY_MARKUP = {
   bags: {
@@ -18,16 +20,16 @@ export const ANCILLARY_MARKUP = {
 
 
 export interface PricingBreakdown {
-  ancillaryRows: any;
-  base: number;
-  markupPerPassenger: number;
-  servicePerPassenger: number;
-  passengers: number;
-  markupTotal: number;
-  serviceTotal: number;
-  total: number;
-  currency: string;
-  ancillaryTotal: number;
+  base: number;                    // Base flight price
+  markupPerPassenger: number;      // Fixed markup per passenger
+  servicePerPassenger: number;     // Fixed service fee per passenger
+  passengers: number;              // Number of passengers
+  markupTotal: number;             // Total markup (markupPerPassenger * passengers)
+  serviceTotal: number;            // Total service fee (servicePerPassenger * passengers)
+  ancillaryTotal: number;          // Total for all ancillaries
+  total: number;                   // Grand total (base + markupTotal + serviceTotal + ancillaryTotal)
+  currency: string;                // Currency code
+  ancillaryRows: AncillaryRow[];   // Detailed breakdown of ancillaries
 }
 
 /**
@@ -40,38 +42,52 @@ export interface PricingBreakdown {
  * @param servicePerPax   Fixed service fee per passenger.
  * @param ancillaryTotal  Ancillary total (e.g. bags, seats, etc.)
  */
-export function computePricing (
-  {
+export function computePricing(params: {
+  baseAmount: number;
+  passengers: number;
+  currency?: string;
+  markupPerPax?: number;
+  servicePerPax?: number;
+  ancillaryTotal?: number;
+  ancillaryRows?: AncillaryRow[];
+}): PricingBreakdown {
+  // Input validation
+  if (params.baseAmount < 0) {
+    throw new Error('Base amount cannot be negative');
+  }
+  if (params.passengers < 1) {
+    throw new Error('At least one passenger is required');
+  }
+  if (params.ancillaryTotal && params.ancillaryTotal < 0) {
+    throw new Error('Ancillary total cannot be negative');
+  }
+
+  const {
     baseAmount,
     passengers,
     currency = 'EUR',
     markupPerPax = 2.00,
     servicePerPax = 1.00,
     ancillaryTotal = 0,
-  }: {
-    baseAmount: number;
-    passengers: number;
-    currency?: string;
-    markupPerPax?: number;
-    servicePerPax?: number;
-    ancillaryTotal?: number;
-  }
-): PricingBreakdown {
-  const markupTotal = markupPerPax * passengers;
-  const serviceTotal = servicePerPax * passengers;
+    ancillaryRows = []
+  } = params;
+
+  // Calculate totals
+  const markupTotal = +(markupPerPax * passengers).toFixed(2);
+  const serviceTotal = +(servicePerPax * passengers).toFixed(2);
   const total = +(baseAmount + markupTotal + serviceTotal + ancillaryTotal).toFixed(2);
 
   return {
     base: +baseAmount.toFixed(2),
-    markupPerPassenger: markupPerPax,
-    servicePerPassenger: servicePerPax,
+    markupPerPassenger: +markupPerPax.toFixed(2),
+    servicePerPassenger: +servicePerPax.toFixed(2),
     passengers,
-    markupTotal: +markupTotal.toFixed(2),
-    serviceTotal: +serviceTotal.toFixed(2),
+    markupTotal,
+    serviceTotal,
     total,
     currency,
-    ancillaryTotal,
-    ancillaryRows: undefined,
+    ancillaryTotal: +ancillaryTotal.toFixed(2),
+    ancillaryRows
   };
 }
 

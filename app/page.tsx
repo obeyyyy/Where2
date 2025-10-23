@@ -380,7 +380,7 @@ export default function LandingPage() {
                                 type="text"
                                 placeholder="City or hotel name"
                                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-white/20 bg-white/100 text-black focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                                value={formData.destination?.toString()}
+                                value={formData.destination?.city || ''}
                                 onChange={(e) => handleInputChange('destination', { city: e.target.value } as any)}
                                 required
                               />

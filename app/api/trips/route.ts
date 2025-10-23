@@ -426,7 +426,10 @@ export async function GET(request: Request) {
             currency: offer.total_currency
           },
           itineraries: itineraries,
-          deep_link: offer.deep_link || ''
+          deep_link: offer.deep_link || '',
+          // CRITICAL: Include passenger count from the offer
+          passengers: offer.passengers || passengersArray,
+          passengers_count: offer.passengers?.length || travelersNum
         };
       })
     };
