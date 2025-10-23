@@ -8,11 +8,17 @@ import { getCoordinatesForLocation } from '@/lib/mapbox';
 // validation, stable cache keys, robust error handling, and clear logging.
 
 /* ---------- Configuration ---------- */
-const MAX_RATE_FETCHES = 5; // how many hotels we'll fetch detailed rates for
+const MAX_RATE_FETCHES = 10; // how many hotels we'll fetch detailed rates for
 const CACHE_TTL_SECONDS = 60 * 5; // 5 minutes
 const DEFAULT_SEARCH_LIMIT = 10; // Duffel search pagination limit
 const MAX_RADIUS_KM = 100; // maximum allowed radius for geo searches
 const DEFAULT_RADIUS_KM = 20;
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 50; // Max requests per minute per IP
+const MAX_CACHE_SIZE = 500; // Maximum number of cached entries
+
+// Rate limiting store
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 /* ---------- Types ---------- */
 type Coordinates = { lat: number; lon: number };
@@ -88,6 +94,46 @@ async function checkRateLimit(): Promise<{ limited: boolean; retryAfterSeconds?:
   }
 }
 
+/**
+ * Check rate limit for client IP
+ */
+function checkClientRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const key = `client_rate_limit:${ip}`;
+  const current = rateLimitStore.get(key);
+
+  if (!current || now > current.resetTime) {
+    // Reset or create new window
+    rateLimitStore.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return { allowed: true };
+  }
+
+  if (current.count >= MAX_REQUESTS_PER_WINDOW) {
+    return { 
+      allowed: false, 
+      retryAfter: Math.ceil((current.resetTime - now) / 1000) 
+    };
+  }
+
+  // Increment counter
+  current.count++;
+  rateLimitStore.set(key, current);
+  return { allowed: true };
+}
+
+/**
+ * Clean up expired rate limit entries
+ */
+function cleanupRateLimitEntries() {
+  const now = Date.now();
+  
+  for (const [key, entry] of rateLimitStore.entries()) {
+    if (now > entry.resetTime) {
+      rateLimitStore.delete(key);
+    }
+  }
+}
+
 async function updateRateLimitsFromHeaders(headers: Headers) {
   // Duffel may provide ratelimit-reset header (seconds since epoch or seconds until reset).
   try {
@@ -147,7 +193,32 @@ export async function POST(request: Request) {
       }
     }
 
-    // Rate limit check
+    // Client rate limiting check
+    const clientIP = request.headers.get('x-forwarded-for') || 
+                    request.headers.get('x-real-ip') || 
+                    'unknown';
+    const clientRateLimitCheck = checkClientRateLimit(clientIP);
+    
+    if (!clientRateLimitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'rate_limited',
+          message: `Too many requests. Please try again in ${clientRateLimitCheck.retryAfter} seconds.`,
+          retryAfter: clientRateLimitCheck.retryAfter
+        },
+        { 
+          status: 429, 
+          headers: { 'Retry-After': String(clientRateLimitCheck.retryAfter || 60) } 
+        }
+      );
+    }
+
+    // Clean up expired rate limit entries periodically
+    if (Math.random() < 0.1) { // 10% chance to clean up
+      cleanupRateLimitEntries();
+    }
+
+    // Duffel API rate limit check
     const rateCheck = await checkRateLimit();
     if (rateCheck.limited) {
       const retry = rateCheck.retryAfterSeconds ?? 60;
@@ -253,19 +324,13 @@ export async function POST(request: Request) {
 
     for (const hotel of hotelsToFetch) {
       try {
-        // If accommodation already embedded, keep the structure with both IDs
+        // If accommodation already embedded, use it
         if (hotel.accommodation) {
           processed.push({
-            id: hotel.id, // This is the search result ID
-            accommodation: {
-              ...hotel.accommodation,
-              id: hotel.accommodation.id // This is the accommodation ID
-            },
+            ...hotel.accommodation,
+            id: hotel.accommodation.id || hotel.id,
             check_in_date: searchParams.check_in_date,
-            check_out_date: searchParams.check_out_date,
-            // Preserve other fields that might be useful
-            cheapest_rate_total_amount: hotel.cheapest_rate_total_amount,
-            cheapest_rate_currency: hotel.cheapest_rate_currency
+            check_out_date: searchParams.check_out_date
           });
           continue;
         }
