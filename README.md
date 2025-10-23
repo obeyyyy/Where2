@@ -1,36 +1,112 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ✈️ Where2 - Seamless Flight & Hotel Booking Platform
 
-## Getting Started
+Where2 is a modern travel booking platform that revolutionizes the way users plan and book their trips by combining flight and hotel bookings into a single, seamless experience. No more switching between multiple websites or dealing with the hassle of coordinating separate bookings.
 
-First, run the development server:
+## 🎯 The Problem We Solve
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Planning a trip typically involves:
+- Searching multiple websites for flights
+- Then searching again for hotels
+- Manually cross-referencing locations and dates
+- Juggling multiple tabs and price comparisons
+- Risking availability issues when booking separately
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Where2 solves this** by providing an integrated platform where users can search, compare, and book both flights and hotels together, ensuring a cohesive travel experience.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ✨ Key Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 🛫 Integrated Search & Booking
+- Search for flights and hotels simultaneously
+- View combined pricing for your entire trip
+- Book everything in one transaction
 
-## Learn More
+### 🏨 Smart Hotel Matching
+- Hotels automatically filtered by proximity to your arrival airport
+- Real-time availability and pricing
+- Detailed property information and amenities
 
-To learn more about Next.js, take a look at the following resources:
+### 🧳 Traveler-Centric Experience
+- Save traveler information for faster bookings
+- Manage all trip details in one place
+- Get personalized recommendations based on your preferences
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 🔒 Secure & Reliable
+- Secure payment processing
+- Real-time pricing and availability
+- Instant booking confirmations
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🔄 User Flow
 
-## Deploy on Vercel
+1. **Search**
+   - Enter departure city and destination
+   - Select travel dates and number of travelers
+   - Choose between round-trip or one-way options
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. **Explore Options**
+   - View flight options with key details (duration, stops, price)
+   - See matched hotels with distance from airport
+   - Filter and sort based on preferences
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. **Customize Your Trip**
+   - Add extras like baggage, seat selection
+   - Choose room types and hotel amenities
+   - See real-time price updates
+
+4. **Book with Confidence**
+   - Enter passenger details
+   - Secure payment processing
+   - Receive instant confirmation
+
+## 🛠️ Technical Highlights
+
+- **Frontend**: Next.js 13+ with React 18
+- **Styling**: Tailwind CSS with custom design system
+- **State Management**: React Context API
+- **Form Handling**: React Hook Form with Zod validation
+- **UI Components**: Custom component library with accessibility in mind
+- **API**: Next.js API routes for secure server-side operations
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+- API keys for flight and hotel providers
+
+### Installation
+
+1. Clone the repository
+   ```bash
+   git clone https://github.com/obeyyyy/where2.git
+   cd where2
+   ```
+
+2. Install dependencies
+   ```bash
+   npm install
+   # or
+   yarn
+   ```
+
+3. Set up environment variables
+   ```bash
+   cp .env.local.example .env.local
+   # Update the values in .env.local
+   ```
+
+4. Run the development server
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## 📝 License
+
+This project is proprietary and confidential. All rights reserved.
+
+---
+
+*Where2 - Your journey begins with a single search.*
