@@ -169,6 +169,11 @@ export default function TripSummaryPage() {
   // Use searchParams from the API response if available, otherwise fall back to the context
   const searchParams = apiSearchParams || trip.searchParams || {};
   
+  // DEBUG: Log to trace travelers count
+  console.log('🔍 Trip Summary - Trip data:', trip);
+  console.log('🔍 Trip Summary - Search params:', searchParams);
+  console.log('🔍 Trip Summary - Travelers count:', trip.trip.passengers_count);
+  
   // Extract origin and destination from the first segment of the first itinerary
   const firstSegment = itineraries?.[0]?.segments?.[0] || {};
   const lastSegment = itineraries?.[0]?.segments?.[itineraries?.[0]?.segments?.length - 1] || {};
@@ -356,7 +361,7 @@ export default function TripSummaryPage() {
               
               <div className="flex items-center bg-gray-50 px-3 py-2 rounded-lg">
                 <FiUsers className="mr-2 text-[#FFA500]" />
-                <span className="font-medium">{searchParams.travelers || 5} Traveler{(Number(searchParams.travelers || 5) > 1 ? 's' : '')}</span>
+                <span className="font-medium">{trip.trip.passengers_count || 1} Traveler{(Number(trip.trip.passengers_count || 1) > 1 ? 's' : '')}</span>
               </div>
             </div>
           </div>

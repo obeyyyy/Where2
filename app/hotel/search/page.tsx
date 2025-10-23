@@ -82,7 +82,6 @@ const HotelSearchPage: React.FC = () => {
   const checkOut = searchParams?.get('checkOut') || '';
   const rooms = searchParams?.get('rooms') || '1';
   const guests = searchParams?.get('guests') || '1';
-  const roomType = searchParams?.get('type') || 'any';
 
   const fetchHotelDetails = async (hotelId: string, accommodationId: string) => {
     try {

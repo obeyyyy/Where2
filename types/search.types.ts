@@ -11,6 +11,8 @@ export interface AirportOption {
   label: string;
 }
 
+
+
 export interface FlightSearchParams {
   origin: string;
   destination: string;

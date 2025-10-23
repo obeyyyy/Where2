@@ -253,13 +253,19 @@ export async function POST(request: Request) {
 
     for (const hotel of hotelsToFetch) {
       try {
-        // If accommodation already embedded, use it
+        // If accommodation already embedded, keep the structure with both IDs
         if (hotel.accommodation) {
           processed.push({
-            ...hotel.accommodation,
-            id: hotel.accommodation.id || hotel.id,
+            id: hotel.id, // This is the search result ID
+            accommodation: {
+              ...hotel.accommodation,
+              id: hotel.accommodation.id // This is the accommodation ID
+            },
             check_in_date: searchParams.check_in_date,
-            check_out_date: searchParams.check_out_date
+            check_out_date: searchParams.check_out_date,
+            // Preserve other fields that might be useful
+            cheapest_rate_total_amount: hotel.cheapest_rate_total_amount,
+            cheapest_rate_currency: hotel.cheapest_rate_currency
           });
           continue;
         }

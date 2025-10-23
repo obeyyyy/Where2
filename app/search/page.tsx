@@ -597,7 +597,7 @@ export default function SearchPage() {
                         label: `${airport.iata} - ${airport.name}, ${airport.city}`
                       } : null;
                     })()}
-                    onChange={(val) => handleInputChange('origin', val)}
+                    onChange={(val) => handleInputChange('origin', val?.iata || val)}
                     required
                   />
                 </div>
@@ -616,7 +616,7 @@ export default function SearchPage() {
                         label: `${airport.iata} - ${airport.name}, ${airport.city}`
                       } : null;
                     })()}
-                    onChange={(val) => handleInputChange('destination', val)}
+                    onChange={(val) => handleInputChange('destination', val?.iata || val)}
                     required
                   />
                 </div>

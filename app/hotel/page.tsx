@@ -167,10 +167,17 @@ const HotelPage: React.FC = () => {
                     </div>
                 ) : hotels.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {hotels.map((hotel) => (
+                        {hotels.map((hotel) => {
+                            // Construct proper URL with all required parameters
+                            // Format: searchResultId:accommodationId:checkIn:checkOut:rooms:guests
+                            const searchResultId = hotel.id || 'none';
+                            const accommodationId = (hotel as any).accommodation?.id || hotel.id;
+                            const detailsUrl = `/hotel/${searchResultId}:${accommodationId}:${checkIn}:${checkOut}:${rooms}:${guests}`;
+                            
+                            return (
                             <Link 
                                 key={hotel.id} 
-                                href={`/hotel/${hotel.id}`}
+                                href={detailsUrl}
                                 className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
                             >
                                 {/* Hotel Image */}
@@ -212,7 +219,7 @@ const HotelPage: React.FC = () => {
                                     )}
                                 </div>
                             </Link>
-                        ))}
+                        )})}
                     </div>
                 ) : (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">

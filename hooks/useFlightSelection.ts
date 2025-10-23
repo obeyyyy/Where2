@@ -26,6 +26,9 @@ export function useFlightSelection({ searchParams, setTripInCart }: UseFlightSel
 
   const handleContinueToBooking = useCallback(async (flight: FlightOffer) => {
     try {
+      console.log('🔍 useFlightSelection - Input searchParams:', searchParams);
+      console.log('🔍 useFlightSelection - Travelers from searchParams:', searchParams.travelers);
+      
       const tripToBook: TripBooking = {
         id: flight.id || `trip-${Date.now()}`,
         trip: {
@@ -48,12 +51,12 @@ export function useFlightSelection({ searchParams, setTripInCart }: UseFlightSel
         totalPrice: flight.price.total
       };
 
+      console.log('🔍 useFlightSelection - Trip to book:', tripToBook);
+      console.log('🔍 useFlightSelection - Saved searchParams:', tripToBook.searchParams);
+      console.log('🔍 useFlightSelection - Saved travelers:', tripToBook.searchParams.travelers);
+
       // Save to localStorage
       localStorage.setItem('current_booking_offer', JSON.stringify(tripToBook));
-
-      // CRITICAL: Log to verify travelers are preserved
-      console.log('Booking trip with travelers:', searchParams.travelers);
-      console.log('Trip to book:', tripToBook);
 
       // Update cart
       await setTripInCart(tripToBook);
