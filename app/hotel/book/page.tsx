@@ -23,7 +23,7 @@ interface QuoteData {
   id: string;
   accommodation: {
     name: string;
-    photos: { url: string }[];
+    photos?: any[];
     location: {
       address: {
         city_name: string;
@@ -46,7 +46,7 @@ const HotelBookingPage: React.FC = () => {
   const [quoteLoading, setQuoteLoading] = useState<boolean>(false);
   const [bookingLoading, setBookingLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [quote, setQuote] = useState<QuoteData | null>(null);
+  const [quote, setQuote] = useState<QuoteData>();
   
   const rateId = searchParams?.get('rateId') || '';
   const guestCount = parseInt(searchParams?.get('guests') || '1', 10);
@@ -67,32 +67,36 @@ const HotelBookingPage: React.FC = () => {
   useEffect(() => {
     const fetchQuote = async () => {
       if (!rateId) {
-        setError('Missing rate ID');
+        setError('Missing rate ID. Please go back and select a room again.');
         setLoading(false);
         return;
       }
 
       try {
         setQuoteLoading(true);
-        const response = await fetch('/api/hotel-quote', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ rateId }),
+        const response = await fetch(`/api/duffel/quotes?rateId=${rateId}`, {
+          cache: 'no-store' // Ensure we don't get a cached response
         });
-
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch quote');
+          const errorData = await response.json();
+          
+          if (errorData.code === 'RATE_EXPIRED') {
+            // If the rate has expired, redirect back to the hotel page
+            router.push(`/hotel/${searchParams?.get('hotelId') || ''}?error=rate_expired`);
+            return;
+          }
+          
+          throw new Error(errorData.error || 'Failed to fetch room details');
         }
-
+        
         const data = await response.json();
         
-        if (data.success && data.quote) {
-          setQuote(data.quote);
-        } else {
-          setError('Could not retrieve quote');
+        if (!data) {
+          throw new Error('No room data received');
         }
+        
+        setQuote(data);
       } catch (err: any) {
         setError(err.message || 'An error occurred while fetching quote');
         console.error('Error fetching quote:', err);
