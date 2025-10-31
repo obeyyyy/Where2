@@ -201,7 +201,7 @@ export async function GET(request: Request) {
     }
     
     // Build passenger array
-    const passengersArray = [];
+    const passengersArray: { type: string; }[] = [];
     const travelersNum = parseInt(travelers, 10) || 1;
     for (let i = 0; i < travelersNum; i++) {
       passengersArray.push({

@@ -1,4 +1,4 @@
-# Bug Fixes Summary
+# Bug Fixes Summary (Latest changes)
 
 ## Issue 1: Travelers Count Not Properly Handled in Search Page ✅
 
